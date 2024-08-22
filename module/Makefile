@@ -11,7 +11,10 @@ LEDGER_ENABLED ?= true
 # enable binary security features
 export GOFLAGS='-buildmode=pie'
 export CGO_CPPFLAGS="-D_FORTIFY_SOURCE=2"
-export CGO_LDFLAGS="-Wl,-z,relro,-z,now"
+UNAME_S := $(shell uname -s)
+ifneq ($(UNAME_S),Darwin)
+	export CGO_LDFLAGS="-Wl,-z,relro -Wl,-z,now"
+endif
 
 build_tags = netgo
 ifeq ($(LEDGER_ENABLED),true)
