@@ -37,6 +37,7 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      gas: "auto",
       mining: {
         auto: false,
         interval: [3000, 6000]
