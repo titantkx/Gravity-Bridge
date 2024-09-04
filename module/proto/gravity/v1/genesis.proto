@@ -95,10 +95,9 @@ option go_package = "github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity/t
 // In this context halting the bridge means prevent the execution of any oracle events from Ethereum and preventing
 // the creation of new batches that may be relayed to Ethereum.
 // This does not prevent the creation of validator sets
-// or slashing for not submitting validator set signatures as either of these might allow key signers to leave the validator
-// set and steal funds on Ethereum without consequence.
-// The practical outcome of this flag being set to 'false' is that deposits from Ethereum will not show up and withdraws from
-// Cosmos will not execute on Ethereum.
+// or slashing for not submitting validator set signatures as either of these might allow key signers to leave the
+// validator set and steal funds on Ethereum without consequence. The practical outcome of this flag being set to
+// 'false' is that deposits from Ethereum will not show up and withdraws from Cosmos will not execute on Ethereum.
 //
 // min_chain_fee_basis_points
 //
@@ -121,51 +120,39 @@ message Params {
   uint64 target_batch_timeout        = 9;
   uint64 average_block_time          = 10;
   uint64 average_ethereum_block_time = 11;
-  bytes  slash_fraction_valset       = 12 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
-    (gogoproto.nullable)   = false
-  ];
-  bytes slash_fraction_batch = 13 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
-    (gogoproto.nullable)   = false
-  ];
-  bytes slash_fraction_logic_call = 14 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
-    (gogoproto.nullable)   = false
-  ];
-  uint64 unbond_slashing_valsets_window = 15;
-  bytes slash_fraction_bad_eth_signature = 16 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
-    (gogoproto.nullable)   = false
-  ];
-  cosmos.base.v1beta1.Coin valset_reward = 17 [
-    (gogoproto.nullable)   = false
-  ];
-  bool bridge_active = 18;
+  bytes  slash_fraction_valset       = 12
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
+  bytes slash_fraction_batch = 13
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
+  bytes slash_fraction_logic_call = 14
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
+  uint64 unbond_slashing_valsets_window   = 15;
+  bytes  slash_fraction_bad_eth_signature = 16
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
+  cosmos.base.v1beta1.Coin valset_reward = 17 [(gogoproto.nullable) = false];
+  bool                     bridge_active = 18;
   // addresses on this blacklist are forbidden from depositing or withdrawing
   // from Ethereum to the bridge
-  repeated string ethereum_blacklist = 19;
-  uint64 min_chain_fee_basis_points = 20;
-  string chain_fee_auction_pool_fraction = 21 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec",
-    (gogoproto.nullable)   = false
-  ];
+  repeated string ethereum_blacklist              = 19;
+  uint64          min_chain_fee_basis_points      = 20;
+  string          chain_fee_auction_pool_fraction = 21
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
 }
 
 // GenesisState struct, containing all persistant data required by the Gravity module
 message GenesisState {
-  Params                             params              = 1;
-  GravityNonces                      gravity_nonces      = 2 [(gogoproto.nullable) = false];
-  repeated Valset                    valsets             = 3 [(gogoproto.nullable) = false];
-  repeated MsgValsetConfirm          valset_confirms     = 4 [(gogoproto.nullable) = false];
-  repeated OutgoingTxBatch           batches             = 5 [(gogoproto.nullable) = false];
-  repeated MsgConfirmBatch           batch_confirms      = 6 [(gogoproto.nullable) = false];
-  repeated OutgoingLogicCall         logic_calls         = 7 [(gogoproto.nullable) = false];
-  repeated MsgConfirmLogicCall       logic_call_confirms = 8 [(gogoproto.nullable) = false];
-  repeated Attestation               attestations        = 9 [(gogoproto.nullable) = false];
-  repeated MsgSetOrchestratorAddress delegate_keys       = 10 [(gogoproto.nullable) = false];
-  repeated ERC20ToDenom              erc20_to_denoms     = 11 [(gogoproto.nullable) = false];
-  repeated OutgoingTransferTx        unbatched_transfers = 12 [(gogoproto.nullable) = false];
+  Params                             params                    = 1;
+  GravityNonces                      gravity_nonces            = 2 [(gogoproto.nullable) = false];
+  repeated Valset                    valsets                   = 3 [(gogoproto.nullable) = false];
+  repeated MsgValsetConfirm          valset_confirms           = 4 [(gogoproto.nullable) = false];
+  repeated OutgoingTxBatch           batches                   = 5 [(gogoproto.nullable) = false];
+  repeated MsgConfirmBatch           batch_confirms            = 6 [(gogoproto.nullable) = false];
+  repeated OutgoingLogicCall         logic_calls               = 7 [(gogoproto.nullable) = false];
+  repeated MsgConfirmLogicCall       logic_call_confirms       = 8 [(gogoproto.nullable) = false];
+  repeated Attestation               attestations              = 9 [(gogoproto.nullable) = false];
+  repeated MsgSetOrchestratorAddress delegate_keys             = 10 [(gogoproto.nullable) = false];
+  repeated ERC20ToDenom              erc20_to_denoms           = 11 [(gogoproto.nullable) = false];
+  repeated OutgoingTransferTx        unbatched_transfers       = 12 [(gogoproto.nullable) = false];
   repeated PendingIbcAutoForward     pending_ibc_auto_forwards = 13 [(gogoproto.nullable) = false];
 }
 
