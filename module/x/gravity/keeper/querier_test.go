@@ -33,11 +33,13 @@ func TestQueryValsetConfirm(t *testing.T) {
 	sdkCtx := input.Context
 	ctx := sdk.WrapSDKContext(input.Context)
 	k := input.GravityKeeper
+	evmChain := k.GetEvmChainData(sdkCtx, EthChainPrefix)
 	input.GravityKeeper.SetValsetConfirm(sdkCtx, types.MsgValsetConfirm{
-		Nonce:        nonce,
-		Orchestrator: myValidatorCosmosAddr.String(),
-		EthAddress:   myValidatorEthereumAddr.GetAddress().Hex(),
-		Signature:    "abcdef123456789",
+		Nonce:          nonce,
+		Orchestrator:   myValidatorCosmosAddr.String(),
+		EthAddress:     myValidatorEthereumAddr.GetAddress().Hex(),
+		Signature:      "abcdef123456789",
+		EvmChainPrefix: evmChain.EvmChainPrefix,
 	})
 
 	specs := map[string]struct {
@@ -52,19 +54,20 @@ func TestQueryValsetConfirm(t *testing.T) {
 		}*/
 
 		"all good": {
-			src: types.QueryValsetConfirmRequest{Nonce: 1, Address: myValidatorCosmosAddr.String()},
+			src: types.QueryValsetConfirmRequest{Nonce: 1, Address: myValidatorCosmosAddr.String(), EvmChainPrefix: evmChain.EvmChainPrefix},
 
 			// expResp:  []byte(`{"type":"gravity/MsgValsetConfirm", "value":{"eth_address":"0x3232323232323232323232323232323232323232", "nonce": "1", "orchestrator": "cosmos1ees2tqhhhm9ahlhceh2zdguww9lqn2ckukn86l",  "signature": "alksdjhflkasjdfoiasjdfiasjdfoiasdj"}}`),
 			expResp: types.QueryValsetConfirmResponse{
-				Confirm: types.NewMsgValsetConfirm(1, *myValidatorEthereumAddr, myValidatorCosmosAddr, "abcdef123456789")},
+				Confirm: types.NewMsgValsetConfirm(evmChain.EvmChainPrefix, 1, *myValidatorEthereumAddr, myValidatorCosmosAddr, "abcdef123456789"),
+			},
 			expErr: false,
 		},
 		"unknown nonce": {
-			src:     types.QueryValsetConfirmRequest{Nonce: 999999, Address: myValidatorCosmosAddr.String()},
+			src:     types.QueryValsetConfirmRequest{Nonce: 999999, Address: myValidatorCosmosAddr.String(), EvmChainPrefix: evmChain.EvmChainPrefix},
 			expResp: types.QueryValsetConfirmResponse{Confirm: nil},
 		},
 		"invalid address": {
-			src:    types.QueryValsetConfirmRequest{Nonce: 1, Address: "not a valid addr"},
+			src:    types.QueryValsetConfirmRequest{Nonce: 1, Address: "not a valid addr", EvmChainPrefix: evmChain.EvmChainPrefix},
 			expErr: true,
 		},
 	}
@@ -115,12 +118,13 @@ func TestAllValsetConfirmsBynonce(t *testing.T) {
 	sdkCtx := input.Context
 	ctx := sdk.WrapSDKContext(input.Context)
 	k := input.GravityKeeper
+	evmChain := k.GetEvmChainData(sdkCtx, EthChainPrefix)
 
 	// seed confirmations
 	for i := 0; i < 3; i++ {
 		addr, err := sdk.AccAddressFromBech32(addrs[i])
 		require.NoError(t, err)
-		msg := types.MsgValsetConfirm{}
+		msg := types.MsgValsetConfirm{EvmChainPrefix: evmChain.EvmChainPrefix}
 		msg.EthAddress = gethcommon.BytesToAddress(bytes.Repeat([]byte{byte(i + 1)}, 20)).String()
 		msg.Nonce = uint64(1)
 		msg.Orchestrator = addr.String()
@@ -134,21 +138,21 @@ func TestAllValsetConfirmsBynonce(t *testing.T) {
 		expResp types.QueryValsetConfirmsByNonceResponse
 	}{
 		"all good": {
-			src: types.QueryValsetConfirmsByNonceRequest{Nonce: 1},
+			src: types.QueryValsetConfirmsByNonceRequest{Nonce: 1, EvmChainPrefix: evmChain.EvmChainPrefix},
 			expResp: types.QueryValsetConfirmsByNonceResponse{Confirms: []types.MsgValsetConfirm{
-				*types.NewMsgValsetConfirm(nonce, *myValidatorEthereumAddr2, myValidatorCosmosAddr2, "d34db33f1"),
-				*types.NewMsgValsetConfirm(nonce, *myValidatorEthereumAddr3, myValidatorCosmosAddr3, "d34db33f2"),
-				*types.NewMsgValsetConfirm(nonce, *myValidatorEthereumAddr1, myValidatorCosmosAddr1, "d34db33f0"),
+				*types.NewMsgValsetConfirm(evmChain.EvmChainPrefix, nonce, *myValidatorEthereumAddr2, myValidatorCosmosAddr2, "d34db33f1"),
+				*types.NewMsgValsetConfirm(evmChain.EvmChainPrefix, nonce, *myValidatorEthereumAddr3, myValidatorCosmosAddr3, "d34db33f2"),
+				*types.NewMsgValsetConfirm(evmChain.EvmChainPrefix, nonce, *myValidatorEthereumAddr1, myValidatorCosmosAddr1, "d34db33f0"),
 			}},
 		},
 		"unknown nonce": {
-			src:     types.QueryValsetConfirmsByNonceRequest{Nonce: 999999},
+			src:     types.QueryValsetConfirmsByNonceRequest{Nonce: 999999, EvmChainPrefix: evmChain.EvmChainPrefix},
 			expResp: types.QueryValsetConfirmsByNonceResponse{},
 		},
 	}
 	for msg, spec := range specs {
 		t.Run(msg, func(t *testing.T) {
-			got, err := k.ValsetConfirmsByNonce(ctx, &types.QueryValsetConfirmsByNonceRequest{Nonce: spec.src.Nonce})
+			got, err := k.ValsetConfirmsByNonce(ctx, &types.QueryValsetConfirmsByNonceRequest{Nonce: spec.src.Nonce, EvmChainPrefix: evmChain.EvmChainPrefix})
 			if spec.expErr {
 				require.Error(t, err)
 				return
@@ -295,6 +299,7 @@ func TestLastValsetRequests(t *testing.T) {
 	// any lower than this and a validator won't be created
 	const minStake = 1000000
 	input, _ := SetupTestChain(t, []uint64{minStake, minStake, minStake, minStake, minStake}, true)
+	evmChain := input.GravityKeeper.GetEvmChainData(input.Context, EthChainPrefix)
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
 
 	ctx := sdk.WrapSDKContext(input.Context)
@@ -307,7 +312,7 @@ func TestLastValsetRequests(t *testing.T) {
 	// Run the staking endblocker to ensure valset is correct in state
 	staking.EndBlocker(input.Context, input.StakingKeeper)
 
-	input.GravityKeeper.SetValsetRequest(input.Context)
+	input.GravityKeeper.SetValsetRequest(input.Context, evmChain.EvmChainPrefix)
 
 	k := input.GravityKeeper
 	for msg, spec := range specs {
@@ -327,142 +332,145 @@ func TestPendingValsetRequests(t *testing.T) {
 		expResp types.QueryLastPendingValsetRequestByAddrResponse
 	}{
 		"find valset": {
-			expResp: types.QueryLastPendingValsetRequestByAddrResponse{Valsets: []types.Valset{
-				{
-					Nonce:        6,
-					Height:       1235167,
-					RewardAmount: sdk.ZeroInt(),
-					RewardToken:  "0x0000000000000000000000000000000000000000",
-					Members: []types.BridgeValidator{
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0000000000000000000000000000000000000000",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0101010101010101010101010101010101010101",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0202020202020202020202020202020202020202",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0303030303030303030303030303030303030303",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0404040404040404040404040404040404040404",
-						},
-					},
-				},
-				{
-					Nonce:        5,
-					Height:       1235067,
-					RewardAmount: sdk.ZeroInt(),
-					RewardToken:  "0x0000000000000000000000000000000000000000",
-					Members: []types.BridgeValidator{
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0000000000000000000000000000000000000000",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0101010101010101010101010101010101010101",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0202020202020202020202020202020202020202",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0303030303030303030303030303030303030303",
-						},
-						{
-							Power:           858993459,
-							EthereumAddress: "0x0404040404040404040404040404040404040404",
+			expResp: types.QueryLastPendingValsetRequestByAddrResponse{
+				Valsets: []types.Valset{
+					{
+						Nonce:        6,
+						Height:       1235167,
+						RewardAmount: sdk.ZeroInt(),
+						RewardToken:  "0x0000000000000000000000000000000000000000",
+						Members: []types.BridgeValidator{
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0000000000000000000000000000000000000000",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0101010101010101010101010101010101010101",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0202020202020202020202020202020202020202",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0303030303030303030303030303030303030303",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0404040404040404040404040404040404040404",
+							},
 						},
 					},
-				},
-				{
-					Nonce:        4,
-					Height:       1234967,
-					RewardAmount: sdk.ZeroInt(),
-					RewardToken:  "0x0000000000000000000000000000000000000000",
-					Members: []types.BridgeValidator{
-						{
-							Power:           1073741824,
-							EthereumAddress: "0x0000000000000000000000000000000000000000",
-						},
-						{
-							Power:           1073741824,
-							EthereumAddress: "0x0101010101010101010101010101010101010101",
-						},
-						{
-							Power:           1073741824,
-							EthereumAddress: "0x0202020202020202020202020202020202020202",
-						},
-						{
-							Power:           1073741824,
-							EthereumAddress: "0x0303030303030303030303030303030303030303",
-						},
-					},
-				},
-				{
-					Nonce:        3,
-					Height:       1234867,
-					RewardAmount: sdk.ZeroInt(),
-					RewardToken:  "0x0000000000000000000000000000000000000000",
-					Members: []types.BridgeValidator{
-						{
-							Power:           1431655765,
-							EthereumAddress: "0x0000000000000000000000000000000000000000",
-						},
-						{
-							Power:           1431655765,
-							EthereumAddress: "0x0101010101010101010101010101010101010101",
-						},
-						{
-							Power:           1431655765,
-							EthereumAddress: "0x0202020202020202020202020202020202020202",
+					{
+						Nonce:        5,
+						Height:       1235067,
+						RewardAmount: sdk.ZeroInt(),
+						RewardToken:  "0x0000000000000000000000000000000000000000",
+						Members: []types.BridgeValidator{
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0000000000000000000000000000000000000000",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0101010101010101010101010101010101010101",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0202020202020202020202020202020202020202",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0303030303030303030303030303030303030303",
+							},
+							{
+								Power:           858993459,
+								EthereumAddress: "0x0404040404040404040404040404040404040404",
+							},
 						},
 					},
-				},
-				{
-					Nonce:        2,
-					Height:       1234767,
-					RewardAmount: sdk.ZeroInt(),
-					RewardToken:  "0x0000000000000000000000000000000000000000",
-					Members: []types.BridgeValidator{
-						{
-							Power:           2147483648,
-							EthereumAddress: "0x0000000000000000000000000000000000000000",
-						},
-						{
-							Power:           2147483648,
-							EthereumAddress: "0x0101010101010101010101010101010101010101",
+					{
+						Nonce:        4,
+						Height:       1234967,
+						RewardAmount: sdk.ZeroInt(),
+						RewardToken:  "0x0000000000000000000000000000000000000000",
+						Members: []types.BridgeValidator{
+							{
+								Power:           1073741824,
+								EthereumAddress: "0x0000000000000000000000000000000000000000",
+							},
+							{
+								Power:           1073741824,
+								EthereumAddress: "0x0101010101010101010101010101010101010101",
+							},
+							{
+								Power:           1073741824,
+								EthereumAddress: "0x0202020202020202020202020202020202020202",
+							},
+							{
+								Power:           1073741824,
+								EthereumAddress: "0x0303030303030303030303030303030303030303",
+							},
 						},
 					},
-				},
-				{
-					Nonce: 1,
-					Members: []types.BridgeValidator{
-						{
-							Power:           4294967296,
-							EthereumAddress: "0x0000000000000000000000000000000000000000",
+					{
+						Nonce:        3,
+						Height:       1234867,
+						RewardAmount: sdk.ZeroInt(),
+						RewardToken:  "0x0000000000000000000000000000000000000000",
+						Members: []types.BridgeValidator{
+							{
+								Power:           1431655765,
+								EthereumAddress: "0x0000000000000000000000000000000000000000",
+							},
+							{
+								Power:           1431655765,
+								EthereumAddress: "0x0101010101010101010101010101010101010101",
+							},
+							{
+								Power:           1431655765,
+								EthereumAddress: "0x0202020202020202020202020202020202020202",
+							},
 						},
 					},
-					Height:       1234667,
-					RewardAmount: sdk.NewInt(0),
-					RewardToken:  "0x0000000000000000000000000000000000000000",
+					{
+						Nonce:        2,
+						Height:       1234767,
+						RewardAmount: sdk.ZeroInt(),
+						RewardToken:  "0x0000000000000000000000000000000000000000",
+						Members: []types.BridgeValidator{
+							{
+								Power:           2147483648,
+								EthereumAddress: "0x0000000000000000000000000000000000000000",
+							},
+							{
+								Power:           2147483648,
+								EthereumAddress: "0x0101010101010101010101010101010101010101",
+							},
+						},
+					},
+					{
+						Nonce: 1,
+						Members: []types.BridgeValidator{
+							{
+								Power:           4294967296,
+								EthereumAddress: "0x0000000000000000000000000000000000000000",
+							},
+						},
+						Height:       1234667,
+						RewardAmount: sdk.NewInt(0),
+						RewardToken:  "0x0000000000000000000000000000000000000000",
+					},
 				},
-			},
 			},
 		},
 	}
+
 	// any lower than this and a validator won't be created
 	const minStake = 1000000
 	input, _ := SetupTestChain(t, []uint64{minStake, minStake, minStake, minStake, minStake}, true)
+	evmChain := input.GravityKeeper.GetEvmChainData(input.Context, EthChainPrefix)
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
 
 	ctx := sdk.WrapSDKContext(input.Context)
@@ -475,7 +483,7 @@ func TestPendingValsetRequests(t *testing.T) {
 	// Run the staking endblocker to ensure valset is correct in state
 	staking.EndBlocker(input.Context, input.StakingKeeper)
 
-	input.GravityKeeper.SetValsetRequest(input.Context)
+	input.GravityKeeper.SetValsetRequest(input.Context, evmChain.EvmChainPrefix)
 
 	var valAddr sdk.AccAddress = bytes.Repeat([]byte{byte(1)}, 20)
 	for msg, spec := range specs {
@@ -492,58 +500,59 @@ func TestPendingValsetRequests(t *testing.T) {
 // nolint: exhaustruct
 // TODO: check that it actually returns a batch that has NOT been signed, not just any batch
 func TestLastPendingBatchRequest(t *testing.T) {
-
 	specs := map[string]struct {
 		expResp types.QueryLastPendingBatchRequestByAddrResponse
 	}{
 		"find batch": {
-			expResp: types.QueryLastPendingBatchRequestByAddrResponse{Batch: []types.OutgoingTxBatch{
-				{
-					BatchNonce:   1,
-					BatchTimeout: 0,
-					Transactions: []types.OutgoingTransferTx{
-						{
-							Id:          2,
-							Sender:      "gravity1qyqszqgpqyqszqgpqyqszqgpqyqszqgpkrnxg5",
-							DestAddress: "0x320915BD0F1bad11cBf06e85D5199DBcAC4E9934",
-							Erc20Token: types.ERC20Token{
-								Amount:   sdk.NewInt(101),
-								Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+			expResp: types.QueryLastPendingBatchRequestByAddrResponse{
+				Batch: []types.OutgoingTxBatch{
+					{
+						BatchNonce:   1,
+						BatchTimeout: 0,
+						Transactions: []types.OutgoingTransferTx{
+							{
+								Id:          2,
+								Sender:      "gravity1qyqszqgpqyqszqgpqyqszqgpqyqszqgpkrnxg5",
+								DestAddress: "0x320915BD0F1bad11cBf06e85D5199DBcAC4E9934",
+								Erc20Token: types.ERC20Token{
+									Amount:   sdk.NewInt(101),
+									Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+								},
+								Erc20Fee: types.ERC20Token{
+									Amount:   sdk.NewInt(3),
+									Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+								},
 							},
-							Erc20Fee: types.ERC20Token{
-								Amount:   sdk.NewInt(3),
-								Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+							{
+								Id:          3,
+								Sender:      "gravity1qyqszqgpqyqszqgpqyqszqgpqyqszqgpkrnxg5",
+								DestAddress: "0x320915BD0F1bad11cBf06e85D5199DBcAC4E9934",
+								Erc20Token: types.ERC20Token{
+									Amount:   sdk.NewInt(102),
+									Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+								},
+								Erc20Fee: types.ERC20Token{
+									Amount:   sdk.NewInt(2),
+									Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+								},
 							},
 						},
-						{
-							Id:          3,
-							Sender:      "gravity1qyqszqgpqyqszqgpqyqszqgpqyqszqgpkrnxg5",
-							DestAddress: "0x320915BD0F1bad11cBf06e85D5199DBcAC4E9934",
-							Erc20Token: types.ERC20Token{
-								Amount:   sdk.NewInt(102),
-								Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
-							},
-							Erc20Fee: types.ERC20Token{
-								Amount:   sdk.NewInt(2),
-								Contract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
-							},
-						},
+						TokenContract:      "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+						CosmosBlockCreated: 1235067,
 					},
-					TokenContract:      "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
-					CosmosBlockCreated: 1235067,
 				},
-			},
 			},
 		},
 	}
 	// any lower than this and a validator won't be created
 	const minStake = 1000000
 	input, _ := SetupTestChain(t, []uint64{minStake, minStake, minStake, minStake, minStake}, true)
+	evmChain := input.GravityKeeper.GetEvmChainData(input.Context, EthChainPrefix)
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
 
 	ctx := sdk.WrapSDKContext(input.Context)
 	var valAddr sdk.AccAddress = bytes.Repeat([]byte{byte(1)}, 20)
-	createTestBatch(t, input, 2)
+	createTestBatch(t, input, 2, evmChain.EvmChainPrefix)
 	for msg, spec := range specs {
 		t.Run(msg, func(t *testing.T) {
 			req := new(types.QueryLastPendingBatchRequestByAddrRequest)
@@ -555,8 +564,8 @@ func TestLastPendingBatchRequest(t *testing.T) {
 	}
 }
 
-// nolint: exhaustruct
-func createTestBatch(t *testing.T, input TestInput, maxTxElements uint) {
+// nolint: exhaustivestruct
+func createTestBatch(t *testing.T, input TestInput, maxTxElements uint, evmChainPrefix string) {
 	var (
 		mySender            = bytes.Repeat([]byte{1}, 20)
 		myReceiver          = "0x320915BD0F1bad11cBf06e85D5199DBcAC4E9934"
@@ -570,7 +579,7 @@ func createTestBatch(t *testing.T, input TestInput, maxTxElements uint) {
 	// mint some voucher first
 	token, err := types.NewInternalERC20Token(sdk.NewInt(99999), myTokenContractAddr)
 	require.NoError(t, err)
-	allVouchers := sdk.Coins{token.GravityCoin()}
+	allVouchers := sdk.Coins{token.GravityCoin(evmChainPrefix)}
 	err = input.BankKeeper.MintCoins(input.Context, types.ModuleName, allVouchers)
 	require.NoError(t, err)
 
@@ -583,11 +592,11 @@ func createTestBatch(t *testing.T, input TestInput, maxTxElements uint) {
 	for i, v := range []uint64{2, 3, 2, 1} {
 		amountToken, err := types.NewInternalERC20Token(sdk.NewInt(int64(i+100)), myTokenContractAddr)
 		require.NoError(t, err)
-		amount := amountToken.GravityCoin()
+		amount := amountToken.GravityCoin(evmChainPrefix)
 		feeToken, err := types.NewInternalERC20Token(sdk.NewIntFromUint64(v), myTokenContractAddr)
 		require.NoError(t, err)
-		fee := feeToken.GravityCoin()
-		_, err = input.GravityKeeper.AddToOutgoingPool(input.Context, mySender, *receiver, amount, fee)
+		fee := feeToken.GravityCoin(evmChainPrefix)
+		_, err = input.GravityKeeper.AddToOutgoingPool(input.Context, evmChainPrefix, mySender, *receiver, amount, fee)
 		require.NoError(t, err)
 		// Should create:
 		// 1: amount 100, fee 2
@@ -599,7 +608,7 @@ func createTestBatch(t *testing.T, input TestInput, maxTxElements uint) {
 	input.Context = input.Context.WithBlockTime(now)
 
 	// tx batch size is 2, so that some of them stay behind
-	_, err = input.GravityKeeper.BuildOutgoingTXBatch(input.Context, *tokenContract, maxTxElements)
+	_, err = input.GravityKeeper.BuildOutgoingTXBatch(input.Context, evmChainPrefix, *tokenContract, maxTxElements)
 	require.NoError(t, err)
 	// Should have 2 and 3 from above
 	// 1 and 4 should be unbatched
@@ -613,6 +622,7 @@ func TestQueryAllBatchConfirms(t *testing.T) {
 	sdkCtx := input.Context
 	ctx := sdk.WrapSDKContext(input.Context)
 	k := input.GravityKeeper
+	evmChain := k.GetEvmChainData(sdkCtx, EthChainPrefix)
 
 	var (
 		tokenContract      = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
@@ -621,24 +631,26 @@ func TestQueryAllBatchConfirms(t *testing.T) {
 	require.NoError(t, err)
 
 	input.GravityKeeper.SetBatchConfirm(sdkCtx, &types.MsgConfirmBatch{
-		Nonce:         1,
-		TokenContract: tokenContract,
-		EthSigner:     "0xf35e2cc8e6523d683ed44870f5b7cc785051a77d",
-		Orchestrator:  validatorAddr.String(),
-		Signature:     "d34db33f",
+		Nonce:          1,
+		TokenContract:  tokenContract,
+		EthSigner:      "0xf35e2cc8e6523d683ed44870f5b7cc785051a77d",
+		Orchestrator:   validatorAddr.String(),
+		Signature:      "d34db33f",
+		EvmChainPrefix: evmChain.EvmChainPrefix,
 	})
 
-	batchConfirms, err := k.BatchConfirms(ctx, &types.QueryBatchConfirmsRequest{Nonce: 1, ContractAddress: tokenContract})
+	batchConfirms, err := k.BatchConfirms(ctx, &types.QueryBatchConfirmsRequest{Nonce: 1, ContractAddress: tokenContract, EvmChainPrefix: evmChain.EvmChainPrefix})
 	require.NoError(t, err)
 
 	expectedRes := types.QueryBatchConfirmsResponse{
 		Confirms: []types.MsgConfirmBatch{
 			{
-				Nonce:         1,
-				TokenContract: "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
-				EthSigner:     "0xf35e2cc8e6523d683ed44870f5b7cc785051a77d",
-				Orchestrator:  "gravity1mgamdcs9dah0vn0gqupl05up7pedg2mvc3tzjl",
-				Signature:     "d34db33f",
+				Nonce:          1,
+				TokenContract:  "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B",
+				EthSigner:      "0xf35e2cc8e6523d683ed44870f5b7cc785051a77d",
+				Orchestrator:   "gravity1mgamdcs9dah0vn0gqupl05up7pedg2mvc3tzjl",
+				Signature:      "d34db33f",
+				EvmChainPrefix: evmChain.EvmChainPrefix,
 			},
 		},
 	}
@@ -660,6 +672,7 @@ func TestQueryLogicCalls(t *testing.T) {
 		tokenContract            = "0x7580bfe88dd3d07947908fae12d95872a260f2d8"
 		invalidationId           = []byte("GravityTesting")
 		invalidationNonce uint64 = 1
+		evmChain                 = k.GetEvmChainData(sdkCtx, EthChainPrefix)
 	)
 
 	// seed with valset requests and eth addresses to make validators
@@ -692,9 +705,9 @@ func TestQueryLogicCalls(t *testing.T) {
 		InvalidationId:       invalidationId,
 		InvalidationNonce:    uint64(invalidationNonce),
 	}
-	k.SetOutgoingLogicCall(sdkCtx, call)
+	k.SetOutgoingLogicCall(sdkCtx, evmChain.EvmChainPrefix, call)
 
-	res := k.GetOutgoingLogicCall(sdkCtx, invalidationId, invalidationNonce)
+	res := k.GetOutgoingLogicCall(sdkCtx, evmChain.EvmChainPrefix, invalidationId, invalidationNonce)
 
 	require.Equal(t, call, *res)
 
@@ -721,6 +734,7 @@ func TestQueryLogicCallConfirms(t *testing.T) {
 		tokenContract            = "0x7580bfe88dd3d07947908fae12d95872a260f2d8"
 		invalidationId           = []byte("GravityTesting")
 		invalidationNonce uint64 = 1
+		evmChain                 = k.GetEvmChains(sdkCtx)[0]
 	)
 
 	// seed with valset requests and eth addresses to make validators
@@ -753,7 +767,7 @@ func TestQueryLogicCallConfirms(t *testing.T) {
 		InvalidationId:       invalidationId,
 		InvalidationNonce:    uint64(invalidationNonce),
 	}
-	k.SetOutgoingLogicCall(sdkCtx, call)
+	k.SetOutgoingLogicCall(sdkCtx, evmChain.EvmChainPrefix, call)
 
 	var valAddr sdk.AccAddress = bytes.Repeat([]byte{byte(1)}, 20)
 
@@ -764,11 +778,12 @@ func TestQueryLogicCallConfirms(t *testing.T) {
 		EthSigner:         ethSigner,
 		Orchestrator:      valAddr.String(),
 		Signature:         "d34db33f",
+		EvmChainPrefix:    evmChain.EvmChainPrefix,
 	}
 
 	k.SetLogicCallConfirm(sdkCtx, &confirm)
 
-	res := k.GetLogicConfirmsByInvalidationIdAndNonce(sdkCtx, invalidationId, 1)
+	res := k.GetLogicConfirmsByInvalidationIdAndNonce(sdkCtx, evmChain.EvmChainPrefix, invalidationId, 1)
 	assert.Equal(t, len(res), 1)
 }
 
@@ -781,14 +796,13 @@ func TestQueryBatch(t *testing.T) {
 
 	ctx := sdk.WrapSDKContext(input.Context)
 	k := input.GravityKeeper
+	evmChain := k.GetEvmChainData(input.Context, EthChainPrefix)
 
-	var (
-		tokenContract = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
-	)
+	tokenContract := "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B"
 
-	createTestBatch(t, input, 2)
+	createTestBatch(t, input, 2, evmChain.EvmChainPrefix)
 
-	batch, err := k.BatchRequestByNonce(ctx, &types.QueryBatchRequestByNonceRequest{Nonce: 1, ContractAddress: tokenContract})
+	batch, err := k.BatchRequestByNonce(ctx, &types.QueryBatchRequestByNonceRequest{Nonce: 1, ContractAddress: tokenContract, EvmChainPrefix: evmChain.EvmChainPrefix})
 	require.NoError(t, err)
 
 	expectedRes := types.QueryBatchRequestByNonceResponse{
@@ -839,9 +853,10 @@ func TestLastBatchesRequest(t *testing.T) {
 
 	ctx := sdk.WrapSDKContext(input.Context)
 	k := input.GravityKeeper
+	evmChain := k.GetEvmChainData(input.Context, EthChainPrefix)
 
-	createTestBatch(t, input, 2)
-	createTestBatch(t, input, 3)
+	createTestBatch(t, input, 2, evmChain.EvmChainPrefix)
+	createTestBatch(t, input, 3, evmChain.EvmChainPrefix)
 
 	lastBatches, err := k.OutgoingTxBatches(ctx, &types.QueryOutgoingTxBatchesRequest{})
 	require.NoError(t, err)
@@ -938,45 +953,45 @@ func TestLastBatchesRequest(t *testing.T) {
 // nolint: exhaustruct
 // tests setting and querying eth address and orchestrator addresses
 func TestQueryCurrentValset(t *testing.T) {
-	var (
-		expectedValset = types.Valset{
-			Nonce:        1,
-			Height:       1234567,
-			RewardAmount: sdk.ZeroInt(),
-			RewardToken:  "0x0000000000000000000000000000000000000000",
-			Members: []types.BridgeValidator{
-				{
-					Power:           858993459,
-					EthereumAddress: "0x0101010101010101010101010101010101010101",
-				},
-				{
-					Power:           858993459,
-					EthereumAddress: "0x0202020202020202020202020202020202020202",
-				},
-				{
-					Power:           858993459,
-					EthereumAddress: "0x0303030303030303030303030303030303030303",
-				},
-				{
-					Power:           858993459,
-					EthereumAddress: "0x0404040404040404040404040404040404040404",
-				},
-				{
-					Power:           858993459,
-					EthereumAddress: "0x0505050505050505050505050505050505050505",
-				},
+	expectedValset := types.Valset{
+		Nonce:        1,
+		Height:       1234567,
+		RewardAmount: sdk.ZeroInt(),
+		RewardToken:  "0x0000000000000000000000000000000000000000",
+		Members: []types.BridgeValidator{
+			{
+				Power:           858993459,
+				EthereumAddress: "0x0101010101010101010101010101010101010101",
 			},
-		}
-	)
+			{
+				Power:           858993459,
+				EthereumAddress: "0x0202020202020202020202020202020202020202",
+			},
+			{
+				Power:           858993459,
+				EthereumAddress: "0x0303030303030303030303030303030303030303",
+			},
+			{
+				Power:           858993459,
+				EthereumAddress: "0x0404040404040404040404040404040404040404",
+			},
+			{
+				Power:           858993459,
+				EthereumAddress: "0x0505050505050505050505050505050505050505",
+			},
+		},
+	}
 	input, _ := SetupFiveValChain(t)
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
 
 	sdkCtx := input.Context
 
-	currentValset, err := input.GravityKeeper.GetCurrentValset(sdkCtx)
-	require.NoError(t, err)
+	for _, evmChain := range input.GravityKeeper.GetEvmChains(sdkCtx) {
+		currentValset, err := input.GravityKeeper.GetCurrentValset(sdkCtx, evmChain.EvmChainPrefix)
+		require.NoError(t, err)
 
-	assert.Equal(t, expectedValset, currentValset)
+		assert.Equal(t, expectedValset, currentValset)
+	}
 }
 
 // nolint: exhaustruct
@@ -996,9 +1011,10 @@ func TestQueryERC20ToDenom(t *testing.T) {
 	sdkCtx := input.Context
 	ctx := sdk.WrapSDKContext(input.Context)
 	k := input.GravityKeeper
-	input.GravityKeeper.setCosmosOriginatedDenomToERC20(sdkCtx, denom, *erc20)
+	evmChain := k.GetEvmChainData(input.Context, EthChainPrefix)
+	input.GravityKeeper.setCosmosOriginatedDenomToERC20(sdkCtx, evmChain.EvmChainPrefix, denom, *erc20)
 
-	queriedDenom, err := k.ERC20ToDenom(ctx, &types.QueryERC20ToDenomRequest{Erc20: erc20.GetAddress().Hex()})
+	queriedDenom, err := k.ERC20ToDenom(ctx, &types.QueryERC20ToDenomRequest{Erc20: erc20.GetAddress().Hex(), EvmChainPrefix: evmChain.EvmChainPrefix})
 	require.NoError(t, err)
 
 	assert.Equal(t, &response, queriedDenom)
@@ -1021,9 +1037,10 @@ func TestQueryDenomToERC20(t *testing.T) {
 	sdkCtx := input.Context
 	ctx := sdk.WrapSDKContext(input.Context)
 	k := input.GravityKeeper
-	input.GravityKeeper.setCosmosOriginatedDenomToERC20(sdkCtx, denom, *erc20)
+	evmChain := k.GetEvmChainData(input.Context, EthChainPrefix)
+	input.GravityKeeper.setCosmosOriginatedDenomToERC20(sdkCtx, evmChain.EvmChainPrefix, denom, *erc20)
 
-	queriedERC20, err := k.DenomToERC20(ctx, &types.QueryDenomToERC20Request{Denom: denom})
+	queriedERC20, err := k.DenomToERC20(ctx, &types.QueryDenomToERC20Request{Denom: denom, EvmChainPrefix: evmChain.EvmChainPrefix})
 	require.NoError(t, err)
 
 	assert.Equal(t, &response, queriedERC20)
@@ -1043,7 +1060,8 @@ func TestQueryPendingSendToEth(t *testing.T) {
 		myReceiver          = "0xd041c41EA1bf0F006ADBb6d2c9ef9D425dE5eaD7"
 		myTokenContractAddr = "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5" // Pickle
 		token, err2         = types.NewInternalERC20Token(sdk.NewInt(99999), myTokenContractAddr)
-		allVouchers         = sdk.NewCoins(token.GravityCoin())
+		evmChain            = k.GetEvmChainData(sdkCtx, EthChainPrefix)
+		allVouchers         = sdk.NewCoins(token.GravityCoin(evmChain.EvmChainPrefix))
 	)
 	require.NoError(t, err1)
 	require.NoError(t, err2)
@@ -1065,11 +1083,11 @@ func TestQueryPendingSendToEth(t *testing.T) {
 	for i, v := range []uint64{2, 3, 2, 1} {
 		amountToken, err := types.NewInternalERC20Token(sdk.NewInt(int64(i+100)), myTokenContractAddr)
 		require.NoError(t, err)
-		amount := amountToken.GravityCoin()
+		amount := amountToken.GravityCoin(evmChain.EvmChainPrefix)
 		feeToken, err := types.NewInternalERC20Token(sdk.NewIntFromUint64(v), myTokenContractAddr)
 		require.NoError(t, err)
-		fee := feeToken.GravityCoin()
-		_, err = input.GravityKeeper.AddToOutgoingPool(sdkCtx, mySender, *receiver, amount, fee)
+		fee := feeToken.GravityCoin(evmChain.EvmChainPrefix)
+		_, err = input.GravityKeeper.AddToOutgoingPool(sdkCtx, evmChain.EvmChainPrefix, mySender, *receiver, amount, fee)
 		require.NoError(t, err)
 		// Should create:
 		// 1: amount 100, fee 2
@@ -1083,40 +1101,41 @@ func TestQueryPendingSendToEth(t *testing.T) {
 
 	// tx batch size is 2, so that some of them stay behind
 	// Should contain 2 and 3 from above
-	_, err = input.GravityKeeper.BuildOutgoingTXBatch(sdkCtx, *tokenContract, 2)
+	_, err = input.GravityKeeper.BuildOutgoingTXBatch(sdkCtx, evmChain.EvmChainPrefix, *tokenContract, 2)
 	require.NoError(t, err)
 
 	// Should receive 1 and 4 unbatched, 2 and 3 batched in response
 	response, err := k.GetPendingSendToEth(ctx, &types.QueryPendingSendToEth{SenderAddress: mySender.String()})
 	require.NoError(t, err)
-	expectedRes := types.QueryPendingSendToEthResponse{TransfersInBatches: []types.OutgoingTransferTx{
-		{
-			Id:          2,
-			Sender:      "gravity1ahx7f8wyertuus9r20284ej0asrs085ceqtfnm",
-			DestAddress: "0xd041c41EA1bf0F006ADBb6d2c9ef9D425dE5eaD7",
-			Erc20Token: types.ERC20Token{
-				Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
-				Amount:   sdk.NewInt(101),
+	expectedRes := types.QueryPendingSendToEthResponse{
+		TransfersInBatches: []types.OutgoingTransferTx{
+			{
+				Id:          2,
+				Sender:      "gravity1ahx7f8wyertuus9r20284ej0asrs085ceqtfnm",
+				DestAddress: "0xd041c41EA1bf0F006ADBb6d2c9ef9D425dE5eaD7",
+				Erc20Token: types.ERC20Token{
+					Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
+					Amount:   sdk.NewInt(101),
+				},
+				Erc20Fee: types.ERC20Token{
+					Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
+					Amount:   sdk.NewInt(3),
+				},
 			},
-			Erc20Fee: types.ERC20Token{
-				Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
-				Amount:   sdk.NewInt(3),
+			{
+				Id:          3,
+				Sender:      "gravity1ahx7f8wyertuus9r20284ej0asrs085ceqtfnm",
+				DestAddress: "0xd041c41EA1bf0F006ADBb6d2c9ef9D425dE5eaD7",
+				Erc20Token: types.ERC20Token{
+					Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
+					Amount:   sdk.NewInt(102),
+				},
+				Erc20Fee: types.ERC20Token{
+					Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
+					Amount:   sdk.NewInt(2),
+				},
 			},
 		},
-		{
-			Id:          3,
-			Sender:      "gravity1ahx7f8wyertuus9r20284ej0asrs085ceqtfnm",
-			DestAddress: "0xd041c41EA1bf0F006ADBb6d2c9ef9D425dE5eaD7",
-			Erc20Token: types.ERC20Token{
-				Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
-				Amount:   sdk.NewInt(102),
-			},
-			Erc20Fee: types.ERC20Token{
-				Contract: "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5",
-				Amount:   sdk.NewInt(2),
-			},
-		},
-	},
 
 		UnbatchedTransfers: []types.OutgoingTransferTx{
 			{

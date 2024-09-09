@@ -9,9 +9,11 @@ import (
 )
 
 const (
-	ProposalTypeUnhaltBridge = "UnhaltBridge"
-	ProposalTypeAirdrop      = "Airdrop"
-	ProposalTypeIBCMetadata  = "IBCMetadata"
+	ProposalTypeUnhaltBridge   = "UnhaltBridge"
+	ProposalTypeAirdrop        = "Airdrop"
+	ProposalTypeIBCMetadata    = "IBCMetadata"
+	ProposalTypeAddEvmChain    = "AddEvmChain"
+	ProposalTypeRemoveEvmChain = "RemoveEvmChain"
 )
 
 func (p *UnhaltBridgeProposal) GetTitle() string { return p.Title }
@@ -124,5 +126,66 @@ func (p IBCMetadataProposal) String() string {
   Token Decimals:    %d
   Token Description: %s
 `, p.Title, p.Description, p.Metadata.Name, p.Metadata.Symbol, p.Metadata.Display, decimals, p.Metadata.Description))
+	return b.String()
+}
+
+func (p *AddEvmChainProposal) GetTitle() string { return p.Title }
+
+func (p *AddEvmChainProposal) GetDescription() string { return p.Description }
+
+func (p *AddEvmChainProposal) ProposalRoute() string { return RouterKey }
+
+func (p *AddEvmChainProposal) ProposalType() string {
+	return ProposalTypeAddEvmChain
+}
+
+func (p *AddEvmChainProposal) ValidateBasic() error {
+	err := govtypes.ValidateAbstract(p)
+	if err != nil {
+		return err
+	}
+	if p.EvmChainNetVersion == 0 {
+		return fmt.Errorf("EVM Chain net version cannot be zero")
+	}
+	return nil
+}
+
+func (p AddEvmChainProposal) String() string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf(`Add EVM Chain Proposal:
+  Title:          %s
+  Description:    %s
+  Evm Chain Name:   %s
+  Evm Chain Prefix: %s
+  Evm Chain Net Version : %d
+  Evm Chain Gravity Id: %s
+`, p.Title, p.Description, p.EvmChainName, p.EvmChainPrefix, p.EvmChainNetVersion, p.GravityId))
+	return b.String()
+}
+
+func (p *RemoveEvmChainProposal) GetTitle() string { return p.Title }
+
+func (p *RemoveEvmChainProposal) GetDescription() string { return p.Description }
+
+func (p *RemoveEvmChainProposal) ProposalRoute() string { return RouterKey }
+
+func (p *RemoveEvmChainProposal) ProposalType() string {
+	return ProposalTypeRemoveEvmChain
+}
+
+func (p *RemoveEvmChainProposal) ValidateBasic() error {
+	err := govtypes.ValidateAbstract(p)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p RemoveEvmChainProposal) String() string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf(`Remove EVM Chain Proposal:  
+  Evm Chain Prefix: %s  
+`, p.EvmChainPrefix))
 	return b.String()
 }

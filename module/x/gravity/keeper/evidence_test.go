@@ -1,11 +1,10 @@
 package keeper
 
 import (
+	"bytes"
 	"encoding/hex"
 	"testing"
 	"time"
-
-	"bytes"
 
 	"github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity/types"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -28,7 +27,8 @@ func TestSubmitBadSignatureEvidenceBatchExists(t *testing.T) {
 		myReceiver          = "0xd041c41EA1bf0F006ADBb6d2c9ef9D425dE5eaD7"
 		myTokenContractAddr = "0x429881672B9AE42b8EbA0E26cD9C73711b891Ca5" // Pickle
 		token, e2           = types.NewInternalERC20Token(sdk.NewInt(99999), myTokenContractAddr)
-		allVouchers         = sdk.NewCoins(token.GravityCoin())
+		allVouchers         = sdk.NewCoins(token.GravityCoin(EthChainPrefix))
+		evmChain            = input.GravityKeeper.GetEvmChainData(ctx, EthChainPrefix)
 	)
 	require.NoError(t, e1)
 	require.NoError(t, e2)
@@ -49,19 +49,19 @@ func TestSubmitBadSignatureEvidenceBatchExists(t *testing.T) {
 	for i, v := range []uint64{2, 3, 2, 1} {
 		amountToken, err := types.NewInternalERC20Token(sdk.NewInt(int64(i+100)), myTokenContractAddr)
 		require.NoError(t, err)
-		amount := amountToken.GravityCoin()
+		amount := amountToken.GravityCoin(evmChain.EvmChainPrefix)
 		feeToken, err := types.NewInternalERC20Token(sdk.NewIntFromUint64(v), myTokenContractAddr)
 		require.NoError(t, err)
-		fee := feeToken.GravityCoin()
+		fee := feeToken.GravityCoin(evmChain.EvmChainPrefix)
 
-		_, err = input.GravityKeeper.AddToOutgoingPool(ctx, mySender, *receiver, amount, fee)
+		_, err = input.GravityKeeper.AddToOutgoingPool(ctx, evmChain.EvmChainPrefix, mySender, *receiver, amount, fee)
 		require.NoError(t, err)
 	}
 
 	// when
 	ctx = ctx.WithBlockTime(now)
 
-	goodBatch, err := input.GravityKeeper.BuildOutgoingTXBatch(ctx, *tokenContract, 2)
+	goodBatch, err := input.GravityKeeper.BuildOutgoingTXBatch(ctx, evmChain.EvmChainPrefix, *tokenContract, 2)
 	goodBatchExternal := goodBatch.ToExternal()
 	require.NoError(t, err)
 
@@ -69,8 +69,9 @@ func TestSubmitBadSignatureEvidenceBatchExists(t *testing.T) {
 	require.NoError(t, err)
 
 	msg := types.MsgSubmitBadSignatureEvidence{
-		Subject:   any,
-		Signature: "foo",
+		Subject:        any,
+		Signature:      "foo",
+		EvmChainPrefix: evmChain.EvmChainPrefix,
 	}
 
 	err = input.GravityKeeper.CheckBadSignatureEvidence(ctx, &msg)
@@ -81,18 +82,20 @@ func TestSubmitBadSignatureEvidenceBatchExists(t *testing.T) {
 func TestSubmitBadSignatureEvidenceValsetExists(t *testing.T) {
 	// input := CreateTestEnv(t)
 	input, ctx := SetupFiveValChain(t)
+	evmChain := input.GravityKeeper.GetEvmChainData(ctx, EthChainPrefix)
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
 
 	// ctx := input.Context
 
-	valset := input.GravityKeeper.SetValsetRequest(ctx)
+	valset := input.GravityKeeper.SetValsetRequest(ctx, evmChain.EvmChainPrefix)
 
 	any, err := codectypes.NewAnyWithValue(&valset)
 	require.NoError(t, err)
 
 	msg := types.MsgSubmitBadSignatureEvidence{
-		Subject:   any,
-		Signature: "foo",
+		Subject:        any,
+		Signature:      "foo",
+		EvmChainPrefix: evmChain.EvmChainPrefix,
 	}
 
 	err = input.GravityKeeper.CheckBadSignatureEvidence(ctx, &msg)
@@ -105,6 +108,7 @@ func TestSubmitBadSignatureEvidenceLogicCallExists(t *testing.T) {
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
 
 	ctx := input.Context
+	evmChain := input.GravityKeeper.GetEvmChainData(ctx, EthChainPrefix)
 
 	contract := common.BytesToAddress(bytes.Repeat([]byte{0x1}, 20)).String()
 	logicCall := types.OutgoingLogicCall{
@@ -118,14 +122,15 @@ func TestSubmitBadSignatureEvidenceLogicCallExists(t *testing.T) {
 		CosmosBlockCreated:   0,
 	}
 
-	input.GravityKeeper.SetOutgoingLogicCall(ctx, logicCall)
+	input.GravityKeeper.SetOutgoingLogicCall(ctx, evmChain.EvmChainPrefix, logicCall)
 
 	any, err := codectypes.NewAnyWithValue(&logicCall)
 	require.NoError(t, err)
 
 	msg := types.MsgSubmitBadSignatureEvidence{
-		Subject:   any,
-		Signature: "foo",
+		Subject:        any,
+		Signature:      "foo",
+		EvmChainPrefix: evmChain.EvmChainPrefix,
 	}
 
 	err = input.GravityKeeper.CheckBadSignatureEvidence(ctx, &msg)
@@ -137,12 +142,14 @@ func TestSubmitBadSignatureEvidenceSlash(t *testing.T) {
 	input, ctx := SetupFiveValChain(t)
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
 
+	evmChain := input.GravityKeeper.GetEvmChainData(ctx, EthChainPrefix)
+
 	batch := types.OutgoingTxBatch{
 		TokenContract: "0xd041c41EA1bf0F006ADBb6d2c9ef9D425dE5eaD7",
 		BatchTimeout:  420,
 	}
 
-	checkpoint := batch.GetCheckpoint(input.GravityKeeper.GetGravityID(ctx))
+	checkpoint := batch.GetCheckpoint(input.GravityKeeper.GetGravityID(ctx, evmChain.EvmChainPrefix))
 
 	any, err := codectypes.NewAnyWithValue(&batch)
 	require.NoError(t, err)
@@ -159,8 +166,9 @@ func TestSubmitBadSignatureEvidenceSlash(t *testing.T) {
 	require.NoError(t, err)
 
 	msg := types.MsgSubmitBadSignatureEvidence{
-		Subject:   any,
-		Signature: hex.EncodeToString(ethSignature),
+		Subject:        any,
+		Signature:      hex.EncodeToString(ethSignature),
+		EvmChainPrefix: evmChain.EvmChainPrefix,
 	}
 
 	err = input.GravityKeeper.CheckBadSignatureEvidence(ctx, &msg)

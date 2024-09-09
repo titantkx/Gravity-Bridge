@@ -40,7 +40,7 @@ func TestConfirmHandlerCommon(t *testing.T) {
 		CosmosBlockCreated: 0,
 	}
 
-	checkpoint := batch.GetCheckpoint(input.GravityKeeper.GetGravityID(ctx))
+	checkpoint := batch.GetCheckpoint(input.GravityKeeper.GetGravityID(ctx, EthChainPrefix))
 
 	ethSignature, err := types.NewEthereumSignature(checkpoint, privKey)
 	require.NoError(t, err)
@@ -49,6 +49,7 @@ func TestConfirmHandlerCommon(t *testing.T) {
 	err = sv.confirmHandlerCommon(input.Context, ethAddress.GetAddress().Hex(), AccAddrs[0], hex.EncodeToString(ethSignature), checkpoint)
 	assert.Nil(t, err)
 }
+
 func confirmHandlerCommonWithAddress(t *testing.T, address string, testVar testInitStruct) error {
 	input, ctx := SetupFiveValChain(t)
 	defer func() { input.Context.Logger().Info("Asserting invariants at test end"); input.AssertInvariants() }()
@@ -69,7 +70,7 @@ func confirmHandlerCommonWithAddress(t *testing.T, address string, testVar testI
 		CosmosBlockCreated: 0,
 	}
 
-	checkpoint := batch.GetCheckpoint(input.GravityKeeper.GetGravityID(ctx))
+	checkpoint := batch.GetCheckpoint(input.GravityKeeper.GetGravityID(ctx, EthChainPrefix))
 
 	ethSignature, err := types.NewEthereumSignature(checkpoint, privKey)
 	require.NoError(t, err)
@@ -80,6 +81,7 @@ func confirmHandlerCommonWithAddress(t *testing.T, address string, testVar testI
 
 	return err
 }
+
 func TestConfirmHandlerCommonWithLowercaseAddress(t *testing.T) {
 	privKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
@@ -91,8 +93,8 @@ func TestConfirmHandlerCommonWithLowercaseAddress(t *testing.T) {
 
 	ret_err := confirmHandlerCommonWithAddress(t, strings.ToLower(ethAddress), initVar)
 	assert.Nil(t, ret_err)
-
 }
+
 func TestConfirmHandlerCommonWithUppercaseAddress(t *testing.T) {
 	privKey, err := crypto.GenerateKey()
 	require.NoError(t, err)
@@ -104,6 +106,7 @@ func TestConfirmHandlerCommonWithUppercaseAddress(t *testing.T) {
 	ret_err := confirmHandlerCommonWithAddress(t, strings.ToUpper(ethAddress), initVar)
 	assert.Nil(t, ret_err)
 }
+
 func TestConfirmHandlerCommonWithMixedCaseAddress(t *testing.T) {
 	privKey, err := crypto.GenerateKey()
 	require.NoError(t, err)

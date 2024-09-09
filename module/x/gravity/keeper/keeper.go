@@ -28,9 +28,11 @@ import (
 )
 
 // Check that our expected keeper types are implemented
-var _ types.StakingKeeper = (*stakingkeeper.Keeper)(nil)
-var _ types.SlashingKeeper = (*slashingkeeper.Keeper)(nil)
-var _ types.DistributionKeeper = (*distrkeeper.Keeper)(nil)
+var (
+	_ types.StakingKeeper      = (*stakingkeeper.Keeper)(nil)
+	_ types.SlashingKeeper     = (*slashingkeeper.Keeper)(nil)
+	_ types.DistributionKeeper = (*distrkeeper.Keeper)(nil)
+)
 
 // Keeper maintains the link to storage and exposes getter/setter methods for the various parts of the state machine
 type Keeper struct {
@@ -168,22 +170,40 @@ func (k Keeper) SetParams(ctx sdk.Context, ps types.Params) {
 	k.paramSpace.SetParamSet(ctx, &ps)
 }
 
-// GetBridgeContractAddress returns the bridge contract address on ETH
-func (k Keeper) GetBridgeContractAddress(ctx sdk.Context) *types.EthAddress {
-	var a string
-	k.paramSpace.Get(ctx, types.ParamsStoreKeyBridgeEthereumAddress, &a)
-	addr, err := types.NewEthAddress(a)
-	if err != nil {
-		panic(sdkerrors.Wrapf(err, "found invalid bridge contract address in store: %v", a))
+// GetEvmChainParam only get EvmChainParams from the store
+func (k Keeper) GetEvmChainParam(ctx sdk.Context, evmChainPrefix string) *types.EvmChainParam {
+	var evmChains []*types.EvmChainParam
+	k.paramSpace.Get(ctx, types.ParamStoreEvmChainParams, &evmChains)
+	for _, chain := range evmChains {
+		if chain.EvmChainPrefix == evmChainPrefix {
+			return chain
+		}
 	}
-	return addr
+	return nil
+}
+
+// GetBridgeContractAddress returns the bridge contract address on ETH
+func (k Keeper) GetBridgeContractAddress(ctx sdk.Context, evmChainPrefix string) *types.EthAddress {
+	chain := k.GetEvmChainParam(ctx, evmChainPrefix)
+	if chain != nil {
+		addr, err := types.NewEthAddress(chain.BridgeEthereumAddress)
+		if err != nil {
+			ctx.Logger().Error("Found invalid bridge contract address in store: %v\n", chain.BridgeEthereumAddress)
+			return nil
+		}
+		return addr
+	}
+
+	return nil
 }
 
 // GetBridgeChainID returns the chain id of the ETH chain we are running against
-func (k Keeper) GetBridgeChainID(ctx sdk.Context) uint64 {
-	var a uint64
-	k.paramSpace.Get(ctx, types.ParamsStoreKeyBridgeContractChainID, &a)
-	return a
+func (k Keeper) GetBridgeChainID(ctx sdk.Context, evmChainPrefix string) uint64 {
+	chain := k.GetEvmChainParam(ctx, evmChainPrefix)
+	if chain != nil {
+		return chain.BridgeChainId
+	}
+	return 0
 }
 
 // GetGravityID returns the GravityID the GravityID is essentially a salt value
@@ -196,24 +216,12 @@ func (k Keeper) GetBridgeChainID(ctx sdk.Context) uint64 {
 // is deployed the GravityID CAN NOT BE CHANGED. Meaning that it can't just be the
 // same as the chain id since the chain id may be changed many times with each
 // successive chain in charge of the same bridge
-func (k Keeper) GetGravityID(ctx sdk.Context) string {
-	var a string
-	k.paramSpace.Get(ctx, types.ParamsStoreKeyGravityID, &a)
-	return a
-}
-
-// Set GravityID sets the GravityID the GravityID is essentially a salt value
-// for bridge signatures, provided each chain running Gravity has a unique ID
-// it won't be possible to play back signatures from one bridge onto another
-// even if they share a validator set.
-//
-// The lifecycle of the GravityID is that it is set in the Genesis file
-// read from the live chain for the contract deployment, once a Gravity contract
-// is deployed the GravityID CAN NOT BE CHANGED. Meaning that it can't just be the
-// same as the chain id since the chain id may be changed many times with each
-// successive chain in charge of the same bridge
-func (k Keeper) SetGravityID(ctx sdk.Context, v string) {
-	k.paramSpace.Set(ctx, types.ParamsStoreKeyGravityID, v)
+func (k Keeper) GetGravityID(ctx sdk.Context, evmChainPrefix string) string {
+	chain := k.GetEvmChainParam(ctx, evmChainPrefix)
+	if chain != nil {
+		return chain.GravityId
+	}
+	return ""
 }
 
 // logger returns a module-specific logger.
@@ -379,26 +387,25 @@ func (k Keeper) IterateValidatorsByOrchestratorAddress(ctx sdk.Context, cb func(
 
 // SetLastSlashedLogicCallBlock returns true if the last slashed logic call block
 // has been set in the store
-func (k Keeper) HasLastSlashedLogicCallBlock(ctx sdk.Context) bool {
+func (k Keeper) HasLastSlashedLogicCallBlock(ctx sdk.Context, evmChainPrefix string) bool {
 	store := ctx.KVStore(k.storeKey)
-	return store.Has(types.LastSlashedLogicCallBlock)
+	return store.Has(types.AppendChainPrefix(types.LastSlashedLogicCallBlock, evmChainPrefix))
 }
 
 // SetLastSlashedLogicCallBlock sets the latest slashed logic call block height
-func (k Keeper) SetLastSlashedLogicCallBlock(ctx sdk.Context, blockHeight uint64) {
-
-	if k.HasLastSlashedLogicCallBlock(ctx) && k.GetLastSlashedLogicCallBlock(ctx) > blockHeight {
+func (k Keeper) SetLastSlashedLogicCallBlock(ctx sdk.Context, evmChainPrefix string, blockHeight uint64) {
+	if k.HasLastSlashedLogicCallBlock(ctx, evmChainPrefix) && k.GetLastSlashedLogicCallBlock(ctx, evmChainPrefix) > blockHeight {
 		panic("Attempted to decrement LastSlashedBatchBlock")
 	}
 
 	store := ctx.KVStore(k.storeKey)
-	store.Set(types.LastSlashedLogicCallBlock, types.UInt64Bytes(blockHeight))
+	store.Set(types.AppendChainPrefix(types.LastSlashedLogicCallBlock, evmChainPrefix), types.UInt64Bytes(blockHeight))
 }
 
 // GetLastSlashedLogicCallBlock returns the latest slashed logic call block
-func (k Keeper) GetLastSlashedLogicCallBlock(ctx sdk.Context) uint64 {
+func (k Keeper) GetLastSlashedLogicCallBlock(ctx sdk.Context, evmChainPrefix string) uint64 {
 	store := ctx.KVStore(k.storeKey)
-	bytes := store.Get(types.LastSlashedLogicCallBlock)
+	bytes := store.Get(types.AppendChainPrefix(types.LastSlashedLogicCallBlock, evmChainPrefix))
 
 	if len(bytes) == 0 {
 		panic("Last slashed logic call block not initialized in genesis")
@@ -407,9 +414,9 @@ func (k Keeper) GetLastSlashedLogicCallBlock(ctx sdk.Context) uint64 {
 }
 
 // GetUnSlashedLogicCalls returns all the unslashed logic calls in state
-func (k Keeper) GetUnSlashedLogicCalls(ctx sdk.Context, maxHeight uint64) (out []types.OutgoingLogicCall) {
-	lastSlashedLogicCallBlock := k.GetLastSlashedLogicCallBlock(ctx)
-	calls := k.GetOutgoingLogicCalls(ctx)
+func (k Keeper) GetUnSlashedLogicCalls(ctx sdk.Context, evmChainPrefix string, maxHeight uint64) (out []types.OutgoingLogicCall) {
+	lastSlashedLogicCallBlock := k.GetLastSlashedLogicCallBlock(ctx, evmChainPrefix)
+	calls := k.GetOutgoingLogicCalls(ctx, evmChainPrefix)
 	for _, call := range calls {
 		if call.CosmosBlockCreated > lastSlashedLogicCallBlock {
 			out = append(out, call)
@@ -469,12 +476,19 @@ func (k Keeper) DeserializeValidatorIterator(vals []byte) stakingtypes.ValAddres
 }
 
 // Checks if the provided Ethereum address is on the Governance blacklist
-func (k Keeper) IsOnBlacklist(ctx sdk.Context, addr types.EthAddress) bool {
+func (k Keeper) IsOnBlacklist(ctx sdk.Context, evmChainPrefix string, addr types.EthAddress) bool {
 	params := k.GetParams(ctx)
+
+	evmChainParam := params.GetEvmChain(evmChainPrefix)
+
+	if evmChainParam == nil {
+		return false
+	}
+
 	// Checks the address if it's inside the blacklisted address list and marks
 	// if it's inside the list.
-	for index := 0; index < len(params.EthereumBlacklist); index++ {
-		baddr, err := types.NewEthAddress(params.EthereumBlacklist[index])
+	for _, baddrStr := range evmChainParam.EthereumBlacklist {
+		baddr, err := types.NewEthAddress(baddrStr)
 		if err != nil {
 			// this should not be possible we validate on genesis load
 			panic("unvalidated black list address!")
@@ -492,6 +506,6 @@ func (k Keeper) IsOnBlacklist(ctx sdk.Context, addr types.EthAddress) bool {
 // blacklist. (2) is not yet implemented
 // Blocking some addresses is technically motivated, if any ERC20 transfers in a batch fail the entire batch
 // becomes impossible to execute.
-func (k Keeper) InvalidSendToEthAddress(ctx sdk.Context, addr types.EthAddress, _erc20Addr types.EthAddress) bool {
-	return k.IsOnBlacklist(ctx, addr) || addr == types.ZeroAddress()
+func (k Keeper) InvalidSendToEthAddress(ctx sdk.Context, evmChainPrefix string, addr types.EthAddress, _erc20Addr types.EthAddress) bool {
+	return k.IsOnBlacklist(ctx, evmChainPrefix, addr) || addr == types.ZeroAddress()
 }

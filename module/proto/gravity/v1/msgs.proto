@@ -37,12 +37,10 @@ service Msg {
   rpc ValsetUpdateClaim(MsgValsetUpdatedClaim) returns (MsgValsetUpdatedClaimResponse) {
     option (google.api.http).post = "/gravity/v1/valset_updated_claim";
   }
-  rpc ERC20DeployedClaim(MsgERC20DeployedClaim)
-      returns (MsgERC20DeployedClaimResponse) {
+  rpc ERC20DeployedClaim(MsgERC20DeployedClaim) returns (MsgERC20DeployedClaimResponse) {
     option (google.api.http).post = "/gravity/v1/erc20_deployed_claim";
   }
-  rpc LogicCallExecutedClaim(MsgLogicCallExecutedClaim)
-      returns (MsgLogicCallExecutedClaimResponse) {
+  rpc LogicCallExecutedClaim(MsgLogicCallExecutedClaim) returns (MsgLogicCallExecutedClaimResponse) {
     option (google.api.http).post = "/gravity/v1/logic_call_executed_claim";
   }
   rpc SetOrchestratorAddress(MsgSetOrchestratorAddress) returns (MsgSetOrchestratorAddressResponse) {
@@ -93,10 +91,11 @@ message MsgSetOrchestratorAddressResponse {}
 // chain store and submit them to Ethereum to update the validator set
 // -------------
 message MsgValsetConfirm {
-  uint64 nonce        = 1;
-  string orchestrator = 2;
-  string eth_address  = 3;
-  string signature    = 4;
+  uint64 nonce            = 1;
+  string orchestrator     = 2;
+  string eth_address      = 3;
+  string signature        = 4;
+  string evm_chain_prefix = 5;
 }
 
 message MsgValsetConfirmResponse {}
@@ -118,17 +117,12 @@ message MsgValsetConfirmResponse {}
 // certain percentage of the AMOUNT, as determined by governance.
 // This Msg will be rejected if CHAIN_FEE is insufficient.
 message MsgSendToEth {
-  string                   sender   = 1;
-  string                   eth_dest = 2;
-  cosmos.base.v1beta1.Coin amount   = 3 [
-    (gogoproto.nullable) = false
-  ];
-  cosmos.base.v1beta1.Coin bridge_fee = 4 [
-    (gogoproto.nullable) = false
-  ];
-  cosmos.base.v1beta1.Coin chain_fee = 5 [
-    (gogoproto.nullable) = false
-  ];
+  string                   sender           = 1;
+  string                   eth_dest         = 2;
+  cosmos.base.v1beta1.Coin amount           = 3 [(gogoproto.nullable) = false];
+  cosmos.base.v1beta1.Coin bridge_fee       = 4 [(gogoproto.nullable) = false];
+  cosmos.base.v1beta1.Coin chain_fee        = 5 [(gogoproto.nullable) = false];
+  string                   evm_chain_prefix = 6;
 }
 
 message MsgSendToEthResponse {}
@@ -143,8 +137,9 @@ message MsgSendToEthResponse {}
 // can finally submit the batch
 // -------------
 message MsgRequestBatch {
-  string sender = 1;
-  string denom        = 2;
+  string sender           = 1;
+  string denom            = 2;
+  string evm_chain_prefix = 3;
 }
 
 message MsgRequestBatchResponse {}
@@ -158,11 +153,12 @@ message MsgRequestBatchResponse {}
 // as well as an Ethereum signature over this batch by the validator
 // -------------
 message MsgConfirmBatch {
-  uint64 nonce          = 1;
-  string token_contract = 2;
-  string eth_signer     = 3;
-  string orchestrator   = 4;
-  string signature      = 5;
+  uint64 nonce            = 1;
+  string token_contract   = 2;
+  string eth_signer       = 3;
+  string orchestrator     = 4;
+  string signature        = 5;
+  string evm_chain_prefix = 6;
 }
 
 message MsgConfirmBatchResponse {}
@@ -181,6 +177,7 @@ message MsgConfirmLogicCall {
   string eth_signer         = 3;
   string orchestrator       = 4;
   string signature          = 5;
+  string evm_chain_prefix   = 6;
 }
 
 message MsgConfirmLogicCallResponse {}
@@ -191,16 +188,14 @@ message MsgConfirmLogicCallResponse {}
 // issued to the Cosmos address in question
 // -------------
 message MsgSendToCosmosClaim {
-  uint64 event_nonce    = 1;
-  uint64 eth_block_height   = 2;
-  string token_contract = 3;
-  string amount         = 4 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
-    (gogoproto.nullable)   = false
-  ];
-  string ethereum_sender = 5;
-  string cosmos_receiver = 6;
-  string orchestrator    = 7;
+  uint64 event_nonce      = 1;
+  uint64 eth_block_height = 2;
+  string token_contract   = 3;
+  string amount = 4 [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int", (gogoproto.nullable) = false];
+  string ethereum_sender  = 5;
+  string cosmos_receiver  = 6;
+  string orchestrator     = 7;
+  string evm_chain_prefix = 8;
 }
 
 message MsgSendToCosmosClaimResponse {}
@@ -210,8 +205,9 @@ message MsgSendToCosmosClaimResponse {}
 // The Pending forwards will be executed in order of their original SendToCosmos.EventNonce
 // The funds in the queue will be sent to a local gravity-prefixed address if IBC transfer is not possible
 message MsgExecuteIbcAutoForwards {
-  uint64 forwards_to_clear = 1; // How many queued forwards to clear, be careful about gas limits
-  string executor = 2; // This message's sender
+  uint64 forwards_to_clear = 1;  // How many queued forwards to clear, be careful about gas limits
+  string executor          = 2;  // This message's sender
+  string evm_chain_prefix  = 3;  // auto forward for a specific chain
 }
 
 message MsgExecuteIbcAutoForwardsResponse {}
@@ -219,11 +215,12 @@ message MsgExecuteIbcAutoForwardsResponse {}
 // BatchSendToEthClaim claims that a batch of send to eth
 // operations on the bridge contract was executed.
 message MsgBatchSendToEthClaim {
-  uint64 event_nonce    = 1;
-  uint64 eth_block_height   = 2;
-  uint64 batch_nonce    = 3;
-  string token_contract = 4;
-  string orchestrator   = 5;
+  uint64 event_nonce      = 1;
+  uint64 eth_block_height = 2;
+  uint64 batch_nonce      = 3;
+  string token_contract   = 4;
+  string orchestrator     = 5;
+  string evm_chain_prefix = 6;
 }
 
 message MsgBatchSendToEthClaimResponse {}
@@ -232,14 +229,15 @@ message MsgBatchSendToEthClaimResponse {}
 // to learn about an ERC20 that someone deployed
 // to represent a Cosmos asset
 message MsgERC20DeployedClaim {
-  uint64 event_nonce    = 1;
-  uint64 eth_block_height   = 2;
-  string cosmos_denom   = 3;
-  string token_contract = 4;
-  string name           = 5;
-  string symbol         = 6;
-  uint64 decimals       = 7;
-  string orchestrator   = 8;
+  uint64 event_nonce      = 1;
+  uint64 eth_block_height = 2;
+  string cosmos_denom     = 3;
+  string token_contract   = 4;
+  string name             = 5;
+  string symbol           = 6;
+  uint64 decimals         = 7;
+  string orchestrator     = 8;
+  string evm_chain_prefix = 9;
 }
 
 message MsgERC20DeployedClaimResponse {}
@@ -248,10 +246,11 @@ message MsgERC20DeployedClaimResponse {}
 // call has been executed
 message MsgLogicCallExecutedClaim {
   uint64 event_nonce        = 1;
-  uint64 eth_block_height       = 2;
+  uint64 eth_block_height   = 2;
   bytes  invalidation_id    = 3;
   uint64 invalidation_nonce = 4;
   string orchestrator       = 5;
+  string evm_chain_prefix   = 6;
 }
 
 message MsgLogicCallExecutedClaimResponse {}
@@ -259,16 +258,15 @@ message MsgLogicCallExecutedClaimResponse {}
 // This informs the Cosmos module that a validator
 // set has been updated.
 message MsgValsetUpdatedClaim {
-  uint64 event_nonce               = 1;
-  uint64 valset_nonce              = 2;
-  uint64 eth_block_height              = 3;
-  repeated BridgeValidator members = 4 [(gogoproto.nullable) = false];
-  string reward_amount             = 5 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
-    (gogoproto.nullable)   = false
-  ];
-  string reward_token              = 6;
-  string orchestrator              = 7;
+  uint64                   event_nonce      = 1;
+  uint64                   valset_nonce     = 2;
+  uint64                   eth_block_height = 3;
+  repeated BridgeValidator members          = 4 [(gogoproto.nullable) = false];
+  string                   reward_amount    = 5
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int", (gogoproto.nullable) = false];
+  string reward_token     = 6;
+  string orchestrator     = 7;
+  string evm_chain_prefix = 8;
 }
 
 message MsgValsetUpdatedClaimResponse {}
@@ -277,21 +275,22 @@ message MsgValsetUpdatedClaimResponse {}
 // to cancel a given MsgSendToEth and recieve a refund
 // of the tokens
 message MsgCancelSendToEth {
-  uint64 transaction_id = 1;
-  string sender         = 2;
+  uint64 transaction_id   = 1;
+  string sender           = 2;
+  string evm_chain_prefix = 3;
 }
 
 message MsgCancelSendToEthResponse {}
 
 // This call allows anyone to submit evidence that a
 // validator has signed a valset, batch, or logic call that never
-// existed on the Cosmos chain. 
+// existed on the Cosmos chain.
 // Subject contains the batch, valset, or logic call.
 message MsgSubmitBadSignatureEvidence {
-  google.protobuf.Any subject = 1
-      [ (cosmos_proto.accepts_interface) = "EthereumSigned" ];
-  string              signature = 2;
-  string              sender    = 3;
+  google.protobuf.Any subject          = 1 [(cosmos_proto.accepts_interface) = "EthereumSigned"];
+  string              signature        = 2;
+  string              sender           = 3;
+  string              evm_chain_prefix = 4;
 }
 
 message MsgSubmitBadSignatureEvidenceResponse {}
@@ -302,13 +301,13 @@ message EventSetOperatorAddress {
 }
 
 message EventValsetConfirmKey {
-  string message  = 1;
-  string key      = 2;
+  string message = 1;
+  string key     = 2;
 }
 
 message EventBatchCreated {
-  string message      = 1;
-  string batch_nonce  = 2;
+  string message     = 1;
+  string batch_nonce = 2;
 }
 
 message EventBatchConfirmKey {
@@ -349,22 +348,22 @@ message EventMultisigUpdateRequest {
 }
 
 message EventOutgoingLogicCallCanceled {
-  string logic_call_invalidation_id     = 1;
-  string logic_call_invalidation_nonce  = 2;
+  string logic_call_invalidation_id    = 1;
+  string logic_call_invalidation_nonce = 2;
 }
 
 message EventSignatureSlashing {
-  string type     = 1;
-  string address  = 2;
+  string type    = 1;
+  string address = 2;
 }
 
 message EventOutgoingTxId {
-    string message = 1;
-    string tx_id = 2;
+  string message = 1;
+  string tx_id   = 2;
 }
 
 message EventSendToEthFeeCollected {
-  string sender = 1;
+  string sender      = 1;
   string send_amount = 2;
-  string fee_amount = 3;
+  string fee_amount  = 3;
 }

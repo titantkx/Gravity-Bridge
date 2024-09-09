@@ -2,6 +2,7 @@ package keeper
 
 import (
 	"bytes"
+	"sync"
 	"testing"
 	"time"
 
@@ -77,6 +78,13 @@ import (
 	"github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity/types"
 )
 
+const (
+	// some popular networks
+	EthChainPrefix     = "ethereum"
+	PolygonChainPrefix = "polygon"
+	BscChainPrefix     = "bsc"
+)
+
 var (
 	// ModuleBasics is a mock module basic manager for testing
 	ModuleBasics = module.NewBasicManager(
@@ -97,6 +105,8 @@ var (
 		evidence.AppModuleBasic{},
 		vesting.AppModuleBasic{},
 	)
+
+	initConfig sync.Once
 )
 
 var (
@@ -225,26 +235,46 @@ var (
 
 	// TestingGravityParams is a set of gravity params for testing
 	TestingGravityParams = types.Params{
-		GravityId:                    "testgravityid",
-		ContractSourceHash:           "62328f7bc12efb28f86111d08c29b39285680a906ea0e524e0209d6f6657b713",
-		BridgeEthereumAddress:        "0x8858eeb3dfffa017d4bce9801d340d36cf895ccf",
-		BridgeChainId:                11,
 		SignedValsetsWindow:          10,
 		SignedBatchesWindow:          10,
 		SignedLogicCallsWindow:       10,
 		TargetBatchTimeout:           60001,
 		AverageBlockTime:             5000,
-		AverageEthereumBlockTime:     15000,
 		SlashFractionValset:          sdk.NewDecWithPrec(1, 2),
 		SlashFractionBatch:           sdk.NewDecWithPrec(1, 2),
 		SlashFractionLogicCall:       sdk.Dec{},
 		UnbondSlashingValsetsWindow:  15,
 		SlashFractionBadEthSignature: sdk.NewDecWithPrec(1, 2),
 		ValsetReward:                 sdk.Coin{Denom: "", Amount: sdk.ZeroInt()},
-		BridgeActive:                 true,
-		EthereumBlacklist:            []string{},
 		MinChainFeeBasisPoints:       0,
 		ChainFeeAuctionPoolFraction:  sdk.NewDecWithPrec(50, 2), // 50%
+		EvmChainParams: []*types.EvmChainParam{
+			{
+				EvmChainPrefix:           "bsc",
+				GravityId:                "bsc",
+				ContractSourceHash:       "62328f7bc12efb28f86111d08c29b39285680a906ea0e524e0209d6f6657b713",
+				BridgeEthereumAddress:    "0x8858eeb3dfffa017d4bce9801d340d36cf895ccf",
+				BridgeChainId:            1,
+				AverageEthereumBlockTime: 15000,
+				BridgeActive:             true,
+				EthereumBlacklist:        []string{},
+			},
+			{
+				EvmChainPrefix:           "ethereum",
+				GravityId:                "ethereum",
+				ContractSourceHash:       "62328f7bc12efb28f86111d08c29b39285680a906ea0e524e0209d6f6657b713",
+				BridgeEthereumAddress:    "0x8858eeb3dfffa017d4bce9801d340d36cf895ccf",
+				BridgeChainId:            2,
+				AverageEthereumBlockTime: 15000,
+				BridgeActive:             true,
+				EthereumBlacklist:        []string{},
+			},
+		},
+	}
+
+	EvmChains = []types.EvmChain{
+		{EvmChainPrefix: EthChainPrefix, EvmChainName: "Ethereum Mainnet", EvmChainNetVersion: 1},
+		{EvmChainPrefix: BscChainPrefix, EvmChainName: "BSC Mainnet", EvmChainNetVersion: 56},
 	}
 )
 
@@ -266,6 +296,7 @@ type TestInput struct {
 	LegacyAmino       *codec.LegacyAmino
 	EncodingConfig    gravityparams.EncodingConfig
 	GravityStoreKey   *sdk.KVStoreKey
+	ParamKeeper       paramskeeper.Keeper
 }
 
 // SetupFiveValChain does all the initialization for a 5 Validator chain using the keys here
@@ -382,7 +413,7 @@ func SetupTestChain(t *testing.T, weights []uint64, setDelegateAddresses bool) (
 			staking.EndBlocker(input.Context, input.StakingKeeper)
 
 			// set a request every time.
-			input.GravityKeeper.SetValsetRequest(input.Context)
+			input.GravityKeeper.SetValsetRequest(input.Context, EthChainPrefix)
 		}
 
 	}
@@ -650,13 +681,16 @@ func CreateTestEnv(t *testing.T) TestInput {
 	)
 
 	// set gravityIDs for batches and tx items, simulating genesis setup
-	k.SetLatestValsetNonce(ctx, 0)
-	k.setLastObservedEventNonce(ctx, 0)
-	k.SetLastSlashedValsetNonce(ctx, 0)
-	k.SetLastSlashedBatchBlock(ctx, 0)
-	k.SetLastSlashedLogicCallBlock(ctx, 0)
-	k.setID(ctx, 0, types.KeyLastTXPoolID)
-	k.setID(ctx, 0, types.KeyLastOutgoingBatchID)
+	for _, evmChain := range EvmChains {
+		k.SetLatestValsetNonce(ctx, evmChain.EvmChainPrefix, 0)
+		k.setLastObservedEventNonce(ctx, evmChain.EvmChainPrefix, 0)
+		k.SetLastSlashedValsetNonce(ctx, evmChain.EvmChainPrefix, 0)
+		k.SetLastSlashedBatchBlock(ctx, evmChain.EvmChainPrefix, 0)
+		k.SetLastSlashedLogicCallBlock(ctx, evmChain.EvmChainPrefix, 0)
+		k.setID(ctx, 0, types.AppendChainPrefix(types.KeyLastTXPoolID, evmChain.EvmChainPrefix))
+		k.setID(ctx, 0, types.AppendChainPrefix(types.KeyLastOutgoingBatchID, evmChain.EvmChainPrefix))
+		k.SetEvmChainData(ctx, evmChain)
+	}
 
 	k.SetParams(ctx, TestingGravityParams)
 
@@ -677,6 +711,7 @@ func CreateTestEnv(t *testing.T) TestInput {
 		LegacyAmino:       encodingConfig.Amino,
 		EncodingConfig:    encodingConfig,
 		GravityStoreKey:   gravityKey,
+		ParamKeeper:       paramsKeeper,
 	}
 	// check invariants before starting
 	testInput.Context.Logger().Info("Asserting invariants on new test env")
@@ -748,8 +783,8 @@ func MakeTestEncodingConfig() gravityparams.EncodingConfig {
 }
 
 // MintVouchersFromAir creates new gravity vouchers given erc20tokens
-func MintVouchersFromAir(t *testing.T, ctx sdk.Context, k Keeper, dest sdk.AccAddress, amount types.InternalERC20Token) sdk.Coin {
-	coin := amount.GravityCoin()
+func MintVouchersFromAir(t *testing.T, ctx sdk.Context, k Keeper, emvChainPrefix string, dest sdk.AccAddress, amount types.InternalERC20Token) sdk.Coin {
+	coin := amount.GravityCoin(emvChainPrefix)
 	vouchers := sdk.Coins{coin}
 	err := k.bankKeeper.MintCoins(ctx, types.ModuleName, vouchers)
 	require.NoError(t, err)

@@ -17,21 +17,25 @@ const (
 // NewQuerier is the module level router for state queries
 func NewQuerier(keeper Keeper) sdk.Querier {
 	return func(ctx sdk.Context, path []string, req abci.RequestQuery) (res []byte, err error) {
-		switch path[0] {
+		// check path length
+		if len(path) < 2 {
+			return nil, sdkerrors.Wrapf(sdkerrors.ErrInvalidRequest, "expected at least 2 path elements, got %d", len(path))
+		}
 
+		switch path[0] {
 		// Valsets
 		case QueryCurrentValset:
-			return queryCurrentValset(ctx, keeper)
+			return queryCurrentValset(ctx, keeper, path[1])
 		case QueryGravityID:
-			return queryGravityID(ctx, keeper)
+			return queryGravityID(ctx, keeper, path[1])
 		default:
 			return nil, sdkerrors.Wrapf(sdkerrors.ErrUnknownRequest, "unknown %s query endpoint", types.ModuleName)
 		}
 	}
 }
 
-func queryCurrentValset(ctx sdk.Context, keeper Keeper) ([]byte, error) {
-	valset, err := keeper.GetCurrentValset(ctx)
+func queryCurrentValset(ctx sdk.Context, keeper Keeper, evmChainPrefix string) ([]byte, error) {
+	valset, err := keeper.GetCurrentValset(ctx, evmChainPrefix)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +47,8 @@ func queryCurrentValset(ctx sdk.Context, keeper Keeper) ([]byte, error) {
 	return res, nil
 }
 
-func queryGravityID(ctx sdk.Context, keeper Keeper) ([]byte, error) {
-	gravityID := keeper.GetGravityID(ctx)
+func queryGravityID(ctx sdk.Context, keeper Keeper, evmChainPrefix string) ([]byte, error) {
+	gravityID := keeper.GetGravityID(ctx, evmChainPrefix)
 	res, err := codec.MarshalJSONIndent(types.ModuleCdc, gravityID)
 	if err != nil {
 		return nil, sdkerrors.Wrap(sdkerrors.ErrJSONMarshal, err.Error())

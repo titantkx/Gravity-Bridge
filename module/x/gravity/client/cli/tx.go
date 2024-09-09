@@ -46,6 +46,8 @@ func GetTxCmd(storeKey string) *cobra.Command {
 		CmdGovAirdropProposal(),
 		CmdGovUnhaltBridgeProposal(),
 		CmdExecutePendingIbcAutoForwards(),
+		CmdAddEvmChainProposal(),
+		CmdRemoveEvmChainProposal(),
 	}...)
 
 	return gravityTxCmd
@@ -314,13 +316,115 @@ func CmdGovUnhaltBridgeProposal() *cobra.Command {
 	return cmd
 }
 
+// CmdAddEvmChainProposal enables users to create a proposal to add new EVM chains
+func CmdAddEvmChainProposal() *cobra.Command {
+	// nolint: exhaustruct
+	cmd := &cobra.Command{
+		Use:   "add-evm-chain [evm-chain-name] [evm-chain-prefix] [evm-chain-net-version] [evm-chain-gravity-id] [evm-chain-bridge-eth-address] [title] [initial-deposit] [description]",
+		Short: "Creates a governance proposal to support a new EVM chain on the network",
+		Args:  cobra.ExactArgs(8),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			cosmosAddr := cliCtx.GetFromAddress()
+
+			initialDeposit, err := sdk.ParseCoinsNormalized(args[6])
+			if err != nil {
+				return sdkerrors.Wrap(err, "bad initial deposit amount")
+			}
+
+			if len(initialDeposit) != 1 {
+				return fmt.Errorf("unexpected coin amounts, expecting just 1 coin amount for initialDeposit")
+			}
+
+			evmChainName := args[0]
+			evmChainPrefix := args[1]
+			evmChainNetVersion, err := strconv.ParseUint(string(args[2]), 10, 64)
+			if err != nil {
+				return fmt.Errorf("EVM chain net version should be an unsigned integer")
+			}
+			gravityId := args[3]
+			bridgeEthAddress := args[4]
+
+			proposal := &types.AddEvmChainProposal{EvmChainName: evmChainName, EvmChainPrefix: evmChainPrefix, EvmChainNetVersion: evmChainNetVersion, GravityId: gravityId, BridgeEthereumAddress: bridgeEthAddress, Title: args[5], Description: args[7]}
+			proposalAny, err := codectypes.NewAnyWithValue(proposal)
+			if err != nil {
+				return sdkerrors.Wrap(err, "invalid metadata or proposal details!")
+			}
+
+			// Make the message
+			msg := govtypes.MsgSubmitProposal{
+				Proposer:       cosmosAddr.String(),
+				InitialDeposit: initialDeposit,
+				Content:        proposalAny,
+			}
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			// Send it
+			return tx.GenerateOrBroadcastTxCLI(cliCtx, cmd.Flags(), &msg)
+		},
+	}
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+// CmdRemoveEvmChainProposal enables users to create a proposal to add new EVM chains
+func CmdRemoveEvmChainProposal() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "remove-evm-chain [evm-chain-prefix] [initial-deposit] [title] [description]",
+		Short: "Creates a governance proposal to remove an EVM chain on the network",
+		Args:  cobra.ExactArgs(4),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			cosmosAddr := cliCtx.GetFromAddress()
+
+			initialDeposit, err := sdk.ParseCoinsNormalized(args[1])
+			if err != nil {
+				return sdkerrors.Wrap(err, "bad initial deposit amount")
+			}
+
+			if len(initialDeposit) != 1 {
+				return fmt.Errorf("unexpected coin amounts, expecting just 1 coin amount for initialDeposit")
+			}
+
+			evmChainPrefix := args[0]
+
+			proposal := &types.RemoveEvmChainProposal{EvmChainPrefix: evmChainPrefix, Title: args[2], Description: args[3]}
+			proposalAny, err := codectypes.NewAnyWithValue(proposal)
+			if err != nil {
+				return sdkerrors.Wrap(err, "invalid metadata or proposal details!")
+			}
+
+			// Make the message
+			msg := govtypes.MsgSubmitProposal{
+				Proposer:       cosmosAddr.String(),
+				InitialDeposit: initialDeposit,
+				Content:        proposalAny,
+			}
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			// Send it
+			return tx.GenerateOrBroadcastTxCLI(cliCtx, cmd.Flags(), &msg)
+		},
+	}
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
 // CmdSendToEth sends tokens to Ethereum. Locks Cosmos-side tokens into the Transaction pool for batching.
 func CmdSendToEth() *cobra.Command {
 	// nolint: exhaustruct
 	cmd := &cobra.Command{
-		Use:   "send-to-eth [eth-dest] [amount] [bridge-fee] [chain-fee]",
+		Use:   "send-to-eth [eth-dest] [amount] [bridge-fee] [chain-fee] [evm chain prefix]",
 		Short: "Adds a new entry to the transaction pool to withdraw an amount from the Ethereum bridge contract. This will not execute until a batch is requested and then actually relayed. Chain fee must be at least min_chain_fee_basis_points in `query gravity params`. Your funds can be reclaimed using cancel-send-to-eth so long as they remain in the pool",
-		Args:  cobra.ExactArgs(4),
+		Args:  cobra.ExactArgs(5),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -352,11 +456,12 @@ func CmdSendToEth() *cobra.Command {
 
 			// Make the message
 			msg := types.MsgSendToEth{
-				Sender:    cosmosAddr.String(),
-				EthDest:   ethAddr.GetAddress().Hex(),
-				Amount:    amount[0],
-				BridgeFee: bridgeFee[0],
-				ChainFee:  chainFee[0],
+				Sender:         cosmosAddr.String(),
+				EthDest:        ethAddr.GetAddress().Hex(),
+				Amount:         amount[0],
+				BridgeFee:      bridgeFee[0],
+				ChainFee:       chainFee[0],
+				EvmChainPrefix: args[4],
 			}
 			if err := msg.ValidateBasic(); err != nil {
 				return err
@@ -374,9 +479,9 @@ func CmdSendToEth() *cobra.Command {
 func CmdCancelSendToEth() *cobra.Command {
 	// nolint: exhaustruct
 	cmd := &cobra.Command{
-		Use:   "cancel-send-to-eth [transaction id]",
+		Use:   "cancel-send-to-eth [transaction id] [emv chain prefix]",
 		Short: "Removes an entry from the transaction pool, preventing your tokens from going to Ethereum and refunding the send.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -391,8 +496,9 @@ func CmdCancelSendToEth() *cobra.Command {
 
 			// Make the message
 			msg := types.MsgCancelSendToEth{
-				Sender:        cosmosAddr.String(),
-				TransactionId: txId,
+				Sender:         cosmosAddr.String(),
+				TransactionId:  txId,
+				EvmChainPrefix: args[1],
 			}
 			if err := msg.ValidateBasic(); err != nil {
 				return err
@@ -410,9 +516,9 @@ func CmdCancelSendToEth() *cobra.Command {
 func CmdRequestBatch() *cobra.Command {
 	// nolint: exhaustruct
 	cmd := &cobra.Command{
-		Use:   "request-batch [token_contract_address]",
+		Use:   "request-batch [token_contract_address] [evm-chain-prefix]",
 		Short: "Request a new batch on the cosmos side for pooled withdrawal transactions",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -422,8 +528,9 @@ func CmdRequestBatch() *cobra.Command {
 
 			// TODO: better denom searching
 			msg := types.MsgRequestBatch{
-				Sender: cosmosAddr.String(),
-				Denom:  fmt.Sprintf("gravity%s", args[0]),
+				Sender:         cosmosAddr.String(),
+				Denom:          fmt.Sprintf("%s%s%s", args[1], types.GravityDenomSeparator, args[0]),
+				EvmChainPrefix: args[1],
 			}
 			if err := msg.ValidateBasic(); err != nil {
 				return err
@@ -473,9 +580,9 @@ func CmdSetOrchestratorAddress() *cobra.Command {
 func CmdExecutePendingIbcAutoForwards() *cobra.Command {
 	// nolint: exhaustruct
 	cmd := &cobra.Command{
-		Use:   "execute-pending-ibc-auto-forwards [forwards-to-execute]",
+		Use:   "execute-pending-ibc-auto-forwards [forwards-to-execute] [evm chain prefix]",
 		Short: "Executes a given number of IBC Auto-Forwards",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cliCtx, err := client.GetClientTxContext(cmd)
 			if err != nil {
@@ -492,6 +599,7 @@ func CmdExecutePendingIbcAutoForwards() *cobra.Command {
 			msg := types.MsgExecuteIbcAutoForwards{
 				ForwardsToClear: forwardsToClear,
 				Executor:        cliCtx.GetFromAddress().String(),
+				EvmChainPrefix:  args[1],
 			}
 			if err := msg.ValidateBasic(); err != nil {
 				return err

@@ -110,33 +110,70 @@ option go_package = "github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity/t
 message Params {
   option (gogoproto.stringer) = false;
 
-  string gravity_id                  = 1;
-  string contract_source_hash        = 2;
-  string bridge_ethereum_address     = 4;
-  uint64 bridge_chain_id             = 5;
-  uint64 signed_valsets_window       = 6;
-  uint64 signed_batches_window       = 7;
-  uint64 signed_logic_calls_window   = 8;
-  uint64 target_batch_timeout        = 9;
-  uint64 average_block_time          = 10;
-  uint64 average_ethereum_block_time = 11;
-  bytes  slash_fraction_valset       = 12
+  uint64 signed_valsets_window     = 1;
+  uint64 signed_batches_window     = 2;
+  uint64 signed_logic_calls_window = 3;
+  uint64 target_batch_timeout      = 4;
+  uint64 average_block_time        = 5;
+  bytes  slash_fraction_valset     = 6
       [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
-  bytes slash_fraction_batch = 13
+  bytes slash_fraction_batch = 7
       [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
-  bytes slash_fraction_logic_call = 14
+  bytes slash_fraction_logic_call = 8
       [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
-  uint64 unbond_slashing_valsets_window   = 15;
-  bytes  slash_fraction_bad_eth_signature = 16
+  uint64 unbond_slashing_valsets_window   = 9;
+  bytes  slash_fraction_bad_eth_signature = 10
       [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
-  cosmos.base.v1beta1.Coin valset_reward = 17 [(gogoproto.nullable) = false];
-  bool                     bridge_active = 18;
-  // addresses on this blacklist are forbidden from depositing or withdrawing
+  cosmos.base.v1beta1.Coin valset_reward                   = 11 [(gogoproto.nullable) = false];
+  uint64                   min_chain_fee_basis_points      = 12;
+  string                   chain_fee_auction_pool_fraction = 13
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
+
+  repeated EvmChainParam evm_chain_params = 14;
+}
+
+// EvmChain Params
+// Params represent the Gravity genesis and store parameters
+// gravity_id:
+// a random 32 byte value to prevent signature reuse, for example if the
+// cosmos validators decided to use the same Ethereum keys for another chain
+// also running Gravity we would not want it to be possible to play a deposit
+// from chain A back on chain B's Gravity. This value IS USED ON ETHEREUM so
+// it must be set in your genesis.json before launch and not changed after
+// deploying Gravity
+
+// contract_hash:
+// the code hash of a known good version of the Gravity contract
+// solidity code. This can be used to verify the correct version
+// of the contract has been deployed. This is a reference value for
+// goernance action only it is never read by any Gravity code
+
+// bridge_ethereum_address:
+// is address of the bridge contract on the Ethereum side, this is a
+// reference value for governance only and is not actually used by any
+// Gravity code
+
+// bridge_chain_id:
+// the unique identifier of the Ethereum chain, this is a reference value
+// only and is not actually used by any Gravity code
+message EvmChainParam {
+  option (gogoproto.stringer) = false;
+
+  string gravity_id = 1;
+
+  bool bridge_active = 2;
+
+  string contract_source_hash = 3;
   // from Ethereum to the bridge
-  repeated string ethereum_blacklist              = 19;
-  uint64          min_chain_fee_basis_points      = 20;
-  string          chain_fee_auction_pool_fraction = 21
-      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
+  string bridge_ethereum_address = 4;
+  // net id of evm chain
+  uint64 bridge_chain_id             = 5;
+  uint64 average_ethereum_block_time = 6;
+
+  // addresses on this blacklist are forbidden from depositing or withdrawing
+  repeated string ethereum_blacklist = 7;
+  // use this for matching
+  string evm_chain_prefix = 8;
 }
 
 // GenesisState struct, containing all persistant data required by the Gravity module
@@ -162,8 +199,9 @@ message EvmChainData {
 }
 
 message EvmChain {
-  string evm_chain_prefix = 1;
-  string evm_chain_name   = 2;
+  string evm_chain_prefix      = 1;
+  string evm_chain_name        = 2;
+  uint64 evm_chain_net_version = 3;
 }
 
 // GravityCounters contains the many noces and counters required to maintain the bridge state in the genesis
@@ -186,4 +224,6 @@ message GravityNonces {
   // the last batch id from the Gravity batch pool, this prevents ID duplication
   // during chain upgrades
   uint64 last_batch_id = 7;
+  // last observed evm block height
+  uint64 last_observed_evm_block_height = 8;
 }
