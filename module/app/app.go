@@ -30,7 +30,6 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/config"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
 	"github.com/cosmos/cosmos-sdk/simapp"
-	storetypes "github.com/cosmos/cosmos-sdk/store/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/version"
@@ -117,9 +116,6 @@ import (
 	"github.com/Gravity-Bridge/Gravity-Bridge/module/app/ante"
 	gravityparams "github.com/Gravity-Bridge/Gravity-Bridge/module/app/params"
 	"github.com/Gravity-Bridge/Gravity-Bridge/module/app/upgrades"
-	"github.com/Gravity-Bridge/Gravity-Bridge/module/app/upgrades/antares"
-	"github.com/Gravity-Bridge/Gravity-Bridge/module/app/upgrades/apollo"
-	v2 "github.com/Gravity-Bridge/Gravity-Bridge/module/app/upgrades/v2"
 	gravityconfig "github.com/Gravity-Bridge/Gravity-Bridge/module/config"
 	"github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity"
 	"github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity/keeper"
@@ -203,7 +199,7 @@ var (
 // MakeCodec creates the application codec. The codec is sealed before it is
 // returned.
 func MakeCodec() *codec.LegacyAmino {
-	var cdc = codec.NewLegacyAmino()
+	cdc := codec.NewLegacyAmino()
 	ModuleBasics.RegisterLegacyAminoCodec(cdc)
 	vesting.AppModuleBasic{}.RegisterLegacyAminoCodec(cdc)
 	sdk.RegisterLegacyAminoCodec(cdc)
@@ -382,7 +378,7 @@ func NewGravityApp(
 	memKeys := sdk.NewMemoryStoreKeys(capabilitytypes.MemStoreKey)
 
 	// nolint: exhaustruct
-	var app = &Gravity{
+	app := &Gravity{
 		BaseApp:           &bApp,
 		legacyAmino:       legacyAmino,
 		AppCodec:          appCodec,
@@ -603,7 +599,7 @@ func NewGravityApp(
 	)
 	app.EvidenceKeeper = &evidenceKeeper
 
-	var skipGenesisInvariants = cast.ToBool(appOpts.Get(crisis.FlagSkipGenesisInvariants))
+	skipGenesisInvariants := cast.ToBool(appOpts.Get(crisis.FlagSkipGenesisInvariants))
 
 	app.registerStoreLoaders()
 
@@ -911,6 +907,7 @@ func (app *Gravity) GetSubspace(moduleName string) paramstypes.Subspace {
 func (app *Gravity) SimulationManager() *module.SimulationManager {
 	return app.sm
 }
+
 func (app *Gravity) LegacyAmino() *codec.LegacyAmino {
 	return app.legacyAmino
 }
@@ -1014,39 +1011,4 @@ func (app *Gravity) registerStoreLoaders() {
 	// Added: []string{"newmodule"}, // We are adding these modules
 	// Renamed: []storetypes.StoreRename{{"foo", "bar"}}, example foo to bar rename
 	// Deleted: []string{"bazmodule"}, example deleted bazmodule
-
-	// v1->v2 STORE LOADER SETUP
-	// Register the new v2 modules and the special StoreLoader to add them
-	if upgradeInfo.Name == v2.V1ToV2PlanName {
-		// Register the bech32ibc module as a new module that needs a new store allocated
-		storeUpgrades := storetypes.StoreUpgrades{
-			Added:   []string{bech32ibctypes.ModuleName},
-			Renamed: nil,
-			Deleted: nil,
-		}
-
-		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
-	}
-	// ANTARES ICA Host module store loader setup
-	if upgradeInfo.Name == antares.OrionToAntaresPlanName {
-		// Register the ICA Host module as a new module that needs a new store allocated
-		storeUpgrades := storetypes.StoreUpgrades{
-			Added:   []string{icahosttypes.StoreKey},
-			Renamed: nil,
-			Deleted: nil,
-		}
-
-		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
-	}
-	// Apollo Auction module store loader setup
-	if upgradeInfo.Name == apollo.AntaresToApolloPlanName {
-		// Register the Auction module as a new module that needs a new store allocated
-		storeUpgrades := storetypes.StoreUpgrades{
-			Added:   []string{auctiontypes.StoreKey},
-			Renamed: nil,
-			Deleted: nil,
-		}
-
-		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
-	}
 }
