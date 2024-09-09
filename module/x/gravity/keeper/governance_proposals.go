@@ -97,18 +97,19 @@ func (k Keeper) HandleAddEvmChainProposal(ctx sdk.Context, p *types.AddEvmChainP
 
 	ctx.Logger().Info("Gov vote passed: Adding new EVM chain", "evm chain prefix", p.EvmChainPrefix)
 	evmChain := types.EvmChainData{
-		EvmChain:           types.EvmChain{EvmChainPrefix: p.EvmChainPrefix, EvmChainName: p.EvmChainName, EvmChainNetVersion: p.EvmChainNetVersion},
-		GravityNonces:      types.GravityNonces{},
-		Valsets:            []types.Valset{},
-		ValsetConfirms:     []types.MsgValsetConfirm{},
-		Batches:            []types.OutgoingTxBatch{},
-		BatchConfirms:      []types.MsgConfirmBatch{},
-		LogicCalls:         []types.OutgoingLogicCall{},
-		LogicCallConfirms:  []types.MsgConfirmLogicCall{},
-		Attestations:       []types.Attestation{},
-		DelegateKeys:       []types.MsgSetOrchestratorAddress{},
-		Erc20ToDenoms:      []types.ERC20ToDenom{},
-		UnbatchedTransfers: []types.OutgoingTransferTx{},
+		EvmChain:               types.EvmChain{EvmChainPrefix: p.EvmChainPrefix, EvmChainName: p.EvmChainName, EvmChainNetVersion: p.EvmChainNetVersion},
+		GravityNonces:          types.GravityNonces{},
+		Valsets:                []types.Valset{},
+		ValsetConfirms:         []types.MsgValsetConfirm{},
+		Batches:                []types.OutgoingTxBatch{},
+		BatchConfirms:          []types.MsgConfirmBatch{},
+		LogicCalls:             []types.OutgoingLogicCall{},
+		LogicCallConfirms:      []types.MsgConfirmLogicCall{},
+		Attestations:           []types.Attestation{},
+		DelegateKeys:           []types.MsgSetOrchestratorAddress{},
+		Erc20ToDenoms:          []types.ERC20ToDenom{},
+		UnbatchedTransfers:     []types.OutgoingTransferTx{},
+		PendingIbcAutoForwards: []types.PendingIbcAutoForward{},
 	}
 	k.SetEvmChainData(ctx, evmChain.EvmChain)
 

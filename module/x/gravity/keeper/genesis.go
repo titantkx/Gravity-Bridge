@@ -52,6 +52,126 @@ func initBridgeDataFromGenesis(ctx sdk.Context, k Keeper, data types.EvmChainDat
 		conf := conf
 		k.SetLogicCallConfirm(ctx, &conf)
 	}
+
+	// reset pool transactions in state
+	for _, tx := range data.UnbatchedTransfers {
+		intTx, err := tx.ToInternal()
+		if err != nil {
+			panic(sdkerrors.Wrapf(err, "invalid unbatched tx: %v", tx))
+		}
+		if err := k.addUnbatchedTX(ctx, evmChainPrefix, intTx); err != nil {
+			panic(err)
+		}
+	}
+
+	// reset attestations in state
+	for _, att := range data.Attestations {
+		att := att
+		claim, err := k.UnpackAttestationClaim(&att)
+		if err != nil {
+			panic("couldn't cast to claim")
+		}
+
+		// block height
+		if claim.GetEthBlockHeight() == 0 {
+			panic("eth block height can not be zero")
+		}
+		hash, err := claim.ClaimHash()
+		if err != nil {
+			panic(fmt.Errorf("error when computing ClaimHash for %v", hash))
+		}
+		// these claims always have the same evmChainPrefix even not set
+		claim.SetEvmChainPrefix(evmChainPrefix)
+
+		k.SetAttestation(ctx, claim.GetEvmChainPrefix(), claim.GetEventNonce(), hash, &att)
+	}
+
+	// reset attestation state of specific validators
+	// this must be done after the above to be correct
+	for _, att := range data.Attestations {
+		att := att
+		claim, err := k.UnpackAttestationClaim(&att)
+		if err != nil {
+			panic("couldn't cast to claim")
+		}
+		/*
+			reconstruct the latest event nonce for every validator
+			if somehow this genesis state is saved when all attestations
+			have been cleaned up GetLastEventNonceByValidator handles that case
+
+			if we were to save and load the last event nonce for every validator
+			then we would need to carry that state forever across all chain restarts
+			but since we've already had to handle the edge case of new validators joining
+			while all attestations have already been cleaned up we can do this instead and
+			not carry around every validator's event nonce counter forever.
+		*/
+		for _, vote := range att.Votes {
+			val, err := sdk.ValAddressFromBech32(vote)
+			if err != nil {
+				panic(err)
+			}
+			last := k.GetLastEventNonceByValidator(ctx, evmChainPrefix, val)
+			if claim.GetEventNonce() > last {
+				k.SetLastEventNonceByValidator(ctx, evmChainPrefix, val, claim.GetEventNonce())
+			}
+		}
+	}
+
+	// reset delegate keys in state
+	if hasDuplicates(data.DelegateKeys) {
+		panic("Duplicate delegate key found in Genesis!")
+	}
+	for _, keys := range data.DelegateKeys {
+		err := keys.ValidateBasic()
+		if err != nil {
+			panic("Invalid delegate key in Genesis!")
+		}
+		val, err := sdk.ValAddressFromBech32(keys.Validator)
+		if err != nil {
+			panic(err)
+		}
+		ethAddr, err := types.NewEthAddress(keys.EthAddress)
+		if err != nil {
+			panic(err)
+		}
+
+		orch, err := sdk.AccAddressFromBech32(keys.Orchestrator)
+		if err != nil {
+			panic(err)
+		}
+
+		// set the orchestrator address
+		k.SetOrchestratorValidator(ctx, val, orch)
+		// set the ethereum address
+		k.SetEthAddressForValidator(ctx, val, *ethAddr)
+	}
+
+	// populate state with cosmos originated denom-erc20 mapping
+	for i, item := range data.Erc20ToDenoms {
+		ethAddr, err := types.NewEthAddress(item.Erc20)
+		if err != nil {
+			panic(fmt.Errorf("invalid erc20 address in Erc20ToDenoms for item %d: %s", i, item.Erc20))
+		}
+		k.setCosmosOriginatedDenomToERC20(ctx, evmChainPrefix, item.Denom, *ethAddr)
+	}
+
+	// now that we have the denom-erc20 mapping we need to validate
+	// that the valset reward is possible and cosmos originated remove
+	// this if you want a non-cosmos originated reward
+	valsetReward := k.GetParams(ctx).ValsetReward
+	if valsetReward.IsValid() && !valsetReward.IsZero() {
+		_, exists := k.GetCosmosOriginatedERC20(ctx, evmChainPrefix, valsetReward.Denom)
+		if !exists {
+			panic("Invalid Cosmos originated denom for valset reward")
+		}
+	}
+
+	for _, forward := range data.PendingIbcAutoForwards {
+		err := k.addPendingIbcAutoForward(ctx, forward, evmChainPrefix, forward.Token.Denom)
+		if err != nil {
+			panic(fmt.Errorf("unable to restore pending ibc auto forward (%v) to store: %v", forward, err))
+		}
+	}
 }
 
 // InitGenesis starts a chain from a genesis state
@@ -66,124 +186,12 @@ func InitGenesis(ctx sdk.Context, k Keeper, data types.GenesisState) {
 		k.SetLastSlashedValsetNonce(ctx, chainPrefix, evmChain.GravityNonces.LastSlashedValsetNonce)
 		k.SetLastSlashedBatchBlock(ctx, chainPrefix, evmChain.GravityNonces.LastSlashedBatchBlock)
 		k.SetLastSlashedLogicCallBlock(ctx, chainPrefix, evmChain.GravityNonces.LastSlashedLogicCallBlock)
-		k.setID(ctx, evmChain.GravityNonces.LastTxPoolId, []byte(types.KeyLastTXPoolID))
-		k.setID(ctx, evmChain.GravityNonces.LastBatchId, []byte(types.KeyLastOutgoingBatchID))
+		k.SetLastObservedEthereumBlockHeight(ctx, chainPrefix, evmChain.GravityNonces.LastObservedEvmBlockHeight)
+		k.setID(ctx, evmChain.GravityNonces.LastTxPoolId, types.AppendChainPrefix(types.KeyLastTXPoolID, chainPrefix))
+		k.setID(ctx, evmChain.GravityNonces.LastBatchId, types.AppendChainPrefix(types.KeyLastOutgoingBatchID, chainPrefix))
+		k.SetEvmChainData(ctx, evmChain.EvmChain)
 
 		initBridgeDataFromGenesis(ctx, k, evmChain)
-
-		// reset pool transactions in state
-		for _, tx := range evmChain.UnbatchedTransfers {
-			intTx, err := tx.ToInternal()
-			if err != nil {
-				panic(sdkerrors.Wrapf(err, "invalid unbatched tx: %v", tx))
-			}
-			if err := k.addUnbatchedTX(ctx, chainPrefix, intTx); err != nil {
-				panic(err)
-			}
-		}
-
-		// reset attestations in state
-		for _, att := range evmChain.Attestations {
-			att := att
-			claim, err := k.UnpackAttestationClaim(&att)
-			if err != nil {
-				panic("couldn't cast to claim")
-			}
-
-			// TODO: block height?
-			hash, err := claim.ClaimHash()
-			if err != nil {
-				panic(fmt.Errorf("error when computing ClaimHash for %v", hash))
-			}
-			k.SetAttestation(ctx, chainPrefix, claim.GetEventNonce(), hash, &att)
-		}
-
-		// reset attestation state of specific validators
-		// this must be done after the above to be correct
-		for _, att := range evmChain.Attestations {
-			att := att
-			claim, err := k.UnpackAttestationClaim(&att)
-			if err != nil {
-				panic("couldn't cast to claim")
-			}
-			/*
-				reconstruct the latest event nonce for every validator
-				if somehow this genesis state is saved when all attestations
-				have been cleaned up GetLastEventNonceByValidator handles that case
-
-				if we were to save and load the last event nonce for every validator
-				then we would need to carry that state forever across all chain restarts
-				but since we've already had to handle the edge case of new validators joining
-				while all attestations have already been cleaned up we can do this instead and
-				not carry around every validator's event nonce counter forever.
-			*/
-			for _, vote := range att.Votes {
-				val, err := sdk.ValAddressFromBech32(vote)
-				if err != nil {
-					panic(err)
-				}
-				last := k.GetLastEventNonceByValidator(ctx, chainPrefix, val)
-				if claim.GetEventNonce() > last {
-					k.SetLastEventNonceByValidator(ctx, chainPrefix, val, claim.GetEventNonce())
-				}
-			}
-		}
-
-		// reset delegate keys in state
-		if hasDuplicates(evmChain.DelegateKeys) {
-			panic("Duplicate delegate key found in Genesis!")
-		}
-		for _, keys := range evmChain.DelegateKeys {
-			err := keys.ValidateBasic()
-			if err != nil {
-				panic("Invalid delegate key in Genesis!")
-			}
-			val, err := sdk.ValAddressFromBech32(keys.Validator)
-			if err != nil {
-				panic(err)
-			}
-			ethAddr, err := types.NewEthAddress(keys.EthAddress)
-			if err != nil {
-				panic(err)
-			}
-
-			orch, err := sdk.AccAddressFromBech32(keys.Orchestrator)
-			if err != nil {
-				panic(err)
-			}
-
-			// set the orchestrator address
-			k.SetOrchestratorValidator(ctx, val, orch)
-			// set the ethereum address
-			k.SetEthAddressForValidator(ctx, val, *ethAddr)
-		}
-
-		// populate state with cosmos originated denom-erc20 mapping
-		for i, item := range evmChain.Erc20ToDenoms {
-			ethAddr, err := types.NewEthAddress(item.Erc20)
-			if err != nil {
-				panic(fmt.Errorf("invalid erc20 address in Erc20ToDenoms for item %d: %s", i, item.Erc20))
-			}
-			k.setCosmosOriginatedDenomToERC20(ctx, chainPrefix, item.Denom, *ethAddr)
-		}
-
-		// now that we have the denom-erc20 mapping we need to validate
-		// that the valset reward is possible and cosmos originated remove
-		// this if you want a non-cosmos originated reward
-		valsetReward := k.GetParams(ctx).ValsetReward
-		if valsetReward.IsValid() && !valsetReward.IsZero() {
-			_, exists := k.GetCosmosOriginatedERC20(ctx, chainPrefix, valsetReward.Denom)
-			if !exists {
-				panic("Invalid Cosmos originated denom for valset reward")
-			}
-		}
-
-		for _, forward := range evmChain.PendingIbcAutoForwards {
-			err := k.addPendingIbcAutoForward(ctx, forward, chainPrefix, forward.Token.Denom)
-			if err != nil {
-				panic(fmt.Errorf("unable to restore pending ibc auto forward (%v) to store: %v", forward, err))
-			}
-		}
 	}
 }
 
