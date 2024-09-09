@@ -100,6 +100,7 @@ func createAttestations(t *testing.T, length int, k Keeper, ctx sdktypes.Context
 			EthereumSender: sender,
 			CosmosReceiver: receiver,
 			Orchestrator:   orch,
+			EvmChainPrefix: evmChainPrefix,
 		}
 		msgs = append(msgs, msg)
 

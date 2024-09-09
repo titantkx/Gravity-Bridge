@@ -2,12 +2,14 @@ package gravity
 
 import (
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"testing"
 	"time"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -660,12 +662,14 @@ func TestMsgValsetConfirm(t *testing.T) {
 	input, ctx := keeper.SetupFiveValChain(t)
 	evmChain := input.GravityKeeper.GetEvmChainData(ctx, keeper.EthChainPrefix)
 
+	privKey, err := crypto.GenerateKey()
+	require.NoError(t, err)
+	ethAddress := crypto.PubkeyToAddress(privKey.PublicKey).String()
+
 	var (
 		blockTime          = time.Date(2020, 9, 14, 15, 20, 10, 0, time.UTC)
 		blockHeight  int64 = 200
-		signature          = "7c331bd8f2f586b04a2e2cafc6542442ef52e8b8be49533fa6b8962e822bc01e295a62733abfd65a412a8de8286f2794134c160c27a2827bdb71044b94b003cc1c"
 		badSignature       = "6c331bd8f2f586b04a2e2cafc6542442ef52e8b8be49533fa6b8962e822bc01e295a62733abfd65a412a8de8286f2794134c160c27a2827bdb71044b94b003cc1c"
-		ethAddress         = "0xd62FF457C6165FF214C1658c993A8a203E601B03"
 		wrongAddress       = "0xb9a2c7853F181C3dd4a0517FCb9470C0f709C08C"
 	)
 	ethAddressParsed, err := types.NewEthAddress(ethAddress)
@@ -684,6 +688,13 @@ func TestMsgValsetConfirm(t *testing.T) {
 	k.StoreValset(ctx, evmChain.EvmChainPrefix, vs)
 	k.SetLatestValsetNonce(ctx, keeper.EthChainPrefix, vs.Nonce)
 	k.SetEthAddressForValidator(input.Context, keeper.ValAddrs[0], *ethAddressParsed)
+
+	oldValset := k.GetValset(ctx, evmChain.EvmChainPrefix, vs.Nonce)
+	require.NotNil(t, oldValset)
+	checkpoint := oldValset.GetCheckpoint(keeper.EthChainPrefix)
+	signatureBytes, err := types.NewEthereumSignature(checkpoint, privKey)
+	require.NoError(t, err)
+	signature := hex.EncodeToString(signatureBytes)
 
 	// try wrong eth address
 	msg := &types.MsgValsetConfirm{
