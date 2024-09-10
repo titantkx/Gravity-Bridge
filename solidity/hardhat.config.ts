@@ -37,6 +37,7 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      chainId: 420,
       gas: "auto",
       mining: {
         auto: false,

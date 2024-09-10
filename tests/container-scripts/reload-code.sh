@@ -8,14 +8,12 @@ set -eux
 
 # Stop any currently running gravity and eth processes
 pkill gravityd || true # allowed to fail
-pkill geth || true # allowed to fail
+pkill geth || true     # allowed to fail
 
 # Wipe filesystem changes
-for i in $(seq 1 $NODES);
-do
+for i in $(seq 1 $NODES); do
     rm -rf "/validator$i"
 done
-
 
 pushd /gravity/module/
 export PATH=$PATH:/usr/local/go/bin

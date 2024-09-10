@@ -175,6 +175,7 @@ pub async fn deploy_contracts(contact: &Contact) {
                 &format!("--eth-privkey={:#x}", *MINER_PRIVATE_KEY),
                 &format!("--contract={}", paths[1]),
                 &format!("--contractERC721={}", paths[2]),
+                &format!("--evm-prefix={}", "ethereum"),
                 "--test-mode=true",
             ])
             .output()
@@ -189,6 +190,7 @@ pub async fn deploy_contracts(contact: &Contact) {
                 &format!("--eth-privkey={:#x}", *MINER_PRIVATE_KEY),
                 &format!("--contract={}", C[1]),
                 &format!("--contractERC721={}", C[2]),
+                &format!("--evm-prefix={}", "ethereum"),
                 "--test-mode=true",
             ])
             .current_dir(C[3])
