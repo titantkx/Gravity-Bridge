@@ -1,14 +1,26 @@
 [workspace]
-members = ["orchestrator", "cosmos_gravity", "ethereum_gravity", "gravity_utils", "test_runner", "relayer", "gbt", "metrics_exporter", "jsonrpc_server"]
 default-members = ["gbt"]
+members = [
+  "orchestrator",
+  "cosmos_gravity",
+  "ethereum_gravity",
+  "gravity_utils",
+  "test_runner",
+  "relayer",
+  "gbt",
+  "metrics_exporter",
+  "jsonrpc_server",
+  "proto_build",
+]
 resolver = "2"
 
 [workspace.dependencies]
-gravity_proto = "0.4.3"
-num256 = "0.5"
 clarity = "1.2.3"
-web30 = "1.2"
+# cosmos-sdk-proto = {git = "https://github.com/althea-net/cosmos-rust", rev = "19f3de7", package = "cosmos-sdk-proto-althea"}
 deep_space = "2.18"
+gravity_proto = {path = "./gravity_proto"}
+num256 = "0.5"
 prost = "0.12"
 prost-types = "0.12"
 tonic = "0.10"
+web30 = "1.2"

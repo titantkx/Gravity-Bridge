@@ -1,0 +1,23 @@
+[package]
+authors = ["Justin Kilpatrick <justin@althea.net>"]
+edition = "2018"
+name = "gravity_proto"
+version = "0.1.0"
+
+[features]
+bech32ibc = []
+ethermint = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# cosmos-sdk-proto = {workspace = true, features = ["bech32ibc", "ethermint"]}
+# cosmos-sdk-proto = {git = "https://github.com/althea-net/proto.git", package = "cosmos-sdk-proto-althea", tag = "cosmos_sdk_proto/v0.17.0", features = ["ethermint", "bech32ibc"]}
+# cosmos-sdk-proto = {git = "https://github.com/oraichain/cosmos-rust", rev = "19f3de7", package = "cosmos-sdk-proto-althea"}
+# cosmos-sdk-proto = {git = "https://github.com/althea-net/cosmos-rust", rev = "ac6413a", package = "cosmos-sdk-proto-althea"}
+# cosmos-sdk-proto = {git = "https://github.com/althea-net/proto", package = "cosmos-sdk-proto-althea", rev = "a1975ab", features = ["ethermint", "bech32ibc"]}
+cosmos-sdk-proto = {path = "../cosmos_sdk_proto", package = "cosmos-sdk-proto-althea", features = ["bech32ibc", "ethermint"]}
+deep_space = {workspace = true}
+prost = {workspace = true}
+prost-types = {workspace = true}
+tonic = {workspace = true}
