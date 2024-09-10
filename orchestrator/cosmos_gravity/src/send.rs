@@ -23,7 +23,7 @@ use std::{collections::HashMap, time::Duration};
 
 use crate::utils::{get_reasonable_send_to_eth_fee, BadSignatureEvidence};
 
-pub const MEMO: &str = "Sent using Althea Gravity Bridge Orchestrator";
+pub const MEMO: &str = "Sent using Gravity Bridge Orchestrator";
 pub const TIMEOUT: Duration = Duration::from_secs(60);
 
 // gravity msg type urls
@@ -85,6 +85,7 @@ pub async fn set_gravity_delegate_addresses(
 /// as a single message
 #[allow(clippy::too_many_arguments)]
 pub async fn send_valset_confirms(
+    evm_chain_prefix: &str,
     contact: &Contact,
     eth_private_key: EthPrivateKey,
     fee: Coin,
@@ -111,6 +112,7 @@ pub async fn send_valset_confirms(
             eth_address: our_eth_address.to_string(),
             nonce: valset.nonce,
             signature: bytes_to_hex_str(&eth_signature.to_bytes()),
+            evm_chain_prefix: evm_chain_prefix.to_string(),
         };
         let msg = Msg::new(MSG_VALSET_CONFIRM_TYPE_URL, confirm);
         messages.push(msg);
@@ -130,6 +132,7 @@ pub async fn send_valset_confirms(
 
 /// Send in a confirmation for a specific transaction batch
 pub async fn send_batch_confirm(
+    evm_chain_prefix: &str,
     contact: &Contact,
     eth_private_key: EthPrivateKey,
     fee: Coin,
@@ -157,6 +160,7 @@ pub async fn send_batch_confirm(
             eth_signer: our_eth_address.to_string(),
             nonce: batch.nonce,
             signature: bytes_to_hex_str(&eth_signature.to_bytes()),
+            evm_chain_prefix: evm_chain_prefix.to_string(),
         };
         let msg = Msg::new(MSG_CONFIRM_BATCH_TYPE_URL, confirm);
         messages.push(msg);
@@ -174,6 +178,7 @@ pub async fn send_batch_confirm(
 
 /// Send in a confirmation for a specific logic call
 pub async fn send_logic_call_confirm(
+    evm_chain_prefix: &str,
     contact: &Contact,
     eth_private_key: EthPrivateKey,
     fee: Coin,
@@ -201,6 +206,7 @@ pub async fn send_logic_call_confirm(
             signature: bytes_to_hex_str(&eth_signature.to_bytes()),
             invalidation_id: bytes_to_hex_str(&call.invalidation_id),
             invalidation_nonce: call.invalidation_nonce,
+            evm_chain_prefix: evm_chain_prefix.to_string(),
         };
         let msg = Msg::new(MSG_CONFIRM_LOGIC_CALL_TYPE_URL, confirm);
         messages.push(msg);
@@ -219,6 +225,7 @@ pub async fn send_logic_call_confirm(
 /// Creates and submits Ethereum event claims from the input EthereumEvent collections
 #[allow(clippy::too_many_arguments)]
 pub async fn send_ethereum_claims(
+    evm_chain_prefix: &str,
     contact: &Contact,
     our_cosmos_key: impl PrivateKey,
     deposits: Vec<SendToCosmosEvent>,
@@ -242,11 +249,16 @@ pub async fn send_ethereum_claims(
 
     // Create claim Msgs, keeping their event_nonces for insertion into unordered_msgs
 
-    let deposit_nonces_msgs: Vec<(u64, Msg)> = create_claim_msgs(deposits, our_cosmos_address);
-    let withdraw_nonces_msgs: Vec<(u64, Msg)> = create_claim_msgs(withdraws, our_cosmos_address);
-    let deploy_nonces_msgs: Vec<(u64, Msg)> = create_claim_msgs(erc20_deploys, our_cosmos_address);
-    let logic_nonces_msgs: Vec<(u64, Msg)> = create_claim_msgs(logic_calls, our_cosmos_address);
-    let valset_nonces_msgs: Vec<(u64, Msg)> = create_claim_msgs(valsets, our_cosmos_address);
+    let deposit_nonces_msgs: Vec<(u64, Msg)> =
+        create_claim_msgs(deposits, our_cosmos_address, evm_chain_prefix);
+    let withdraw_nonces_msgs: Vec<(u64, Msg)> =
+        create_claim_msgs(withdraws, our_cosmos_address, evm_chain_prefix);
+    let deploy_nonces_msgs: Vec<(u64, Msg)> =
+        create_claim_msgs(erc20_deploys, our_cosmos_address, evm_chain_prefix);
+    let logic_nonces_msgs: Vec<(u64, Msg)> =
+        create_claim_msgs(logic_calls, our_cosmos_address, evm_chain_prefix);
+    let valset_nonces_msgs: Vec<(u64, Msg)> =
+        create_claim_msgs(valsets, our_cosmos_address, evm_chain_prefix);
 
     // Collect all of the claims into an iterator, then add them to unordered_msgs
     deposit_nonces_msgs
@@ -288,11 +300,15 @@ pub async fn send_ethereum_claims(
 fn create_claim_msgs(
     events: Vec<impl EthereumEvent>,
     orchestrator: CosmosAddress,
+    evm_chain_prefix: &str,
 ) -> Vec<(u64, Msg)> {
     let mut msgs = vec![];
     for event in events {
         // Create msg
-        msgs.push((event.get_event_nonce(), event.to_claim_msg(orchestrator)));
+        msgs.push((
+            event.get_event_nonce(),
+            event.to_claim_msg(orchestrator, evm_chain_prefix.to_string()),
+        ));
     }
     msgs
 }
@@ -305,6 +321,7 @@ fn create_claim_msgs(
 /// cosmos_fee: the Cosmos anti-spam fee set by each Validator which is required for any Tx
 ///     to be considered for the mempool.
 pub async fn send_to_eth(
+    evm_chain_prefix: &str,
     private_key: impl PrivateKey,
     destination: EthAddress,
     amount: Coin,
@@ -362,6 +379,7 @@ pub async fn send_to_eth(
         amount: Some(amount.into()),
         bridge_fee: Some(bridge_fee.into()),
         chain_fee: Some(chain_fee.into()),
+        evm_chain_prefix: evm_chain_prefix.to_string(),
     };
     info!(
         "Sending to Ethereum with MsgSendToEth: {:?}",
@@ -381,6 +399,7 @@ pub async fn send_to_eth(
 }
 
 pub async fn send_request_batch(
+    evm_chain_prefix: &str,
     private_key: impl PrivateKey,
     denom: String,
     fee: Option<Coin>,
@@ -391,6 +410,7 @@ pub async fn send_request_batch(
     let msg_request_batch = MsgRequestBatch {
         sender: our_address.to_string(),
         denom,
+        evm_chain_prefix: evm_chain_prefix.to_string(),
     };
     let msg = Msg::new(MSG_REQUEST_BATCH_TYPE_URL, msg_request_batch);
 
@@ -412,6 +432,7 @@ pub async fn send_request_batch(
 /// Sends evidence of a bad signature to the chain to slash the malicious validator
 /// who signed an invalid message with their Ethereum key
 pub async fn submit_bad_signature_evidence(
+    evm_chain_prefix: &str,
     private_key: impl PrivateKey,
     fee: Coin,
     contact: &Contact,
@@ -426,6 +447,7 @@ pub async fn submit_bad_signature_evidence(
         subject: Some(any),
         signature: bytes_to_hex_str(&signature.to_bytes()),
         sender: our_address.to_string(),
+        evm_chain_prefix: evm_chain_prefix.to_string(),
     };
 
     let msg = Msg::new(
@@ -446,6 +468,7 @@ pub async fn submit_bad_signature_evidence(
 /// Cancels a user provided SendToEth transaction, provided it's not already in a batch
 /// you should check with `QueryPendingSendToEth`
 pub async fn cancel_send_to_eth(
+    evm_chain_prefix: &str,
     private_key: impl PrivateKey,
     fee: Coin,
     contact: &Contact,
@@ -456,6 +479,7 @@ pub async fn cancel_send_to_eth(
     let msg_cancel_send_to_eth = MsgCancelSendToEth {
         transaction_id,
         sender: our_address.to_string(),
+        evm_chain_prefix: evm_chain_prefix.to_string(),
     };
 
     let msg = Msg::new(MSG_CANCEL_SEND_TO_ETH_TYPE_URL, msg_cancel_send_to_eth);
@@ -472,6 +496,7 @@ pub async fn cancel_send_to_eth(
 
 /// Executes a MsgExecuteIbcAutoForwards on the gravity chain, which will process forwards_to_clear number of pending ibc auto forwards
 pub async fn execute_pending_ibc_auto_forwards(
+    evm_chain_prefix: &str,
     contact: &Contact,
     cosmos_key: impl PrivateKey,
     fee: Coin,
@@ -482,6 +507,7 @@ pub async fn execute_pending_ibc_auto_forwards(
     let msg = Msg::new(
         MSG_EXECUTE_IBC_AUTO_FORWARDS_TYPE_URL,
         MsgExecuteIbcAutoForwards {
+            evm_chain_prefix: evm_chain_prefix.to_string(),
             forwards_to_clear,
             executor: cosmos_addr.to_string(),
         },
