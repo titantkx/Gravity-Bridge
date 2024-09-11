@@ -6,7 +6,7 @@ use crate::utils::{get_erc20_balance_safe, send_one_eth, start_orchestrators, Va
 use crate::MINER_PRIVATE_KEY;
 use crate::TOTAL_TIMEOUT;
 use crate::{one_eth, MINER_ADDRESS};
-use crate::{ADDRESS_PREFIX, EVM_CHAIN_PREFIX};
+use crate::{ADDRESS_PREFIX, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR};
 use clarity::PrivateKey as EthPrivateKey;
 use clarity::{Address as EthAddress, Uint256};
 use cosmos_gravity::query::get_oldest_unsigned_transaction_batches;
@@ -183,7 +183,15 @@ async fn setup_batch_test(
     )
     .await;
     let cdai_held = contact
-        .get_balance(dest_cosmos_address, format!("gravity{}", erc20_contract))
+        .get_balance(
+            dest_cosmos_address,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_contract
+            ),
+        )
         .await
         .unwrap()
         .unwrap();

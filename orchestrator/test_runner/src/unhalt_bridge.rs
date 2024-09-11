@@ -1,6 +1,6 @@
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::{test_erc20_deposit_panic, test_erc20_deposit_result};
-use crate::{get_deposit, utils::*, EVM_CHAIN_PREFIX, TOTAL_TIMEOUT};
+use crate::{get_deposit, utils::*, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR, TOTAL_TIMEOUT};
 use crate::{get_fee, one_eth, OPERATION_TIMEOUT};
 use bytes::BytesMut;
 use clarity::{Address as EthAddress, Uint256};
@@ -173,7 +173,12 @@ pub async fn unhalt_bridge_test(
     let balance_after_halt = contact
         .get_balance(
             bridge_user.cosmos_address,
-            format!("gravity{}", erc20_address),
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
         )
         .await
         .unwrap()
@@ -316,7 +321,15 @@ async fn wait_for_balance_increase(
     let start = Instant::now();
     while Instant::now() - start < TOTAL_TIMEOUT {
         if let Some(new_balance) = contact
-            .get_balance(destination, format!("gravity{}", erc20_address))
+            .get_balance(
+                destination,
+                format!(
+                    "{}{}{}",
+                    EVM_CHAIN_PREFIX.as_str(),
+                    GRAVITY_DENOM_SEPARATOR.as_str(),
+                    erc20_address
+                ),
+            )
             .await
             .unwrap()
         {

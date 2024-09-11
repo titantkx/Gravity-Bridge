@@ -2,6 +2,7 @@ use crate::get_fee;
 use crate::utils::check_erc20_balance;
 use crate::utils::*;
 use crate::EVM_CHAIN_PREFIX;
+use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::MINER_ADDRESS;
 use crate::MINER_PRIVATE_KEY;
 use crate::OPERATION_TIMEOUT;
@@ -329,7 +330,15 @@ pub async fn test_erc20_deposit_result(
     expected_change: Option<Uint256>, // provide an expected change when multiple transactions will take place at once
 ) -> Result<(), GravityError> {
     let start_coin = contact
-        .get_balance(dest, format!("gravity{}", erc20_address))
+        .get_balance(
+            dest,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
+        )
         .await
         .unwrap();
 
@@ -352,7 +361,15 @@ pub async fn test_erc20_deposit_result(
         match (
             start_coin.clone(),
             contact
-                .get_balance(dest, format!("gravity{}", erc20_address))
+                .get_balance(
+                    dest,
+                    format!(
+                        "{}{}{}",
+                        EVM_CHAIN_PREFIX.as_str(),
+                        GRAVITY_DENOM_SEPARATOR.as_str(),
+                        erc20_address
+                    ),
+                )
                 .await
                 .unwrap(),
         ) {
@@ -518,7 +535,15 @@ async fn test_batch(
         .to_address(&contact.get_prefix())
         .unwrap();
     let coin = contact
-        .get_balance(dest_cosmos_address, format!("gravity{}", erc20_contract))
+        .get_balance(
+            dest_cosmos_address,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_contract
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -611,7 +636,15 @@ async fn submit_duplicate_erc20_send(
     keys: &[ValidatorKeys],
 ) {
     let start_coin = contact
-        .get_balance(receiver, format!("gravity{}", erc20_address))
+        .get_balance(
+            receiver,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -651,7 +684,15 @@ async fn submit_duplicate_erc20_send(
     contact.wait_for_next_block(TOTAL_TIMEOUT).await.unwrap();
 
     let end_coin = contact
-        .get_balance(receiver, format!("gravity{}", erc20_address))
+        .get_balance(
+            receiver,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
+        )
         .await
         .unwrap()
         .unwrap();

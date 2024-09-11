@@ -4,6 +4,8 @@
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::{test_erc20_deposit_panic, test_erc20_deposit_result};
 use crate::utils::*;
+use crate::EVM_CHAIN_PREFIX;
+use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::MINER_ADDRESS;
 use crate::{get_fee, OPERATION_TIMEOUT, TOTAL_TIMEOUT};
 use clarity::Address as EthAddress;
@@ -120,7 +122,12 @@ pub async fn pause_bridge_test(
     let coin = contact
         .get_balance(
             user_keys.cosmos_address,
-            format!("gravity{}", erc20_address),
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
         )
         .await
         .unwrap()
@@ -215,7 +222,12 @@ pub async fn pause_bridge_test(
     let res = contact
         .get_balance(
             user_keys.cosmos_address,
-            format!("gravity{}", erc20_address),
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
         )
         .await
         .unwrap()
