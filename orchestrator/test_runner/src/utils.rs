@@ -355,6 +355,13 @@ pub async fn start_orchestrators(
             .await
             .expect("Failed to get Gravity Bridge module parameters!");
 
+        let evm_chain_params = params
+            .evm_chain_params
+            .iter()
+            .find(|p| p.evm_chain_prefix.eq(EVM_CHAIN_PREFIX.as_str()))
+            .expect("Failed to get evm chain params")
+            .clone();
+
         // we have only one actual futures executor thread (see the actix runtime tag on our main function)
         // but that will execute all the orchestrators in our test in parallel
         thread::spawn(move || {
@@ -416,6 +423,7 @@ pub async fn submit_false_claims(
             cosmos_receiver: cosmos_receiver.to_string(),
             ethereum_sender: ethereum_sender.to_string(),
             orchestrator: orch_addr.to_string(),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         };
         info!("Oracle number {} submitting false deposit {:?}", i, claim);
         let msg_url = "/gravity.v1.MsgSendToCosmosClaim";

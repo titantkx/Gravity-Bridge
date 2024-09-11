@@ -288,7 +288,7 @@ async fn check_attestations(grpc_client: QueryClient<Channel>, expected_attestat
             claim_type: "".to_string(),
             nonce: 0,
             height: 0,
-            use_v1_key: false,
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         })
         .await
         .expect("Failed to get attestations pre-upgrade")

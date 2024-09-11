@@ -33,6 +33,7 @@ pub async fn all_relayer_loops(
     web3: Web3,
     contact: Contact,
     grpc_client: GravityQueryClient<Channel>,
+    evm_chain_prefix: &str,
     gravity_contract_address: EthAddress,
     gravity_id: String,
     fee: Option<Coin>,
@@ -55,6 +56,7 @@ pub async fn all_relayer_loops(
         web3.clone(),
         contact.clone(),
         grpc_client.clone(),
+        evm_chain_prefix,
         gravity_contract_address,
         gravity_id,
         config.clone(),
@@ -63,6 +65,7 @@ pub async fn all_relayer_loops(
         cosmos_key,
         &contact,
         grpc_client.clone(),
+        evm_chain_prefix,
         fee.clone(),
         config.clone(),
     );
@@ -81,6 +84,7 @@ pub async fn relayer_main_loop(
     web3: Web3,
     contact: Contact,
     grpc_client: GravityQueryClient<Channel>,
+    evm_chain_prefix: &str,
     gravity_contract_address: EthAddress,
     gravity_id: String,
     relayer_config: RelayerConfig,
@@ -107,6 +111,7 @@ pub async fn relayer_main_loop(
             };
 
         single_relayer_iteration(
+            evm_chain_prefix,
             ethereum_key,
             cosmos_key,
             cosmos_fee.clone(),
@@ -131,6 +136,7 @@ pub async fn relayer_main_loop(
 /// * Logic Call Relaying
 #[allow(clippy::too_many_arguments)]
 pub async fn single_relayer_iteration(
+    evm_chain_prefix: &str,
     ethereum_key: EthPrivateKey,
     cosmos_key: Option<CosmosPrivateKey>,
     cosmos_fee: Option<Coin>,
@@ -149,6 +155,7 @@ pub async fn single_relayer_iteration(
             contact,
             web3,
             &mut grpc_client,
+            evm_chain_prefix,
             relayer_config,
             ethereum_key.to_address(),
             cosmos_key,
@@ -164,7 +171,13 @@ pub async fn single_relayer_iteration(
     let should_relay_batches = relayer_config.batch_relaying_mode != BatchRelayingMode::Altruistic
         || should_relay_altruistic;
 
-    let current_valset = find_latest_valset(&mut grpc_client, gravity_contract_address, web3).await;
+    let current_valset = find_latest_valset(
+        &mut grpc_client,
+        evm_chain_prefix,
+        gravity_contract_address,
+        web3,
+    )
+    .await;
     if current_valset.is_err() {
         error!("Could not get current valset! {:?}", current_valset);
         return;
@@ -177,6 +190,7 @@ pub async fn single_relayer_iteration(
             ethereum_key,
             web3,
             &mut grpc_client,
+            evm_chain_prefix,
             gravity_contract_address,
             gravity_id.to_string(),
             relayer_config.clone(),
@@ -201,6 +215,7 @@ pub async fn single_relayer_iteration(
             ethereum_key,
             web3,
             &mut grpc_client,
+            evm_chain_prefix,
             gravity_contract_address,
             gravity_id.to_string(),
             relayer_config.clone(),
@@ -213,6 +228,7 @@ pub async fn single_relayer_iteration(
         ethereum_key,
         web3,
         &mut grpc_client,
+        evm_chain_prefix,
         gravity_contract_address,
         gravity_id.to_string(),
         relayer_config.clone(),

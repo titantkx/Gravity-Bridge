@@ -167,6 +167,7 @@ pub async fn recover_funds(args: RecoverFundsOpts, address_prefix: String) {
         cosmos_to_eth(
             &contact,
             grpc,
+            &args.evm_chain_prefix,
             args.ethereum_key,
             sender_address,
             amount,
