@@ -5,6 +5,7 @@ use std::time::Duration;
 use crate::get_deposit;
 use crate::ibc_auto_forward::get_channel;
 use crate::COSMOS_NODE_GRPC;
+use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_RELAYER_ADDRESS;
 use crate::HERMES_CONFIG;
 use crate::IBC_RELAYER_ADDRESS;
@@ -175,7 +176,7 @@ pub async fn deploy_contracts(contact: &Contact) {
                 &format!("--eth-privkey={:#x}", *MINER_PRIVATE_KEY),
                 &format!("--contract={}", paths[1]),
                 &format!("--contractERC721={}", paths[2]),
-                &format!("--evm-prefix={}", "ethereum"),
+                &format!("--evm-prefix={}", EVM_CHAIN_PREFIX.to_string()),
                 "--test-mode=true",
             ])
             .output()
@@ -190,7 +191,7 @@ pub async fn deploy_contracts(contact: &Contact) {
                 &format!("--eth-privkey={:#x}", *MINER_PRIVATE_KEY),
                 &format!("--contract={}", C[1]),
                 &format!("--contractERC721={}", C[2]),
-                &format!("--evm-prefix={}", "ethereum"),
+                &format!("--evm-prefix={}", EVM_CHAIN_PREFIX.to_string()),
                 "--test-mode=true",
             ])
             .current_dir(C[3])
