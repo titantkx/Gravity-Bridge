@@ -1,6 +1,6 @@
 use crate::auction::auction_test_random;
 use crate::ibc_metadata::submit_and_pass_ibc_metadata_proposal;
-use crate::{happy_path_test, happy_path_test_v2, utils::*};
+use crate::{happy_path_test, happy_path_test_v2, utils::*, EVM_CHAIN_PREFIX};
 use clarity::Address as EthAddress;
 use deep_space::client::ChainStatus;
 use deep_space::utils::decode_any;

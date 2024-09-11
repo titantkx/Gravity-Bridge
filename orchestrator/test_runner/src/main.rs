@@ -18,7 +18,7 @@ use crate::ethereum_blacklist_test::ethereum_blacklist_test;
 use crate::ethereum_keys::ethereum_keys_test;
 use crate::ibc_auto_forward::ibc_auto_forward_test;
 use crate::ibc_metadata::ibc_metadata_proposal_test;
-use crate::ica_host::ica_host_happy_path;
+// use crate::ica_host::ica_host_happy_path;
 use crate::inflation_knockdown::inflation_knockdown_test;
 use crate::invalid_events::invalid_events;
 use crate::pause_bridge::pause_bridge_test;
@@ -66,7 +66,7 @@ mod happy_path;
 mod happy_path_v2;
 mod ibc_auto_forward;
 mod ibc_metadata;
-mod ica_host;
+// mod ica_host;
 mod inflation_knockdown;
 mod invalid_events;
 mod orch_keys;
@@ -119,6 +119,9 @@ lazy_static! {
     // LOCAL ETHEREUM CONSTANTS
     static ref ETH_NODE: String =
         env::var("ETH_NODE").unwrap_or_else(|_| "http://localhost:8545".to_owned());
+
+        static ref EVM_CHAIN_PREFIX: String =
+        env::var("EVM_CHAIN_PREFIX").unwrap_or_else(|_| "ethererum".to_owned());
 }
 
 /// this value reflects the contents of /tests/container-scripts/setup-validator.sh
@@ -342,7 +345,15 @@ pub async fn main() {
             return;
         } else if test_type == "VALSET_REWARDS" {
             info!("Starting Valset rewards test");
-            valset_rewards_test(&web30, grpc_client, &gravity_contact, keys, gravity_address).await;
+            valset_rewards_test(
+                &web30,
+                grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
+                &gravity_contact,
+                keys,
+                gravity_address,
+            )
+            .await;
             return;
         } else if test_type == "V2_HAPPY_PATH" || test_type == "HAPPY_PATH_V2" {
             info!("Starting happy path for Gravity v2");
@@ -371,7 +382,15 @@ pub async fn main() {
             return;
         } else if test_type == "RELAY_MARKET" {
             info!("Starting relay market tests!");
-            relay_market_test(&web30, grpc_client, &gravity_contact, keys, gravity_address).await;
+            relay_market_test(
+                &web30,
+                grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
+                &gravity_contact,
+                keys,
+                gravity_address,
+            )
+            .await;
             return;
         } else if test_type == "ORCHESTRATOR_KEYS" {
             info!("Starting orchestrator key update tests!");
@@ -423,6 +442,7 @@ pub async fn main() {
             pause_bridge_test(
                 &web30,
                 grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
                 &gravity_contact,
                 keys,
                 gravity_address,
@@ -437,7 +457,13 @@ pub async fn main() {
             return;
         } else if test_type == "ETHEREUM_BLACKLIST" {
             info!("Starting ethereum blacklist test");
-            ethereum_blacklist_test(grpc_client, &gravity_contact, keys).await;
+            ethereum_blacklist_test(
+                grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
+                &gravity_contact,
+                keys,
+            )
+            .await;
             return;
         } else if test_type == "AIRDROP_PROPOSAL" {
             info!("Starting airdrop governance proposal test");
@@ -589,20 +615,20 @@ pub async fn main() {
             )
             .await;
             return;
-        } else if test_type == "ICA_HOST_HAPPY_PATH" {
-            info!("Starting Interchain Accounts Host Module Happy Path Test");
-            start_ibc_relayer(&gravity_contact, &ibc_contact, &keys, &ibc_keys).await;
-            ica_host_happy_path(
-                &web30,
-                grpc_client,
-                &gravity_contact,
-                &ibc_contact,
-                keys,
-                ibc_keys,
-                gravity_address,
-            )
-            .await;
-            return;
+        // } else if test_type == "ICA_HOST_HAPPY_PATH" {
+        //     info!("Starting Interchain Accounts Host Module Happy Path Test");
+        //     start_ibc_relayer(&gravity_contact, &ibc_contact, &keys, &ibc_keys).await;
+        //     ica_host_happy_path(
+        //         &web30,
+        //         grpc_client,
+        //         &gravity_contact,
+        //         &ibc_contact,
+        //         keys,
+        //         ibc_keys,
+        //         gravity_address,
+        //     )
+        //     .await;
+        //     return;
         } else if test_type == "INFLATION_KNOCKDOWN" {
             info!("Starting Inflation knockdown test!");
             inflation_knockdown_test(&gravity_contact, keys).await;

@@ -4,6 +4,7 @@ use crate::get_fee;
 use crate::ADDRESS_PREFIX;
 use crate::COSMOS_NODE_GRPC;
 use crate::ETH_NODE;
+use crate::EVM_CHAIN_PREFIX;
 use crate::STAKING_TOKEN;
 use crate::TOTAL_TIMEOUT;
 use crate::{one_eth, MINER_PRIVATE_KEY};
@@ -378,8 +379,9 @@ pub async fn start_orchestrators(
                 web30,
                 contact,
                 grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
                 gravity_address,
-                params.gravity_id,
+                evm_chain_params.gravity_id,
                 get_fee(None),
                 config,
             );

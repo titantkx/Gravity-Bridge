@@ -3,7 +3,9 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
-use crate::{get_deposit, get_fee, MINER_PRIVATE_KEY, STAKING_TOKEN, TOTAL_TIMEOUT};
+use crate::{
+    get_deposit, get_fee, EVM_CHAIN_PREFIX, MINER_PRIVATE_KEY, STAKING_TOKEN, TOTAL_TIMEOUT,
+};
 use crate::{
     happy_path_v2::deploy_cosmos_representing_erc20_and_check_adoption, one_eth, utils::*,
     ADDRESS_PREFIX, OPERATION_TIMEOUT,
@@ -509,6 +511,7 @@ pub async fn setup(
     if grpc_client
         .denom_to_erc20(QueryDenomToErc20Request {
             denom: footoken.base.clone(),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         })
         .await
         .is_err()
@@ -528,6 +531,7 @@ pub async fn setup(
     if grpc_client
         .denom_to_erc20(QueryDenomToErc20Request {
             denom: footoken2.base.clone(),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         })
         .await
         .is_err()
@@ -647,6 +651,7 @@ async fn seed_pool(contact: &Contact, keys: &[ValidatorKeys], denom: String) {
                 eth_dest: v.eth_key.to_address().to_string(),
                 bridge_fee: Some(get_fee(Some(denom.clone())).into()),
                 chain_fee: Some(chain_fee_coin.clone().into()),
+                evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
             };
             let msg = Msg::new(MSG_SEND_TO_ETH_TYPE_URL, ste_msg);
             let send_tx = contact

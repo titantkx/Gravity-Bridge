@@ -1,6 +1,7 @@
 use crate::get_fee;
 use crate::utils::check_erc20_balance;
 use crate::utils::*;
+use crate::EVM_CHAIN_PREFIX;
 use crate::MINER_ADDRESS;
 use crate::MINER_PRIVATE_KEY;
 use crate::OPERATION_TIMEOUT;
@@ -135,7 +136,7 @@ pub async fn iterate_attestations<F: FnMut(T), T: Message + Default>(
     grpc_client: &mut GravityQueryClient<Channel>,
     f: &mut F,
 ) {
-    let attestations = get_attestations(grpc_client, Some(1000))
+    let attestations = get_attestations(grpc_client, EVM_CHAIN_PREFIX.as_str(), Some(1000))
         .await
         .expect("Something happened while getting attestations after delegating to validator");
     for (i, att) in attestations.into_iter().enumerate() {
@@ -535,6 +536,7 @@ async fn test_batch(
     );
 
     let res = send_to_eth(
+        EVM_CHAIN_PREFIX.as_str(),
         dest_cosmos_private_key,
         dest_eth_address,
         Coin {
@@ -556,6 +558,7 @@ async fn test_batch(
         .unwrap();
     get_oldest_unsigned_transaction_batches(
         &mut grpc_client,
+        EVM_CHAIN_PREFIX.as_str(),
         requester_address,
         contact.get_prefix(),
     )
@@ -631,6 +634,7 @@ async fn submit_duplicate_erc20_send(
     for k in keys.iter() {
         let c_key = k.orch_key;
         let res = send_ethereum_claims(
+            EVM_CHAIN_PREFIX.as_str(),
             contact,
             c_key,
             vec![event.clone()],
