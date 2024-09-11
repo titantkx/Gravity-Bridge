@@ -121,7 +121,7 @@ lazy_static! {
         env::var("ETH_NODE").unwrap_or_else(|_| "http://localhost:8545".to_owned());
 
         static ref EVM_CHAIN_PREFIX: String =
-        env::var("EVM_CHAIN_PREFIX").unwrap_or_else(|_| "ethererum".to_owned());
+        env::var("EVM_CHAIN_PREFIX").unwrap_or_else(|_| "ethereum".to_owned());
 }
 
 /// this value reflects the contents of /tests/container-scripts/setup-validator.sh
