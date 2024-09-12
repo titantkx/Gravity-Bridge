@@ -32,6 +32,7 @@ use gravity_proto::cosmos_sdk_proto::cosmos::staking::v1beta1::{
 };
 use gravity_proto::cosmos_sdk_proto::cosmos::upgrade::v1beta1::{Plan, SoftwareUpgradeProposal};
 use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
+use gravity_proto::gravity::EvmChainParam;
 use gravity_proto::gravity::MsgSendToCosmosClaim;
 use gravity_utils::types::BatchRelayingMode;
 use gravity_utils::types::BatchRequestMode;
@@ -844,4 +845,31 @@ pub async fn wait_for_balance(
     }
 
     panic!("User did not attain >= expected balance");
+}
+
+#[derive(serde::Serialize)]
+pub struct EvmChainParamForProposal {
+    pub gravity_id: String,
+    pub bridge_active: bool,
+    pub contract_source_hash: String,
+    pub bridge_ethereum_address: String,
+    pub bridge_chain_id: String,
+    pub average_ethereum_block_time: String,
+    pub ethereum_blacklist: Vec<String>,
+    pub evm_chain_prefix: String,
+}
+
+impl EvmChainParamForProposal {
+    pub fn from_evm_chain_param(param: EvmChainParam) -> Self {
+        EvmChainParamForProposal {
+            gravity_id: param.gravity_id,
+            bridge_active: param.bridge_active,
+            contract_source_hash: param.contract_source_hash,
+            bridge_ethereum_address: param.bridge_ethereum_address,
+            bridge_chain_id: param.bridge_chain_id.to_string(),
+            average_ethereum_block_time: param.average_ethereum_block_time.to_string(),
+            ethereum_blacklist: param.ethereum_blacklist,
+            evm_chain_prefix: param.evm_chain_prefix,
+        }
+    }
 }

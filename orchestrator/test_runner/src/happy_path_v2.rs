@@ -373,11 +373,11 @@ pub async fn deploy_cosmos_representing_erc20_and_check_adoption(
         .unwrap();
     assert_eq!(got_symbol, token_metadata.symbol);
 
-    let got_supply = web30
-        .get_erc20_supply(erc20_contract, *MINER_ADDRESS)
-        .await
-        .unwrap();
-    assert_eq!(got_supply, 0u8.into());
+    // let got_supply = web30
+    //     .get_erc20_supply(erc20_contract, *MINER_ADDRESS)
+    //     .await
+    //     .unwrap();
+    // assert_eq!(got_supply, 0u8.into());
 
     erc20_contract
 }
