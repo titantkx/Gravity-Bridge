@@ -136,6 +136,7 @@ fn compile_protos(out_dir: &Path, tmp_dir: &Path) {
     // Compile all proto client for GRPC services
     println!("[info ] Compiling proto clients for GRPC services!");
     tonic_build::configure()
+        // .type_attribute("EvmChainParam", "#[derive(serde::Serialize)]")
         .build_client(true)
         .build_server(false)
         .out_dir(tmp_dir)

@@ -3057,6 +3057,8 @@ version = "0.1.0"
 dependencies = [
  "prost-build",
  "regex",
+ "serde",
+ "serde_json",
  "tonic-build",
  "walkdir",
 ]
