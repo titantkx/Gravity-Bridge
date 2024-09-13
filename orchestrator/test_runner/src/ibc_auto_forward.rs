@@ -2,6 +2,7 @@ use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::send_erc20_deposit;
 use crate::utils::*;
 use crate::EVM_CHAIN_PREFIX;
+use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::OPERATION_TIMEOUT;
 use crate::{
     get_ibc_chain_id, one_eth, ADDRESS_PREFIX, COSMOS_NODE_GRPC, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC,
@@ -489,7 +490,9 @@ pub async fn test_ibc_auto_forward_happy_path(
     amount: Uint256,             // The amount of erc20_address token to send to dest on ibc-test-1
 ) -> Result<(), GravityError> {
     // Make the test idempotent by getting the user's balance now
-    let bridged_erc20 = "gravity".to_string() + &erc20_address.clone().to_string();
+    let bridged_erc20 = EVM_CHAIN_PREFIX.to_string()
+        + &GRAVITY_DENOM_SEPARATOR.to_string()
+        + &erc20_address.clone().to_string();
     let pre_forward_balance = get_ibc_balance(
         dest,
         bridged_erc20.clone(),
