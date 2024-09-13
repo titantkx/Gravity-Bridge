@@ -34,6 +34,7 @@ use gravity_proto::cosmos_sdk_proto::cosmos::upgrade::v1beta1::{Plan, SoftwareUp
 use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
 use gravity_proto::gravity::EvmChainParam;
 use gravity_proto::gravity::MsgSendToCosmosClaim;
+use gravity_proto::gravity::Params;
 use gravity_utils::types::BatchRelayingMode;
 use gravity_utils::types::BatchRequestMode;
 use gravity_utils::types::GravityBridgeToolsConfig;
@@ -847,7 +848,7 @@ pub async fn wait_for_balance(
     panic!("User did not attain >= expected balance");
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, Clone)]
 pub struct EvmChainParamForProposal {
     pub gravity_id: String,
     pub bridge_active: bool,
@@ -872,4 +873,24 @@ impl EvmChainParamForProposal {
             evm_chain_prefix: param.evm_chain_prefix,
         }
     }
+}
+
+pub fn make_evm_chain_param_proposal<F>(params: Params, evm_chain_prefix: &str, func: F) -> String
+where
+    F: Fn(&mut EvmChainParamForProposal),
+{
+    let mut evm_chains_params_for_proposal: Vec<EvmChainParamForProposal> = params
+        .evm_chain_params
+        .clone()
+        .iter()
+        .map(|c| EvmChainParamForProposal::from_evm_chain_param(c.clone()))
+        .collect();
+    evm_chains_params_for_proposal.iter_mut().for_each(|c| {
+        if c.evm_chain_prefix.eq(evm_chain_prefix) {
+            func(c);
+        }
+    });
+    serde_json::to_string(&evm_chains_params_for_proposal)
+        .unwrap()
+        .clone()
 }

@@ -1,13 +1,13 @@
 //! This is a test for validator set relaying rewards
 
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
-use crate::get_fee;
 use crate::happy_path::test_valset_update;
 use crate::happy_path_v2::deploy_cosmos_representing_erc20_and_check_adoption;
 use crate::utils::{
     create_parameter_change_proposal, footoken_metadata, get_erc20_balance_safe,
-    vote_yes_on_proposals, EvmChainParamForProposal, ValidatorKeys,
+    vote_yes_on_proposals, ValidatorKeys,
 };
+use crate::{get_fee, make_evm_chain_param_proposal};
 use clarity::Address as EthAddress;
 use cosmos_gravity::query::get_gravity_params;
 use deep_space::coin::Coin;
@@ -47,34 +47,16 @@ pub async fn valset_rewards_test(
     };
 
     let params = get_gravity_params(&mut grpc_client).await.unwrap();
-    // let evm_chain_params = params
-    //     .evm_chain_params
-    //     .iter()
-    //     .find(|p| p.evm_chain_prefix.eq(evm_chain_prefix))
-    //     .unwrap();
-
-    // clone `params.evm_chain_params` and update `BridgeEthereumAddress` and `BridgeChainID`
-    let mut new_evm_chains_params: Vec<EvmChainParamForProposal> = params
-        .evm_chain_params
-        .clone()
-        .iter()
-        .map(|c| EvmChainParamForProposal::from_evm_chain_param(c.clone()))
-        .collect();
-    new_evm_chains_params.iter_mut().for_each(|p| {
-        if p.evm_chain_prefix.eq(evm_chain_prefix) {
-            p.bridge_ethereum_address = gravity_address.to_string();
-            p.bridge_chain_id = "15".to_string();
-        }
-    });
-
-    let new_evm_chains_params_json = serde_json::to_string(&new_evm_chains_params).unwrap();
 
     let mut params_to_change = Vec::new();
 
     let evm_chain_param = ParamChange {
         subspace: "gravity".to_string(),
         key: "EvmChainParams".to_string(),
-        value: new_evm_chains_params_json.clone(),
+        value: make_evm_chain_param_proposal(params, evm_chain_prefix, |p| {
+            p.bridge_ethereum_address = gravity_address.to_string();
+            p.bridge_chain_id = "15".to_string();
+        }),
     };
     params_to_change.push(evm_chain_param);
     let json_value = serde_json::to_string(&valset_reward).unwrap().to_string();

@@ -73,8 +73,10 @@ pub async fn pause_bridge_test(
     let mut params_to_change = Vec::new();
     let halt = ParamChange {
         subspace: "gravity".to_string(),
-        key: "BridgeActive".to_string(),
-        value: format!("{}", false),
+        key: "EvmChainParams".to_string(),
+        value: make_evm_chain_param_proposal(params, evm_chain_prefix, |p| {
+            p.bridge_active = false;
+        }),
     };
     params_to_change.push(halt);
 
@@ -189,11 +191,14 @@ pub async fn pause_bridge_test(
     info!("Batch creation was blocked by bridge pause!");
 
     info!("Voting to resume bridge operations!");
+    let params = get_gravity_params(&mut grpc_client).await.unwrap();
     let mut params_to_change = Vec::new();
     let unhalt = ParamChange {
         subspace: "gravity".to_string(),
-        key: "BridgeActive".to_string(),
-        value: format!("{}", true),
+        key: "EvmChainParams".to_string(),
+        value: make_evm_chain_param_proposal(params, evm_chain_prefix, |p| {
+            p.bridge_active = true;
+        }),
     };
     params_to_change.push(unhalt);
 
