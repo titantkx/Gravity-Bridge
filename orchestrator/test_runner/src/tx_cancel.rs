@@ -2,6 +2,7 @@ use crate::happy_path::test_erc20_deposit_panic;
 use crate::one_eth;
 use crate::utils::*;
 use crate::EVM_CHAIN_PREFIX;
+use crate::GRAVITY_DENOM_SEPARATOR;
 use clarity::Address as EthAddress;
 use cosmos_gravity::query::get_pending_send_to_eth;
 use cosmos_gravity::send::cancel_send_to_eth;
@@ -41,7 +42,12 @@ pub async fn send_to_eth_and_cancel(
     )
     .await;
 
-    let token_name = format!("gravity{}", erc20_address);
+    let token_name = format!(
+        "{}{}{}",
+        EVM_CHAIN_PREFIX.as_str(),
+        GRAVITY_DENOM_SEPARATOR.as_str(),
+        erc20_address
+    );
 
     let bridge_denom_fee = Coin {
         denom: token_name.clone(),

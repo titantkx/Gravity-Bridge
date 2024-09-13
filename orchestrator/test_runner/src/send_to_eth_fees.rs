@@ -5,8 +5,8 @@ use crate::utils::{
     footoken_metadata, get_user_key, vote_yes_on_proposals, BridgeUserKey, ValidatorKeys,
 };
 use crate::{
-    get_deposit, get_fee, one_eth, ADDRESS_PREFIX, EVM_CHAIN_PREFIX, OPERATION_TIMEOUT,
-    STAKING_TOKEN, TOTAL_TIMEOUT,
+    get_deposit, get_fee, one_eth, ADDRESS_PREFIX, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR,
+    OPERATION_TIMEOUT, STAKING_TOKEN, TOTAL_TIMEOUT,
 };
 use actix::clock::sleep;
 use clarity::Address as EthAddress;
@@ -47,7 +47,12 @@ pub async fn send_to_eth_fees_test(
     )
     .await;
     let cosmos_denom = ibc_metadata.base;
-    let erc20_denom: String = format!("gravity{}", erc20_addresses.first().unwrap().clone());
+    let erc20_denom: String = format!(
+        "{}{}{}",
+        EVM_CHAIN_PREFIX.as_str(),
+        GRAVITY_DENOM_SEPARATOR.as_str(),
+        erc20_addresses.first().unwrap().clone()
+    );
     let (_staker_key, _staker_addr) = (staker_key.cosmos_key, staker_key.cosmos_address);
 
     let val0_cosmos_key = keys[0].validator_key;

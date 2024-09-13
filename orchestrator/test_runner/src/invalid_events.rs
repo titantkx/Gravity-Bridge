@@ -11,6 +11,8 @@ use crate::utils::get_event_nonce_safe;
 use crate::utils::get_user_key;
 use crate::utils::start_orchestrators;
 use crate::utils::ValidatorKeys;
+use crate::EVM_CHAIN_PREFIX;
+use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::MINER_ADDRESS;
 use crate::MINER_PRIVATE_KEY;
 use crate::TOTAL_TIMEOUT;
@@ -38,7 +40,12 @@ pub async fn invalid_events(
     grpc_client: GravityQueryClient<Channel>,
 ) {
     let mut grpc_client = grpc_client;
-    let erc20_denom = format!("gravity{}", erc20_address);
+    let erc20_denom = format!(
+        "{}{}{}",
+        EVM_CHAIN_PREFIX.as_str(),
+        GRAVITY_DENOM_SEPARATOR.as_str(),
+        erc20_address
+    );
 
     // figure out how many of a given erc20 we already have on startup so that we can
     // keep track of incrementation. This makes it possible to run this test again without

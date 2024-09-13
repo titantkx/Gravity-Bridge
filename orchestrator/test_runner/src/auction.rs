@@ -4,7 +4,8 @@ use std::time::{Duration, Instant};
 
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::{
-    get_deposit, get_fee, EVM_CHAIN_PREFIX, MINER_PRIVATE_KEY, STAKING_TOKEN, TOTAL_TIMEOUT,
+    get_deposit, get_fee, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR, MINER_PRIVATE_KEY,
+    STAKING_TOKEN, TOTAL_TIMEOUT,
 };
 use crate::{
     happy_path_v2::deploy_cosmos_representing_erc20_and_check_adoption, one_eth, utils::*,
@@ -618,7 +619,12 @@ pub async fn setup(
 
 // Seeds the auction pool with the bridged `erc20_address`, footoken, and footoken2
 async fn seed_pool_multi(contact: &Contact, keys: &[ValidatorKeys], erc20_address: EthAddress) {
-    let denom = format!("gravity{}", erc20_address);
+    let denom = format!(
+        "{}{}{}",
+        EVM_CHAIN_PREFIX.as_str(),
+        GRAVITY_DENOM_SEPARATOR.as_str(),
+        erc20_address
+    );
     seed_pool(contact, keys, denom).await;
     let footoken = footoken_metadata(contact).await;
     seed_pool(contact, keys, footoken.base).await;
