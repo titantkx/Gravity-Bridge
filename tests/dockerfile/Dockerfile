@@ -38,11 +38,11 @@ COPY --from=planner /recipe.json /gravity/orchestrator/recipe.json
 # --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
 RUN pushd /gravity/orchestrator && cargo chef cook --release --recipe-path recipe.json --bin test-runner
 
+ADD solidity.tar.gz /
+RUN pushd /gravity/solidity/ && HUSKY_SKIP_INSTALL=1 npm install && npm run typechain
+
 ADD module.tar.gz /
 RUN pushd /gravity/module/ && PATH=$PATH:/usr/local/go/bin GOPROXY=https://proxy.golang.org make && PATH=$PATH:/usr/local/go/bin make install
-
-ADD gravity.tar.gz /
-RUN pushd /gravity/solidity/ && HUSKY_SKIP_INSTALL=1 npm install && npm run typechain
 
 ADD orchestrator.tar.gz /
 # build the test runner specifically to cache a release artifact
