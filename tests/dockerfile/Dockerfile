@@ -25,8 +25,7 @@ RUN mkdir /ibc-relayer-logs && touch /ibc-relayer-logs/hermes-logs && touch /ibc
 FROM base AS planner
 ADD gravity.tar.gz /
 # --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-  pushd /gravity/orchestrator && cargo chef prepare --recipe-path /recipe.json --bin test_runner
+RUN pushd /gravity/orchestrator && cargo chef prepare --recipe-path /recipe.json --bin test_runner
 
 #
 #
@@ -37,8 +36,7 @@ FROM base AS builder
 RUN mkdir -p /gravity/orchestrator
 COPY --from=planner /recipe.json /gravity/orchestrator/recipe.json
 # --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-  pushd /gravity/orchestrator && cargo chef cook --release --recipe-path recipe.json --bin test-runner
+RUN pushd /gravity/orchestrator && cargo chef cook --release --recipe-path recipe.json --bin test-runner
 
 # the actual source code for this repo, this **only** includes checked in files!
 # this is a bit of a pain but it does speed things up a lot
@@ -50,7 +48,6 @@ RUN pushd /gravity/solidity/ && HUSKY_SKIP_INSTALL=1 npm install && npm run type
 
 # build the test runner specifically to cache a release artifact
 # --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-  pushd /gravity/orchestrator/test_runner && PATH=$PATH:$HOME/.cargo/bin cargo build --bin test-runner --release
+RUN pushd /gravity/orchestrator/test_runner && PATH=$PATH:$HOME/.cargo/bin cargo build --bin test-runner --release
 
 RUN git config --global --add safe.directory /gravity
