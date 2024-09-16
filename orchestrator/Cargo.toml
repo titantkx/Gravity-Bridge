@@ -1,5 +1,5 @@
 [workspace]
-default-members = ["gbt"]
+default-members = ["gbt", "test_runner"]
 members = [
   "orchestrator",
   "cosmos_gravity",
