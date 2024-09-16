@@ -12,6 +12,9 @@ pushd $REPOFOLDER
 #docker system prune -a -f
 # Build base container
 git archive --format=tar.gz -o $DOCKERFOLDER/gravity.tar.gz --prefix=gravity/ HEAD
+git archive --format=tar.gz -o $DOCKERFOLDER/module.tar.gz --prefix=gravity/module/ HEAD:module/
+git archive --format=tar.gz -o $DOCKERFOLDER/solidity.tar.gz --prefix=gravity/solidity/ HEAD:solidity/
+git archive --format=tar.gz -o $DOCKERFOLDER/orchestrator.tar.gz --prefix=gravity/orchestrator/ HEAD:orchestrator/
 pushd $DOCKERFOLDER
 
 # setup for Mac apple silicon Compatibility
