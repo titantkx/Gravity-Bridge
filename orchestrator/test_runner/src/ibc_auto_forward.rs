@@ -666,7 +666,9 @@ pub async fn test_ibc_auto_forward_failure<
     input: IbcAutoForwardFailureTest,
 ) -> Result<(), GravityError> {
     // Make the test idempotent by getting the user's balance now
-    let bridged_erc20 = "gravity".to_string() + &input.erc20_address.clone().to_string();
+    let bridged_erc20 = EVM_CHAIN_PREFIX.to_string()
+        + &GRAVITY_DENOM_SEPARATOR.to_string()
+        + &input.erc20_address.clone().to_string();
     let ibc_pre_forward_balance = get_ibc_balance(
         input.dst_address,
         bridged_erc20.clone(),

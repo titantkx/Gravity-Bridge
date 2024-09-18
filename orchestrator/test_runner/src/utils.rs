@@ -611,8 +611,8 @@ pub async fn vote_yes_with_retry(
     }
     let res = res.unwrap();
     info!(
-        "Voting yes on governance proposal costing {} gas",
-        res.gas_used
+        "Voting yes on governance proposal {} costing {} gas",
+        proposal_id, res.gas_used
     );
 }
 

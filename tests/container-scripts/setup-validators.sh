@@ -80,8 +80,8 @@ sed -i 's/\<stake\>/ugraviton/g' /edited-genesis.json
 mv /edited-genesis.json /genesis.json
 
 VESTING_AMOUNT="1000000000ugraviton"
-START_VESTING=$(expr $(date +%s) + 600)  # Start vesting 10 minutes from now
-END_VESTING=$(expr $START_VESTING + 900) # End vesting 15 minutes from now, giving a 5 minute window for the test to work
+START_VESTING=$(expr $(date +%s) + 300)  # Start vesting 15 minutes from now
+END_VESTING=$(expr $START_VESTING + 120) # End vesting 20 minutes from now, giving a 5 minute window for the test to work
 
 # Sets up an arbitrary number of validators on a single machine by manipulating
 # the --home parameter on gaiad
@@ -118,6 +118,7 @@ for i in $(seq 1 $NODES); do
   ARGS="$GAIA_HOME --keyring-backend test"
   ORCHESTRATOR_KEY=$($BIN keys show orchestrator$i -a $ARGS)
   ETHEREUM_KEY=$(grep address /validator-eth-keys | sed -n "$i"p | sed 's/.*://')
+  sed -i 's/^\(pruning = \).*/\1\"nothing\"/' /validator$i/config/app.toml
   # the /8 containing 7.7.7.7 is assigned to the DOD and never routable on the public internet
   # we're using it in private to prevent gaia from blacklisting it as unroutable
   # and allow local pex

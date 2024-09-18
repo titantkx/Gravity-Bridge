@@ -5,8 +5,8 @@ use crate::{
     create_default_test_config, create_parameter_change_proposal, delegate_and_confirm,
     get_ethermint_key, get_fee, get_ibc_chain_id, one_eth, send_eth_bulk, start_orchestrators,
     wait_for_balance, EthAddress, EthermintUserKey, GravityQueryClient, ValidatorKeys,
-    ADDRESS_PREFIX, COSMOS_NODE_GRPC, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT,
-    STAKING_TOKEN, TOTAL_TIMEOUT,
+    ADDRESS_PREFIX, COSMOS_NODE_GRPC, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR,
+    IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT, STAKING_TOKEN, TOTAL_TIMEOUT,
 };
 use deep_space::{Coin, Contact, CosmosPrivateKey, PrivateKey};
 use gravity_proto::cosmos_sdk_proto::cosmos::bank::v1beta1::query_client::QueryClient as BankQueryClient;
@@ -104,7 +104,9 @@ pub async fn setup_ethermint_test(
     // Send the user a bit of eth for future queries
     send_eth_bulk(one_eth(), &[user_eth_address], web30).await;
 
-    let erc20_denom = "gravity".to_string() + &erc20_address.to_string();
+    let erc20_denom = EVM_CHAIN_PREFIX.to_string()
+        + &GRAVITY_DENOM_SEPARATOR.to_string()
+        + &erc20_address.to_string();
     let send_amount: Uint256 = one_eth() * 10u8.into();
     send_erc20_deposit(
         web30,
@@ -137,7 +139,9 @@ pub async fn example_ethermint_key_usage(
     let user_cosmos_address = ethermint_key.ethermint_address;
     let user_eth_address = ethermint_key.eth_address;
     let denom: String = STAKING_TOKEN.clone().to_string();
-    let erc20_denom = "gravity".to_string() + &erc20_address.to_string();
+    let erc20_denom = EVM_CHAIN_PREFIX.to_string()
+        + &GRAVITY_DENOM_SEPARATOR.to_string()
+        + &erc20_address.to_string();
     // BANK Module
     // Send some tokens out of the Ethermint account
     let send_amount: Uint256 = 1u8.into();

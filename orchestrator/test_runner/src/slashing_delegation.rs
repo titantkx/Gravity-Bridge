@@ -3,7 +3,7 @@
 //! and exists to prevent regressions and hopefully find any new bugs of the same nature
 
 use crate::happy_path::test_valset_update;
-use crate::signature_slashing::{reduce_slashing_window, wait_for_height};
+use crate::signature_slashing::{change_slashing_window, wait_for_height};
 use crate::utils::{
     create_default_test_config, get_operator_address, get_user_key, start_orchestrators,
     ValidatorKeys,
@@ -101,7 +101,7 @@ pub async fn slashing_delegation_test(
     }
 
     // reduce slashing window so that slashing occurs quickly
-    reduce_slashing_window(contact, &mut grpc_client, &keys).await;
+    change_slashing_window(contact, &mut grpc_client, &keys, 10).await;
 
     // wait for slashing to occur
     wait_for_height(20, contact).await;
@@ -195,6 +195,8 @@ pub async fn slashing_delegation_test(
         .await
         .unwrap();
     info!("Validator commission withdraw result is {:?}", res);
+
+    change_slashing_window(contact, &mut grpc_client, &keys, 10000).await;
 
     info!("Successfully completed Slashing Delegation test!");
 }
