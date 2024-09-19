@@ -92,8 +92,13 @@ pub async fn send_to_cosmos(
             web3.prepare_transaction(
                 gravity_contract,
                 encode_call(
-                    "sendToCosmos(address,string,uint256)",
-                    &[erc20.into(), encoded_destination_address, amount.into()],
+                    "sendToCosmos(address,string,uint256,string)",
+                    &[
+                        erc20.into(),
+                        encoded_destination_address,
+                        amount.into(),
+                        "".into(),
+                    ],
                 )?,
                 0u32.into(),
                 sender_secret,

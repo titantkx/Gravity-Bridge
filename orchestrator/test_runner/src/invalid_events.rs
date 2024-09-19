@@ -302,8 +302,13 @@ pub async fn send_to_cosmos_invalid(
             web3.prepare_transaction(
                 gravity_contract,
                 encode_call(
-                    "sendToCosmos(address,string,uint256)",
-                    &[erc20.into(), encoded_destination_address, one_eth().into()],
+                    "sendToCosmos(address,string,uint256,string)",
+                    &[
+                        erc20.into(),
+                        encoded_destination_address,
+                        one_eth().into(),
+                        "".into(),
+                    ],
                 )
                 .unwrap(),
                 0u32.into(),
