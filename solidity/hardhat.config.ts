@@ -839,7 +839,9 @@ module.exports = {
     runOnCompile: true
   },
   gasReporter: {
-    enabled: true
+    enabled: true,
+    currency: "USD",
+    coinmarketcap: process.env.COIN_MARKET_CAP_KEY || undefined
   },
   mocha: {
     timeout: 2000000
