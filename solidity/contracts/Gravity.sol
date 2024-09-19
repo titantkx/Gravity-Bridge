@@ -98,7 +98,8 @@ contract Gravity is ReentrancyGuard {
 		address indexed _sender,
 		string _destination,
 		uint256 _amount,
-		uint256 _eventNonce
+		uint256 _eventNonce,
+		string _memo
 	);
 	event ERC20DeployedEvent(
 		// FYI: Can't index on a string without doing a bunch of weird stuff
@@ -554,7 +555,8 @@ contract Gravity is ReentrancyGuard {
 	function sendToCosmos(
 		address _tokenContract,
 		string calldata _destination,
-		uint256 _amount
+		uint256 _amount,
+		string calldata _memo
 	) external nonReentrant {
 		// we snapshot our current balance of this token
 		uint256 ourStartingBalance = IERC20(_tokenContract).balanceOf(address(this));
@@ -582,7 +584,8 @@ contract Gravity is ReentrancyGuard {
 			msg.sender,
 			_destination,
 			ourEndingBalance - ourStartingBalance,
-			state_lastEventNonce
+			state_lastEventNonce,
+			_memo
 		);
 	}
 

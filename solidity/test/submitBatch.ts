@@ -1,15 +1,13 @@
 import chai from "chai";
-import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
+import { ethers } from "hardhat";
 
 import { deployContracts } from "../test-utils";
 import {
-  getSignerAddresses,
-  makeCheckpoint,
-  signHash,
-  makeTxBatchHash,
   examplePowers,
-  ZeroAddress,
+  getSignerAddresses,
+  signHash,
+  ZeroAddress
 } from "../test-utils/pure";
 
 chai.use(solidity);
@@ -39,7 +37,7 @@ async function runTest(opts: {
   const {
     gravity,
     testERC20,
-    checkpoint: deployCheckpoint,
+    checkpoint: deployCheckpoint
   } = await deployContracts(gravityId, validators, powers);
 
   // Transfer out to Cosmos, locking coins
@@ -48,7 +46,8 @@ async function runTest(opts: {
   await gravity.functions.sendToCosmos(
     testERC20.address,
     ethers.utils.formatBytes32String("myCosmosAddress"),
-    1000
+    1000,
+    ""
   );
 
   // Prepare batch
@@ -90,7 +89,7 @@ async function runTest(opts: {
       "uint256[]",
       "uint256",
       "address",
-      "uint256",
+      "uint256"
     ],
     [
       gravityId,
@@ -100,7 +99,7 @@ async function runTest(opts: {
       txFees,
       batchNonce,
       testERC20.address,
-      batchTimeout,
+      batchTimeout
     ]
   );
   let digest = ethers.utils.keccak256(abiEncoded);
@@ -158,7 +157,7 @@ async function runTest(opts: {
     valsetNonce: currentValsetNonce,
     rewardAmount: 0,
     rewardToken: ZeroAddress
-  }
+  };
 
   let batchSubmitTx = await gravity.submitBatch(
     valset,
@@ -202,9 +201,7 @@ describe("submitBatch tests", function () {
   it("throws on non matching checkpoint for current valset", async function () {
     await expect(
       runTest({ nonMatchingCurrentValset: true })
-    ).to.be.revertedWith(
-      "IncorrectCheckpoint()"
-    );
+    ).to.be.revertedWith("IncorrectCheckpoint()");
   });
 
   it("throws on bad validator sig", async function () {
@@ -241,7 +238,7 @@ describe("submitBatch Go test hash", function () {
     const {
       gravity,
       testERC20,
-      checkpoint: deployCheckpoint,
+      checkpoint: deployCheckpoint
     } = await deployContracts(gravityId, validators, powers);
 
     // Prepare batch
@@ -258,14 +255,14 @@ describe("submitBatch Go test hash", function () {
     await gravity.functions.sendToCosmos(
       testERC20.address,
       ethers.utils.formatBytes32String("myCosmosAddress"),
-      1000
+      1000,
+      ""
     );
 
     // Call method
     // ===========
-    const batchMethodName = ethers.utils.formatBytes32String(
-      "transactionBatch"
-    );
+    const batchMethodName =
+      ethers.utils.formatBytes32String("transactionBatch");
     const abiEncodedBatch = ethers.utils.defaultAbiCoder.encode(
       [
         "bytes32",
@@ -275,7 +272,7 @@ describe("submitBatch Go test hash", function () {
         "uint256[]",
         "uint256",
         "address",
-        "uint256",
+        "uint256"
       ],
       [
         gravityId,
@@ -285,7 +282,7 @@ describe("submitBatch Go test hash", function () {
         txFees,
         batchNonce,
         testERC20.address,
-        batchTimeout,
+        batchTimeout
       ]
     );
     const batchDigest = ethers.utils.keccak256(abiEncodedBatch);
@@ -298,7 +295,7 @@ describe("submitBatch Go test hash", function () {
       txFees: txFees,
       batchNonce: batchNonce,
       batchTimeout: batchTimeout,
-      tokenContract: testERC20.address,
+      tokenContract: testERC20.address
     });
     console.log("abiEncodedBatch:", abiEncodedBatch);
     console.log("batchDigest:", batchDigest);
@@ -312,7 +309,7 @@ describe("submitBatch Go test hash", function () {
       valsetNonce: currentValsetNonce,
       rewardAmount: 0,
       rewardToken: ZeroAddress
-    }
+    };
 
     await gravity.submitBatch(
       valset,
