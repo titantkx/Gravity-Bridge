@@ -661,6 +661,7 @@ async fn submit_duplicate_erc20_send(
         destination: receiver.to_string(),
         validated_destination: Some(receiver),
         amount,
+        memo: "".to_string(),
     };
 
     // iterate through all validators and try to send an event with duplicate nonce

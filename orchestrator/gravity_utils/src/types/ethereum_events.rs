@@ -447,6 +447,8 @@ pub struct SendToCosmosEvent {
     pub event_nonce: u64,
     /// The block height this event occurred at
     pub block_height: Uint256,
+    /// memo
+    pub memo: String,
 }
 
 /// struct for holding the data encoded fields
@@ -459,11 +461,13 @@ struct SendToCosmosEventData {
     pub amount: Uint256,
     /// The transaction's nonce, used to make sure there can be no accidental duplication
     pub event_nonce: Uint256,
+    /// Memo
+    pub memo: String,
 }
 
 impl SendToCosmosEvent {
     fn decode_data_bytes(data: &[u8]) -> Result<SendToCosmosEventData, GravityError> {
-        if data.len() < 4 * 32 {
+        if data.len() < 5 * 32 {
             return Err(GravityError::InvalidEventLogError(
                 "too short for SendToCosmosEventData".to_string(),
             ));
@@ -472,9 +476,9 @@ impl SendToCosmosEvent {
         let amount = Uint256::from_be_bytes(&data[32..64]);
         let event_nonce = Uint256::from_be_bytes(&data[64..96]);
 
-        // discard words three and four which contain the data type and length
-        let destination_str_len_start = 3 * 32;
-        let destination_str_len_end = 4 * 32;
+        // discard words 4 and 5 which contain the data type and length
+        let destination_str_len_start = 4 * 32;
+        let destination_str_len_end = 5 * 32;
         let destination_str_len =
             Uint256::from_be_bytes(&data[destination_str_len_start..destination_str_len_end]);
 
@@ -485,7 +489,7 @@ impl SendToCosmosEvent {
         }
         let destination_str_len: usize = destination_str_len.to_string().parse().unwrap();
 
-        let destination_str_start = 4 * 32;
+        let destination_str_start = 5 * 32;
         let destination_str_end = destination_str_start + destination_str_len;
 
         if data.len() < destination_str_end {
@@ -507,6 +511,7 @@ impl SendToCosmosEvent {
                 destination: String::new(),
                 event_nonce,
                 amount,
+                memo: String::new(),
             });
         }
         // whitespace can not be a valid part of a bech32 address, so we can safely trim it
@@ -514,18 +519,69 @@ impl SendToCosmosEvent {
 
         if dest.as_bytes().len() > ONE_MEGABYTE {
             warn!("Event nonce {} sends tokens to a destination that exceeds the length limit, these funds will be allocated to the community pool", event_nonce);
-            Ok(SendToCosmosEventData {
+            return Ok(SendToCosmosEventData {
                 destination: String::new(),
                 event_nonce,
                 amount,
-            })
-        } else {
-            Ok(SendToCosmosEventData {
-                destination: dest,
+                memo: String::new(),
+            });
+        }
+
+        // memo
+        let memo_str_len_start = ((destination_str_end + 31) / 32) * 32;
+        let memo_str_len_end = memo_str_len_start + 32;
+        let memo_str_len = Uint256::from_be_bytes(&data[memo_str_len_start..memo_str_len_end]);
+
+        if memo_str_len > u32::MAX.into() {
+            return Err(GravityError::InvalidEventLogError(
+                "memo length overflow, probably incorrect parsing".to_string(),
+            ));
+        }
+        let memo_str_len: usize = memo_str_len.to_string().parse().unwrap();
+
+        let memo_str_start = memo_str_len_end;
+        let memo_str_end = memo_str_start + memo_str_len;
+
+        if data.len() < memo_str_end {
+            return Err(GravityError::InvalidEventLogError(
+                "Erc20DeployedEvent dynamic data too short".to_string(),
+            ));
+        }
+        let memo_data = &data[memo_str_start..memo_str_end];
+        let memo = String::from_utf8(memo_data.to_vec());
+
+        if memo.is_err() {
+            if memo_data.len() < 1000 {
+                warn!("Event nonce {} sends tokens to {} which is invalid utf-8, these funds will be allocated to the community pool", event_nonce, bytes_to_hex_str(destination));
+            } else {
+                warn!("Event nonce {} sends tokens to a destination that is invalid utf-8, these funds will be allocated to the community pool", event_nonce);
+            }
+            return Ok(SendToCosmosEventData {
+                destination: String::new(),
                 event_nonce,
                 amount,
-            })
+                memo: String::new(),
+            });
         }
+        // whitespace can not be a valid part of a bech32 address, so we can safely trim it
+        let memo = memo.unwrap().trim().to_string();
+
+        if memo.as_bytes().len() > ONE_MEGABYTE {
+            warn!("Event nonce {} sends tokens to a destination that exceeds the length limit, these funds will be allocated to the community pool", event_nonce);
+            return Ok(SendToCosmosEventData {
+                destination: String::new(),
+                event_nonce,
+                amount,
+                memo: String::new(),
+            });
+        }
+
+        Ok(SendToCosmosEventData {
+            destination: dest,
+            event_nonce,
+            amount,
+            memo,
+        })
     }
 }
 impl EthereumEvent for SendToCosmosEvent {
@@ -583,6 +639,7 @@ impl EthereumEvent for SendToCosmosEvent {
                     amount: data.amount,
                     event_nonce,
                     block_height,
+                    memo: data.memo,
                 })
             }
         } else {
@@ -631,6 +688,7 @@ impl EthereumEvent for SendToCosmosEvent {
             ethereum_sender: self.sender.to_string(),
             orchestrator: orchestrator.to_string(),
             evm_chain_prefix,
+            memo: self.memo,
         };
         Msg::new(MSG_SEND_TO_COSMOS_CLAIM_TYPE_URL, claim)
     }
@@ -1121,6 +1179,7 @@ mod tests {
             destination: "gravity1194za6yvg7djz3c6vqlcxzxwcjkaz9rdqs2eg9p".to_string(),
             amount: 100u8.into(),
             event_nonce: 2u8.into(),
+            memo: "".to_string(),
         };
         let res = SendToCosmosEvent::decode_data_bytes(&event_bytes).unwrap();
         assert_eq!(correct, res);

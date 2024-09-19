@@ -633,6 +633,8 @@ pub struct MsgSendToCosmosClaim {
     pub orchestrator: ::prost::alloc::string::String,
     #[prost(string, tag = "8")]
     pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(string, tag = "9")]
+    pub memo: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
