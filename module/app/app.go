@@ -541,6 +541,7 @@ func NewGravityApp(
 		&ibcTransferKeeper,
 		&bech32IbcKeeper,
 		&auctionKeeper,
+		ibcKeeper.ChannelKeeper,
 	)
 	app.GravityKeeper = &gravityKeeper
 
@@ -582,7 +583,9 @@ func NewGravityApp(
 	app.GovKeeper = &govKeeper
 
 	ibcTransferAppModule := transfer.NewAppModule(ibcTransferKeeper)
-	ibcTransferIBCModule := transfer.NewIBCModule(ibcTransferKeeper)
+	var ibcTransferIBCModule porttypes.IBCModule
+	ibcTransferIBCModule = transfer.NewIBCModule(ibcTransferKeeper)
+	ibcTransferIBCModule = gravity.NewIBCMiddleware(ibcTransferIBCModule, *app.GravityKeeper)
 	icaAppModule := ica.NewAppModule(nil, &icaHostKeeper)
 	icaHostIBCModule := icahost.NewIBCModule(icaHostKeeper)
 

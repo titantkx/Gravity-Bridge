@@ -26,4 +26,5 @@ var (
 	ErrInvalidClaim             = sdkerrors.Register(ModuleName, 19, "invalid claim submitted")
 	ErrInvalidLogicCall         = sdkerrors.Register(ModuleName, 20, "invalid logic call submitted")
 	ErrEvmChainNotFound         = sdkerrors.Register(ModuleName, 21, "EVM Chain not found")
+	ErrBadMetadataFormat        = sdkerrors.Register(ModuleName, 22, "send_to_eth metadata not properly formatted")
 )

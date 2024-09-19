@@ -18,6 +18,7 @@ import (
 	stakingkeeper "github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	ibctransferkeeper "github.com/cosmos/ibc-go/v4/modules/apps/transfer/keeper"
+	ibctransfertypes "github.com/cosmos/ibc-go/v4/modules/core/05-port/types"
 	"github.com/tendermint/tendermint/libs/log"
 
 	bech32ibckeeper "github.com/althea-net/bech32-ibc/x/bech32ibc/keeper"
@@ -50,6 +51,7 @@ type Keeper struct {
 	ibcTransferKeeper *ibctransferkeeper.Keeper
 	bech32IbcKeeper   *bech32ibckeeper.Keeper
 	auctionKeeper     *auctionkeeper.Keeper
+	ics4Wrapper       ibctransfertypes.ICS4Wrapper
 
 	AttestationHandler interface {
 		Handle(sdk.Context, types.Attestation, types.EthereumClaim) error
@@ -94,6 +96,7 @@ func NewKeeper(
 	ibcTransferKeeper *ibctransferkeeper.Keeper,
 	bech32IbcKeeper *bech32ibckeeper.Keeper,
 	auctionKeeper *auctionkeeper.Keeper,
+	ics4Wrapper ibctransfertypes.ICS4Wrapper,
 ) Keeper {
 	// set KeyTable if it has not already been set
 	if !paramSpace.HasKeyTable() {
@@ -113,6 +116,7 @@ func NewKeeper(
 		ibcTransferKeeper:  ibcTransferKeeper,
 		bech32IbcKeeper:    bech32IbcKeeper,
 		auctionKeeper:      auctionKeeper,
+		ics4Wrapper:        ics4Wrapper,
 		AttestationHandler: nil,
 	}
 	attestationHandler := AttestationHandler{keeper: &k}
