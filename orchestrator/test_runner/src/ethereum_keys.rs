@@ -135,7 +135,7 @@ pub async fn example_ethermint_key_usage(
     ethermint_key: EthermintUserKey,
     erc20_address: EthAddress,
 ) -> bool {
-    let user_key = ethermint_key.ethermint_key;
+    let user_key = ethermint_key.ethermint_key;    
     let user_cosmos_address = ethermint_key.ethermint_address;
     let user_eth_address = ethermint_key.eth_address;
     let denom: String = STAKING_TOKEN.clone().to_string();
@@ -348,7 +348,7 @@ pub async fn example_ethermint_key_usage(
         .get_balance(user_cosmos_address, STAKING_TOKEN.to_string())
         .await
         .expect("Could not get stake balance");
-    let _res = contact
+    let res = contact
         .withdraw_delegator_rewards(
             delegate_to,
             Coin {
@@ -358,7 +358,12 @@ pub async fn example_ethermint_key_usage(
             user_key,
             Some(TOTAL_TIMEOUT),
         )
-        .await;
+        .await
+        .unwrap();
+    info!(
+        "Rewards withdraw result for {} delegation is {:?}",
+        user_cosmos_address, res
+    );
     let rewarded_stake_balance = contact
         .get_balance(user_cosmos_address, STAKING_TOKEN.to_string())
         .await
