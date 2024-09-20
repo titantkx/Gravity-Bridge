@@ -349,6 +349,7 @@ pub async fn test_erc20_deposit_result(
         gravity_address,
         erc20_address,
         amount,
+        "",
     )
     .await?;
 
@@ -443,6 +444,7 @@ pub async fn send_erc20_deposit(
     gravity_address: EthAddress,
     erc20_address: EthAddress,
     amount: Uint256,
+    memo: &str,
 ) -> Result<(), GravityError> {
     get_valset_nonce(gravity_address, *MINER_ADDRESS, web30)
         .await
@@ -464,6 +466,7 @@ pub async fn send_erc20_deposit(
         gravity_address,
         amount,
         dest,
+        memo,
         *MINER_PRIVATE_KEY,
         None,
         web30,

@@ -558,6 +558,7 @@ pub async fn setup(
             gravity_address,
             one_eth() * 1_000u64.into(),
             receiver,
+            "",
             *MINER_PRIVATE_KEY,
             None,
             web30,

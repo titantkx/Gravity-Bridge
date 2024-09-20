@@ -85,6 +85,8 @@ pub async fn ibc_auto_forward_test(
     .await
     .expect("Could not find gravity-test-1 channel");
 
+    info!("Found gravity-test-1 channel id: {}", gravity_channel_id);
+
     // Test an IBC transfer of 1 stake from gravity-test-1 to ibc-test-1
     let sender = keys[0].validator_key;
     let receiver = ibc_keys[0].to_address(&IBC_ADDRESS_PREFIX).unwrap();
@@ -513,6 +515,7 @@ pub async fn test_ibc_auto_forward_happy_path(
         gravity_address,
         erc20_address,
         amount,
+        r#"{"This" is memo string : value}"#,
     )
     .await?;
 
@@ -695,6 +698,7 @@ pub async fn test_ibc_auto_forward_failure<
         input.gravity_address,
         input.erc20_address,
         input.amount,
+        r#"{"This" is memo string : value}"#,
     )
     .await?;
 

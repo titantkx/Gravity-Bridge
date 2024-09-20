@@ -115,6 +115,7 @@ pub async fn setup_ethermint_test(
         gravity_address,
         erc20_address,
         send_amount,
+        "",
     )
     .await
     .unwrap();
@@ -135,7 +136,7 @@ pub async fn example_ethermint_key_usage(
     ethermint_key: EthermintUserKey,
     erc20_address: EthAddress,
 ) -> bool {
-    let user_key = ethermint_key.ethermint_key;    
+    let user_key = ethermint_key.ethermint_key;
     let user_cosmos_address = ethermint_key.ethermint_address;
     let user_eth_address = ethermint_key.eth_address;
     let denom: String = STAKING_TOKEN.clone().to_string();

@@ -61,6 +61,10 @@ for i in $(seq 1 $NODES); do
   if [ $i -gt 1 ]; then
     cp /ibc-validator$i/config/gentx/* /ibc-validator1/config/gentx/
   fi
+  if [[ "$i" -eq 1 ]]; then
+    sed -i '/^\[api\]$/,/^\[/ s/^\(enable = \).*/\1true/' /ibc-validator$i/config/app.toml
+    sed -i '/^\[api\]$/,/^\[/ s/^\(address = \).*/\1\"tcp:\/\/0.0.0.0:1417\"/' /ibc-validator$i/config/app.toml
+  fi
 done
 
 $BIN collect-gentxs $STARTING_VALIDATOR_HOME

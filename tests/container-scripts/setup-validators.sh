@@ -127,6 +127,10 @@ for i in $(seq 1 $NODES); do
   if [ $i -gt 1 ]; then
     cp /validator$i/config/gentx/* /validator1/config/gentx/
   fi
+  if [[ "$i" -eq 1 ]]; then
+    sed -i '/^\[api\]$/,/^\[/ s/^\(enable = \).*/\1true/' /validator$i/config/app.toml
+    sed -i '/^\[api\]$/,/^\[/ s/^\(address = \).*/\1\"tcp:\/\/0.0.0.0:1317\"/' /validator$i/config/app.toml
+  fi
 done
 
 $BIN collect-gentxs $STARTING_VALIDATOR_HOME

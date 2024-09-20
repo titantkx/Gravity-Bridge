@@ -13,7 +13,7 @@ fi
 
 # the directory of this script, useful for allowing this script
 # to be run with any PWD
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Remove existing container instance
 set +e
@@ -27,9 +27,10 @@ pushd $DIR/../
 # setup for Mac apple silicon compatibility
 PLATFORM_CMD=""
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ -n $(sysctl -a | grep brand | grep "Apple") ]]; then
-       echo "Setting --platform=linux/amd64 for Mac apple silicon compatibility"
-       PLATFORM_CMD="--platform=linux/amd64"; fi
+  if [[ -n $(sysctl -a | grep brand | grep "Apple") ]]; then
+    echo "Setting --platform=linux/amd64 for Mac apple silicon compatibility"
+    PLATFORM_CMD="--platform=linux/amd64"
+  fi
 fi
 # Run new test container instance
-docker run --name gravity_test_instance $PLATFORM_CMD --mount type=bind,source="$(pwd)"/,target=/gravity --cap-add=NET_ADMIN -p 9092:9092 -p 9090:9090 -p 26657:26657 -p 1317:1317 -p 8545:8545 -it gravity-base /bin/bash /gravity/tests/container-scripts/reload-code.sh $NODES $TEST_TYPE $ALCHEMY_ID
+docker run --name gravity_test_instance $PLATFORM_CMD --mount type=bind,source="$(pwd)"/,target=/gravity --cap-add=NET_ADMIN -p 9092:9092 -p 9090:9090 -p 26657:26657 -p 1317:1317 -p 8545:8545 -p 9190:9190 -p 27657:27657 -p 1417:1417 -it gravity-base /bin/bash /gravity/tests/container-scripts/reload-code.sh $NODES $TEST_TYPE $ALCHEMY_ID
