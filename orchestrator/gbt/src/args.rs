@@ -194,6 +194,9 @@ pub struct EthToCosmosOpts {
     /// The destination address on the Cosmos blockchain
     #[clap(short, long, parse(try_from_str))]
     pub destination: CosmosAddress,
+    /// Memo to attach to the transaction
+    #[clap(short, long)]
+    pub memo: String,
 }
 
 /// Deploy an ERC20 representation of a Cosmos asset on the Ethereum chain
