@@ -196,6 +196,7 @@ message MsgSendToCosmosClaim {
   string cosmos_receiver  = 6;
   string orchestrator     = 7;
   string evm_chain_prefix = 8;
+  string memo             = 9;
 }
 
 message MsgSendToCosmosClaimResponse {}

@@ -253,7 +253,7 @@ func createIbcMsgTransfer(portId string, forward types.PendingIbcAutoForward, se
 		RevisionNumber: 0,
 		RevisionHeight: 0,
 	}
-	return *ibctransfertypes.NewMsgTransfer(
+	msgTransfer := *ibctransfertypes.NewMsgTransfer(
 		portId,
 		forward.IbcChannel,
 		*forward.Token,
@@ -262,6 +262,9 @@ func createIbcMsgTransfer(portId string, forward types.PendingIbcAutoForward, se
 		zeroHeight, // Do not use block height based timeout
 		timeoutTimestampNs,
 	)
+	msgTransfer.Memo = forward.Memo
+
+	return msgTransfer
 }
 
 // thirtyDaysInFuture creates a time.Time exactly 30 days from the last BlockTime for use in createIbcMsgTransfer

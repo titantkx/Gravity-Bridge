@@ -587,6 +587,7 @@ func (a AttestationHandler) addToIbcAutoForwardQueue(
 		Token:           &coin,
 		IbcChannel:      channel,
 		EventNonce:      claim.EventNonce,
+		Memo:            claim.Memo,
 	}
 
 	// forward will be validated when adding to queue, error only returned if unable to send funds to local user
