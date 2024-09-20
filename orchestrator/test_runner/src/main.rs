@@ -17,6 +17,7 @@ use crate::eip_712::eip_712_test;
 use crate::ethereum_blacklist_test::ethereum_blacklist_test;
 use crate::ethereum_keys::ethereum_keys_test;
 use crate::ibc_auto_forward::ibc_auto_forward_test;
+use crate::ibc_auto_send_eth::ibc_auto_send_eth_test;
 use crate::ibc_metadata::ibc_metadata_proposal_test;
 // use crate::ica_host::ica_host_happy_path;
 use crate::inflation_knockdown::inflation_knockdown_test;
@@ -65,6 +66,7 @@ mod evidence_based_slashing;
 mod happy_path;
 mod happy_path_v2;
 mod ibc_auto_forward;
+mod ibc_auto_send_eth;
 mod ibc_metadata;
 // mod ica_host;
 mod inflation_knockdown;
@@ -300,6 +302,7 @@ pub async fn main() {
     // UPGRADE_PART_2 upgrades the chain binaries and starts the upgraded chain after being halted in part 1
     // UPGRADE_ONLY performs an upgrade without making any testing assertions
     // IBC_AUTO_FORWARD tests ibc auto forwarding functionality.
+    // IBC_AUTO_SEND_ETH tests ibc auto forwarding to eth functionality.
     // ETHERMINT_KEYS runs a gamut of transactions using a Ethermint key to test no loss of functionality
     // BATCH_TIMEOUT is a stress test for batch timeouts, setting an extremely agressive timeout value
     // VESTING checks that the vesting module delivers partially and fully vested accounts
@@ -567,6 +570,21 @@ pub async fn main() {
                 &web30,
                 grpc_client,
                 &gravity_contact,
+                keys,
+                ibc_keys,
+                gravity_address,
+                erc20_addresses[0],
+            )
+            .await;
+            return;
+        } else if test_type == "IBC_AUTO_SEND_ETH" {
+            info!("Starting IBC Auto-Send-Eth test");
+            start_ibc_relayer(&gravity_contact, &ibc_contact, &keys, &ibc_keys).await;
+            ibc_auto_send_eth_test(
+                &web30,
+                grpc_client,
+                &gravity_contact,
+                &ibc_contact,
                 keys,
                 ibc_keys,
                 gravity_address,

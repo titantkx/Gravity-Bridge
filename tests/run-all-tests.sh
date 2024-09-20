@@ -2,7 +2,7 @@
 set -eux
 # the directory of this script, useful for allowing this script
 # to be run with any PWD
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd $DIR
 bash all-up-test.sh # Happy path
 export NO_IMAGE_BUILD=1
@@ -25,6 +25,7 @@ bash all-up-test.sh SLASHING_DELEGATION
 bash all-up-test.sh IBC_METADATA
 bash all-up-test.sh ERC721_HAPPY_PATH
 bash all-up-test.sh IBC_AUTO_FORWARD
+bash all-up-test.sh IBC_AUTO_SEND_ETH
 bash all-up-test.sh ETHEREUM_KEYS
 bash all-up-test.sh BATCH_TIMEOUT
 bash all-up-test.sh VESTING

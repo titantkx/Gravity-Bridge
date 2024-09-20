@@ -21,6 +21,7 @@ bash run-tests.sh SIGNATURE_SLASHING
 bash run-tests.sh IBC_METADATA
 bash run-tests.sh ERC721_HAPPY_PATH
 bash run-tests.sh IBC_AUTO_FORWARD
+bash run-tests.sh IBC_AUTO_SEND_ETH
 bash run-tests.sh ETHEREUM_KEYS
 bash run-tests.sh BATCH_TIMEOUT
 # bash run-tests.sh VESTING

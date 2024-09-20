@@ -233,7 +233,7 @@ pub async fn test_ibc_transfer(
 
     // Give the ibc-relayer a bit of time to work in the event of multiple runs
     // delay_for(Duration::from_secs(10)).await;
-    wait_for_height(10, contact).await;
+    wait_for_height(5, contact).await;
 
     let start_bal = Some(match pre_bal.clone() {
         Some(coin) => Uint256::from_str(&coin.amount).unwrap(),
@@ -400,6 +400,10 @@ pub async fn get_ibc_balance(
 
         // Check each ibc/ balance the account holds
         for bal in res.into_inner().balances {
+            if bal.denom.clone() == "ibc/nometadatatoken".to_string() {
+                // ignore the nometadatatoken
+                continue;
+            }
             if bal.denom.clone()[..4] == *"ibc/".to_string() {
                 // only consider ibc denoms
                 let hash = bal.denom.clone();
@@ -587,7 +591,13 @@ pub async fn test_ibc_auto_forward_happy_path(
         (Some(pre), Some(post)) => {
             let pre_amt = Uint256::from_str(&pre.amount).unwrap();
             let post_amt = Uint256::from_str(&post.amount).unwrap();
-            if post_amt < pre_amt || pre_amt - post_amt != amount {
+
+            if post_amt < pre_amt || (pre_amt + amount) != post_amt {
+                info!("post_amt < pre_amt: {}", post_amt < pre_amt);
+                info!(
+                    "(pre_amt + amount) != post_amt: {}",
+                    (pre_amt + amount) != post_amt
+                );
                 panic!(
                     "Incorrect ibc auto-forward balance for user {}: actual {} != expected {}",
                     dest,
