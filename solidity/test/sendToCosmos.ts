@@ -8,7 +8,7 @@ import { examplePowers } from "../test-utils/pure";
 chai.use(solidity);
 const { expect } = chai;
 
-async function runTest(opts: {}) {
+async function runTest(opts: Record<string, unknown>) {
   // Prep and deploy contract
   // ========================
   const signers = await ethers.getSigners();

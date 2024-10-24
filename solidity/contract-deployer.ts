@@ -3,6 +3,7 @@ import commandLineArgs from "command-line-args";
 import { ethers } from "ethers";
 import fs from "fs";
 import { exit } from "process";
+
 import { Gravity } from "./typechain/Gravity";
 import { GravityERC721 } from "./typechain/GravityERC721";
 import { TestERC20A } from "./typechain/TestERC20A";
@@ -77,11 +78,11 @@ type NodeInfo = {
 type SyncInfo = {
   latest_block_hash: string;
   latest_app_hash: string;
-  latest_block_height: Number;
+  latest_block_height: number;
   latest_block_time: string;
   earliest_block_hash: string;
   earliest_app_hash: string;
-  earliest_block_height: Number;
+  earliest_block_height: number;
   earliest_block_time: string;
   catching_up: boolean;
 };
@@ -97,15 +98,15 @@ const overrides = {
 };
 
 async function deploy() {
-  var startTime = new Date();
+  let startTime = new Date();
   const provider = await new ethers.providers.JsonRpcProvider(args["eth-node"]);
   let wallet = new ethers.Wallet(args["eth-privkey"], provider);
 
   if (args["test-mode"] == "True" || args["test-mode"] == "true") {
-    var success = false;
+    let success = false;
     while (!success) {
-      var present = new Date();
-      var timeDiff: number = present.getTime() - startTime.getTime();
+      let present = new Date();
+      let timeDiff: number = present.getTime() - startTime.getTime();
       timeDiff = timeDiff / 1000;
       provider
         .getBlockNumber()
@@ -126,10 +127,10 @@ async function deploy() {
     console.log("Test mode, deploying ERC20 contracts");
 
     // this handles several possible locations for the ERC20 artifacts
-    var erc20_a_path: string;
-    var erc20_b_path: string;
-    var erc20_c_path: string;
-    var erc721_a_path: string;
+    let erc20_a_path: string;
+    let erc20_b_path: string;
+    let erc20_c_path: string;
+    let erc721_a_path: string;
     const main_location_a =
       "/gravity/solidity/artifacts/contracts/TestERC20A.sol/TestERC20A.json";
     const main_location_b =
@@ -274,7 +275,7 @@ async function deploy() {
 }
 
 function getContractArtifacts(path: string): { bytecode: string; abi: string } {
-  var { bytecode, abi } = JSON.parse(fs.readFileSync(path, "utf8").toString());
+  let { bytecode, abi } = JSON.parse(fs.readFileSync(path, "utf8").toString());
   return { bytecode, abi };
 }
 const decode = (str: string): string =>
@@ -304,12 +305,12 @@ async function getLatestValset(): Promise<Valset> {
 
   // if in test mode retry the request as needed in some cases
   // the cosmos nodes do not start in time
-  var startTime = new Date();
+  let startTime = new Date();
   if (args["test-mode"] == "True" || args["test-mode"] == "true") {
-    var success = false;
+    let success = false;
     while (valsets.result.response.value == null) {
-      var present = new Date();
-      var timeDiff: number = present.getTime() - startTime.getTime();
+      let present = new Date();
+      let timeDiff: number = present.getTime() - startTime.getTime();
       timeDiff = timeDiff / 1000;
 
       response = await axios.get(request_string, params);
@@ -356,12 +357,12 @@ async function getGravityId(): Promise<string> {
 
   // if in test mode retry the request as needed in some cases
   // the cosmos nodes do not start in time
-  var startTime = new Date();
+  let startTime = new Date();
   if (args["test-mode"] == "True" || args["test-mode"] == "true") {
-    var success = false;
+    let success = false;
     while (gravityIDABCIResponse.result.response.value == null) {
-      var present = new Date();
-      var timeDiff: number = present.getTime() - startTime.getTime();
+      let present = new Date();
+      let timeDiff: number = present.getTime() - startTime.getTime();
       timeDiff = timeDiff / 1000;
 
       response = await axios.get(request_string, params);
@@ -383,7 +384,9 @@ async function getGravityId(): Promise<string> {
   return gravityID;
 }
 
-async function submitGravityAddress(address: string) {}
+async function submitGravityAddress(address: string) {
+  return;
+}
 
 async function main() {
   await deploy();
@@ -393,4 +396,7 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

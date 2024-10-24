@@ -388,7 +388,7 @@ describe("logicCall Go test hash", function () {
       rewardToken: ZeroAddress
     };
 
-    var res = await gravity.populateTransaction.submitLogicCall(
+    let res = await gravity.populateTransaction.submitLogicCall(
       valset,
 
       sigs,

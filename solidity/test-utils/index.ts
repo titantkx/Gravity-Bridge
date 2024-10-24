@@ -1,15 +1,16 @@
+import { Signer } from "ethers";
+import { ethers } from "hardhat";
+
 import { Gravity } from "../typechain/Gravity";
 import { TestERC20A } from "../typechain/TestERC20A";
-import { ethers } from "hardhat";
-import { makeCheckpoint, getSignerAddresses, ZeroAddress } from "./pure";
-import { Signer } from "ethers";
+import { getSignerAddresses, makeCheckpoint, ZeroAddress } from "./pure";
 
 type DeployContractsOptions = {
   corruptSig?: boolean;
 };
 
 export async function deployContracts(
-  gravityId: string = "foo",
+  gravityId = "foo",
   validators: Signer[],
   powers: number[],
   opts?: DeployContractsOptions
@@ -24,12 +25,19 @@ export async function deployContracts(
 
   const valAddresses = await getSignerAddresses(validators);
 
-  const checkpoint = makeCheckpoint(valAddresses, powers, 0, 0, ZeroAddress, gravityId);
+  const checkpoint = makeCheckpoint(
+    valAddresses,
+    powers,
+    0,
+    0,
+    ZeroAddress,
+    gravityId
+  );
 
   const gravity = (await Gravity.deploy(
     gravityId,
     await getSignerAddresses(validators),
-    powers,
+    powers
   )) as Gravity;
 
   await gravity.deployed();
