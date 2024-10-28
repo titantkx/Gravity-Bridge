@@ -6,8 +6,6 @@ set -eux
 BIN=/titan/bin/titand
 
 VALIDATOR_HOME="/root/.titand"
-CHAIN_ID="titan_18887-1"
-DENOM="atkx"
 RPC_ADDRESS="--rpc.laddr tcp://0.0.0.0:27657"
 GRPC_ADDRESS="--grpc.address 0.0.0.0:9190"
 # Must remap the grpc-web address because it conflicts with what we want to use

@@ -13,6 +13,11 @@ services:
       - 8545
     ports:
       - "8545:8545"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   titan:
     build:
@@ -23,17 +28,44 @@ services:
     ports:
       - "27657:27657"
       - "9190:9190"
-      - "1317:1317"
+      - "1417:1417"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:27657"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   gravity:
     build:
       context: ./gravity
       dockerfile: Dockerfile
+      additional_contexts:
+        - repo=../../
+    networks:
+      - net
+    ports:
+      - "26657:26657"
+      - "9090:9090"
+      - "1317:1317"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26657"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+      target: builder
+      additional_contexts:
+        - repo=../../
+    networks:
+      - net
     depends_on:
       - evm
       - titan
-    networks:
-      - net
+      - gravity
 
 networks:
   net:
