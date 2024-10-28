@@ -1,6 +1,4 @@
-use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::get_gravity_chain_id;
-use crate::happy_path::send_erc20_deposit;
 use crate::ibc_auto_forward;
 use crate::ibc_auto_forward::get_channel_id;
 use crate::ibc_auto_forward::get_ibc_balance;
@@ -11,45 +9,25 @@ use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::IBC_STAKING_TOKEN;
 use crate::OPERATION_TIMEOUT;
 use crate::TOTAL_TIMEOUT;
-use crate::{
-    get_ibc_chain_id, one_eth, ADDRESS_PREFIX, COSMOS_NODE_GRPC, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC,
-    STAKING_TOKEN,
-};
+use crate::{get_ibc_chain_id, one_eth, COSMOS_NODE_GRPC, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC};
 use clarity::Address as EthAddress;
-use cosmos_gravity::proposals::UPDATE_HRP_IBC_CHANNEL_PROPOSAL;
-use cosmos_gravity::send::MSG_EXECUTE_IBC_AUTO_FORWARDS_TYPE_URL;
 use deep_space::address::Address as CosmosAddress;
 use deep_space::client::type_urls::MSG_TRANSFER_TYPE_URL;
-use deep_space::error::CosmosGrpcError;
 use deep_space::private_key::{CosmosPrivateKey, PrivateKey};
-use deep_space::utils::decode_any;
-use deep_space::utils::encode_any;
 use deep_space::{Coin as DSCoin, Contact, Msg};
-use gravity_proto::cosmos_sdk_proto::bech32ibc::bech32ibc::v1::UpdateHrpIbcChannelProposal;
-use gravity_proto::cosmos_sdk_proto::cosmos::bank::{
-    v1beta1 as Bank, v1beta1::query_client::QueryClient as BankQueryClient,
-};
+use gravity_proto::cosmos_sdk_proto::cosmos::bank::v1beta1::query_client::QueryClient as BankQueryClient;
 use gravity_proto::cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
 use gravity_proto::cosmos_sdk_proto::ibc::applications::transfer::v1::MsgTransfer;
 use gravity_proto::cosmos_sdk_proto::ibc::applications::transfer::{
     v1 as IbcTransferV1, v1::query_client::QueryClient as IbcTransferQueryClient,
 };
 use gravity_proto::cosmos_sdk_proto::ibc::core::channel::v1::query_client::QueryClient as IbcChannelQueryClient;
-use gravity_proto::cosmos_sdk_proto::ibc::core::channel::v1::IdentifiedChannel;
-use gravity_proto::cosmos_sdk_proto::ibc::core::channel::v1::{
-    QueryChannelClientStateRequest, QueryChannelsRequest,
-};
-use gravity_proto::cosmos_sdk_proto::ibc::lightclients::tendermint::v1::ClientState;
 use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
-use gravity_proto::gravity::{
-    MsgExecuteIbcAutoForwards, PendingIbcAutoForward, QueryPendingIbcAutoForwards,
-};
 use gravity_utils::error::GravityError;
 use gravity_utils::get_with_retry::get_balances_with_retry;
 use gravity_utils::num_conversion::one_atom;
 use num256::Uint256;
-use std::cmp::Ordering;
-use std::ops::{Add, Mul};
+use std::ops::Add;
 use std::str::FromStr;
 use std::time::Instant;
 use std::time::{Duration, SystemTime};
@@ -76,15 +54,15 @@ pub async fn ibc_auto_send_eth_test(
     let ibc_channel_qc = IbcChannelQueryClient::connect(IBC_NODE_GRPC.as_str())
         .await
         .expect("Could not connect channel query client");
-    let gravity_bank_qc = BankQueryClient::connect(COSMOS_NODE_GRPC.as_str())
-        .await
-        .expect("Could not connect bank query client");
+    // let gravity_bank_qc = BankQueryClient::connect(COSMOS_NODE_GRPC.as_str())
+    //     .await
+    //     .expect("Could not connect bank query client");
     let ibc_bank_qc = BankQueryClient::connect(IBC_NODE_GRPC.as_str())
         .await
         .expect("Could not connect bank query client");
-    let gravity_transfer_qc = IbcTransferQueryClient::connect(COSMOS_NODE_GRPC.as_str())
-        .await
-        .expect("Could not connect ibc-transfer query client");
+    // let gravity_transfer_qc = IbcTransferQueryClient::connect(COSMOS_NODE_GRPC.as_str())
+    //     .await
+    //     .expect("Could not connect ibc-transfer query client");
     let ibc_transfer_qc = IbcTransferQueryClient::connect(IBC_NODE_GRPC.as_str())
         .await
         .expect("Could not connect ibc-transfer query client");

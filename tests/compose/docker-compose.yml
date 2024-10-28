@@ -9,6 +9,8 @@ services:
         - repo=../../
     networks:
       - net
+    volumes:
+      - ./shared:/shared
     expose:
       - 8545
     ports:
@@ -25,6 +27,8 @@ services:
       dockerfile: Dockerfile
     networks:
       - net
+    volumes:
+      - ./shared:/shared
     ports:
       - "27657:27657"
       - "9190:9190"
@@ -43,6 +47,8 @@ services:
         - repo=../../
     networks:
       - net
+    volumes:
+      - ./shared:/shared
     ports:
       - "26657:26657"
       - "9090:9090"
@@ -62,6 +68,8 @@ services:
         - repo=../../
     networks:
       - net
+    volumes:
+      - ./shared:/shared
     depends_on:
       - evm
       - titan

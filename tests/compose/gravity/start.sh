@@ -2,6 +2,9 @@
 
 set -eux
 
+# copy from `/shared_tmp` to `/shared`
+cp -r /shared_tmp/* /shared
+
 # your gaiad binary name
 BIN=gravity
 

@@ -12,6 +12,9 @@ fi
 
 # your gaiad binary name
 BIN=gravity
+SHARED_FOLDER="/shared_tmp"
+
+mkdir -p $SHARED_FOLDER
 
 VALIDATOR_HOME="/root/.gravity"
 CHAIN_ID="gravity-test-1"
@@ -62,14 +65,14 @@ END_VESTING=$(expr $START_VESTING + 120) # End vesting 20 minutes from now, givi
 ARGS="--home $VALIDATOR_HOME --keyring-backend test"
 i=1
 
-$BIN keys add $ARGS validator$i 2>>/validator-phrases
-$BIN keys add $ARGS orchestrator$i 2>>/orchestrator-phrases
-$BIN keys add $ARGS vesting$i 2>>/vesting-phrases
-$BIN eth_keys add >>/validator-eth-keys
+$BIN keys add $ARGS validator$i 2>>$SHARED_FOLDER/validator-phrases
+$BIN keys add $ARGS orchestrator$i 2>>$SHARED_FOLDER/orchestrator-phrases
+$BIN keys add $ARGS vesting$i 2>>$SHARED_FOLDER/vesting-phrases
+$BIN eth_keys add >>$SHARED_FOLDER/validator-eth-keys
 
 VALIDATOR_KEY=$($BIN keys show validator$i -a $ARGS)
 ORCHESTRATOR_KEY=$($BIN keys show orchestrator$i -a $ARGS)
-ETHEREUM_KEY=$(grep address /validator-eth-keys | sed -n "$i"p | sed 's/.*://')
+ETHEREUM_KEY=$(grep address $SHARED_FOLDER/validator-eth-keys | sed -n "$i"p | sed 's/.*://')
 VESTING_KEY=$($BIN keys show vesting$i -a $ARGS)
 
 $BIN add-genesis-account $ARGS $VALIDATOR_KEY $ALLOCATION

@@ -12,6 +12,9 @@ fi
 
 # your gaiad binary name
 BIN=/titan/bin/titand
+SHARED_FOLDER="/shared_tmp"
+
+mkdir -p $SHARED_FOLDER
 
 VALIDATOR_HOME="/root/.titand"
 CHAIN_ID="titan_18887-1"
@@ -40,7 +43,7 @@ jq '.app_state.gov.voting_params.voting_period = "60s"' /denom-edited-genesis.js
 mv /gov-edited-genesis.json $VALIDATOR_HOME/config/genesis.json
 
 ### config validator
-$BIN keys add --home $VALIDATOR_HOME --keyring-backend test val-1 2>>/validator-phrases
+$BIN keys add --home $VALIDATOR_HOME --keyring-backend test val-1 2>>$SHARED_FOLDER/ibc-validator-phrases
 
 VALIDATOR_KEY=$($BIN keys show val-1 -a --home $VALIDATOR_HOME --keyring-backend test)
 
