@@ -69,3 +69,5 @@ services:
 
 networks:
   net:
+    external:
+      name: gravity-with-titan_net

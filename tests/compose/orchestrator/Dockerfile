@@ -21,7 +21,6 @@ RUN mkdir /ibc-relayer-logs && touch /ibc-relayer-logs/hermes-logs && touch /ibc
 
 FROM base AS planner
 COPY --from=repo orchestrator /gravity/orchestrator
-# --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
 RUN pushd /gravity/orchestrator && cargo chef prepare --recipe-path /recipe.json --bin test_runner
 
 #
@@ -32,7 +31,6 @@ FROM base AS builder
 
 RUN mkdir -p /gravity/orchestrator
 COPY --from=planner /recipe.json /gravity/orchestrator/recipe.json
-# --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
 RUN pushd /gravity/orchestrator && cargo chef cook --release --recipe-path recipe.json --bin test-runner
 
 COPY --from=repo solidity /gravity/solidity
@@ -40,7 +38,8 @@ RUN pushd /gravity/solidity/ && HUSKY_SKIP_INSTALL=1 npm install && npm run type
 
 COPY --from=repo orchestrator /gravity/orchestrator
 # build the test runner specifically to cache a release artifact
-# --mount=type=cache,target=$SCCACHE_DIR,sharing=locked \
 RUN pushd /gravity/orchestrator/test_runner && PATH=$PATH:$HOME/.cargo/bin cargo build --bin test-runner --release
 
 RUN git config --global --add safe.directory /gravity
+
+ADD setup.sh /setup.sh
