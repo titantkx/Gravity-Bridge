@@ -1,0 +1,37 @@
+name: gravity-with-titan
+
+services:
+  evm:
+    build:
+      context: ./evm
+      dockerfile: Dockerfile
+    networks:
+      - net
+    expose:
+      - 8545
+    ports:
+      - "8545:8545"
+
+  titan:
+    build:
+      context: ./titan
+      dockerfile: Dockerfile
+    networks:
+      - net
+    ports:
+      - "27657:27657"
+      - "9190:9190"
+      - "1317:1317"
+
+  gravity:
+    build:
+      context: ./gravity
+      dockerfile: Dockerfile
+    depends_on:
+      - evm
+      - titan
+    networks:
+      - net
+
+networks:
+  net:
