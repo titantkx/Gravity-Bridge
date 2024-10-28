@@ -5,6 +5,8 @@ services:
     build:
       context: ./evm
       dockerfile: Dockerfile
+      additional_contexts:
+        - repo=../../
     networks:
       - net
     expose:

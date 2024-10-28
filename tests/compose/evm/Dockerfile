@@ -9,6 +9,6 @@ RUN cd /geth && tar -xvf * && mv /geth/**/geth /usr/bin/geth
 
 ADD run-eth.sh /run-eth.sh
 ADD start.sh /start.sh
-ADD ETHGenesis.json /ETHGenesis.json
+COPY --from=repo tests/assets/ETHGenesis.json /ETHGenesis.json
 
 CMD ["/start.sh"]
