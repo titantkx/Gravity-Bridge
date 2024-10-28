@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eux
+set -ex
 # the directory of this script, useful for allowing this script
 # to be run with any PWD
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
