@@ -13,8 +13,6 @@ fi
 # your gaiad binary name
 BIN=/titan/bin/titand
 
-ls -alh /titan
-
 VALIDATOR_HOME="/root/.titand"
 CHAIN_ID="titan_18887-1"
 DENOM="atkx"
