@@ -208,6 +208,9 @@ pub async fn deploy_contracts(contact: &Contact) {
     }
     let mut file = File::create("/contracts").unwrap();
     file.write_all(&output.stdout).unwrap();
+    // Ensure the /shared directory exists
+    std::fs::create_dir_all("/shared").expect("Failed to create /shared directory");
+    // Write the contracts to the shared directory for later use
     let mut file_shared = File::create("/shared/contracts").unwrap();
     file_shared.write_all(&output.stdout).unwrap();
 }
