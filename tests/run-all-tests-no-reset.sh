@@ -13,7 +13,8 @@ bash run-tests.sh ORCHESTRATOR_KEYS
 bash run-tests.sh VALSET_REWARDS
 bash run-tests.sh TXCANCEL
 bash run-tests.sh INVALID_EVENTS
-bash run-tests.sh UNHALT_BRIDGE
+# comment out the following tests because they require at least 4 validators
+# bash run-tests.sh UNHALT_BRIDGE
 bash run-tests.sh PAUSE_BRIDGE
 bash run-tests.sh ETHEREUM_BLACKLIST
 bash run-tests.sh AIRDROP_PROPOSAL
@@ -37,7 +38,8 @@ bash run-tests.sh SLASHING_DELEGATION
 # `VALIDATOR_OUT` test will make validator get slashed and jailed
 bash run-tests.sh VALIDATOR_OUT
 # move EVIDENCE to the end because it will change validator set (jail one validator) make `UNHALT_BRIDGE` fail
-bash run-tests.sh EVIDENCE
+# Comment out the following test because it requires at least 3 validators
+# bash run-tests.sh EVIDENCE
 # `DEPOSIT_OVERFLOW` test must be the last one because it will break bridge, because we fake event from ethereum make nonce mismatch between ethereum contract and gravity bridge
 bash run-tests.sh DEPOSIT_OVERFLOW
 
