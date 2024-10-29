@@ -16,4 +16,4 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     PLATFORM_CMD="--platform=linux/amd64"
   fi
 fi
-docker build --build-context repo=$REPOFOLDER --ulimit nofile=65536:65536 -t orchestrator-test $PLATFORM_CMD "$DIR"/orchestrator
+docker build --build-context repo=$REPOFOLDER --ulimit nofile=65536:65536 -t orchestrator-test $PLATFORM_CMD "$DIR"/orchestrator-test
