@@ -22,7 +22,9 @@ pushd /gravity/orchestrator/test_runner
 ENV_SET='DEPLOY_CONTRACTS=1 RUST_BACKTRACE=full NO_GAS_OPT=1 RUST_LOG=INFO,relayer=DEBUG,orchestrator=DEBUG'
 # TEST_TYPE=$TEST_TYPE
 ENV_SET="$ENV_SET COSMOS_NODE_GRPC=http://gravity:9090"
+ENV_SET="$ENV_SET COSMOS_NODE_ABCI=http://gravity:26657"
 ENV_SET="$ENV_SET IBC_NODE_GRPC=http://titan:9190"
+ENV_SET="$ENV_SET IBC_NODE_ABCI=http://titan:27657"
 ENV_SET="$ENV_SET ETH_NODE=http://evm:8545"
 
 # shellcheck disable=SC2090
