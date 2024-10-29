@@ -16,6 +16,14 @@ if [[ -z $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-orchestr
   "$DIR"/prepare-test.sh
 fi
 
+# check if any in `gravity-with-titan-titan` `gravity-with-titan-gravity` `gravity-with-titan-evm` is not running
+if [[ -z $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-titan) ]] ||
+  [[ -z $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-gravity) ]] ||
+  [[ -z $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-evm) ]]; then
+  echo "Containers gravity-with-titan-titan, gravity-with-titan-gravity, gravity-with-titan-evm not found => run prepare-test.sh"
+  "$DIR"/prepare-test.sh
+fi
+
 # check if container is not running
 if [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-orchestrator-test) ]]; then
   echo "Container gravity-with-titan-orchestrator-test is not running => start it"
@@ -26,7 +34,7 @@ fi
 docker exec gravity-with-titan-orchestrator-test /bin/sh -c "/run-test.sh $TEST_TYPE"
 
 # if `KEEP_CONTAINER` is not set to true, stop the container
-if [[ "$KEEP_CONTAINER" == "false" ]]; then
+if [[ "$KEEP_CONTAINER" != "true" ]]; then
   echo "Stopping container gravity-with-titan-orchestrator-test"
   docker stop gravity-with-titan-orchestrator-test
 fi
