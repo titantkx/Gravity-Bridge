@@ -27,6 +27,8 @@ services:
       dockerfile: Dockerfile
     networks:
       - net
+    cap_add:
+      - NET_ADMIN
     volumes:
       - ./shared:/shared
     ports:
@@ -47,6 +49,8 @@ services:
         - repo=../../
     networks:
       - net
+    cap_add:
+      - NET_ADMIN
     volumes:
       - ./shared:/shared
     ports:

@@ -2,6 +2,8 @@
 
 set -eux
 
+NODES=$1
+
 # Detect platform
 platform=$(uname)
 if [ "$platform" = "Darwin" ]; then
@@ -16,21 +18,17 @@ SHARED_FOLDER="/shared_tmp"
 
 mkdir -p $SHARED_FOLDER
 
-VALIDATOR_HOME="/root/.gravity"
 CHAIN_ID="gravity-test-1"
 DENOM="ugraviton"
 ALLOCATION="1000000000000000footoken,1000000000000000footoken2,1000000000000000ibc/nometadatatoken,1000000000000000$DENOM"
 
+# first we start a genesis.json with validator 1
+# validator 1 will also collect the gentx's once gnerated
+STARTING_VALIDATOR=1
+STARTING_VALIDATOR_HOME="/validator$STARTING_VALIDATOR"
+
 ### init chain
-$BIN init --home $VALIDATOR_HOME --chain-id $CHAIN_ID validator1
-
-### config node
-$SED_INPLACE 's/^indexer = ".*"/indexer = "kv"/' $VALIDATOR_HOME/config/config.toml
-$SED_INPLACE 's/^timeout_commit = ".*"/timeout_commit = "0.5s"/' $VALIDATOR_HOME/config/config.toml
-
-$SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(enable = \).*/\1true/' $VALIDATOR_HOME/config/app.toml
-$SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(swagger = \).*/\1true/' $VALIDATOR_HOME/config/app.toml
-$SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(address = \).*/\1\"tcp:\/\/0.0.0.0:1317\"/' $VALIDATOR_HOME/config/app.toml
+$BIN init --home "$STARTING_VALIDATOR_HOME" --chain-id $CHAIN_ID validator1
 
 ### config genesis
 
@@ -49,37 +47,72 @@ config='
 .app_state.gravity.params.evm_chain_params = [{"evm_chain_prefix":"ethereum","average_ethereum_block_time":"15000","bridge_active":true,"bridge_chain_id":"15","bridge_ethereum_address":"0x0000000000000000000000000000000000000000","contract_source_hash":"","ethereum_blacklist":[],"gravity_id":"ethereum"}]
 '
 
-jq "$config" $VALIDATOR_HOME/config/genesis.json >/edited-genesis.json
+jq "$config" "$STARTING_VALIDATOR_HOME"/config/genesis.json >/edited-genesis.json
 
 # Change the stake token to be ugraviton instead
 $SED_INPLACE 's/\<stake\>/'"$DENOM"'/g' /edited-genesis.json
 
-mv /edited-genesis.json $VALIDATOR_HOME/config/genesis.json
+mv /edited-genesis.json /genesis.json
 
 VESTING_AMOUNT="1000000000$DENOM"
 START_VESTING=$(expr $(date +%s) + 300)  # Start vesting 15 minutes from now
 END_VESTING=$(expr $START_VESTING + 120) # End vesting 20 minutes from now, giving a 5 minute window for the test to work
 
 ### config validator
+for i in $(seq 1 $NODES); do
+  # move the genesis in
+  mkdir -p /validator$i/config/
+  mv /genesis.json /validator$i/config/genesis.json
+  VALIDATOR_HOME="--home /validator$i"
+  ARGS="$VALIDATOR_HOME --keyring-backend test"
 
-ARGS="--home $VALIDATOR_HOME --keyring-backend test"
-i=1
+  $BIN keys add $ARGS validator$i 2>>$SHARED_FOLDER/validator-phrases
+  $BIN keys add $ARGS orchestrator$i 2>>$SHARED_FOLDER/orchestrator-phrases
+  $BIN eth_keys add >>$SHARED_FOLDER/validator-eth-keys
+  $BIN keys add $ARGS vesting$i 2>>$SHARED_FOLDER/vesting-phrases
 
-$BIN keys add $ARGS validator$i 2>>$SHARED_FOLDER/validator-phrases
-$BIN keys add $ARGS orchestrator$i 2>>$SHARED_FOLDER/orchestrator-phrases
-$BIN keys add $ARGS vesting$i 2>>$SHARED_FOLDER/vesting-phrases
-$BIN eth_keys add >>$SHARED_FOLDER/validator-eth-keys
+  VALIDATOR_KEY=$($BIN keys show validator$i -a $ARGS)
+  ORCHESTRATOR_KEY=$($BIN keys show orchestrator$i -a $ARGS)
+  VESTING_KEY=$($BIN keys show vesting$i -a $ARGS)
 
-VALIDATOR_KEY=$($BIN keys show validator$i -a $ARGS)
-ORCHESTRATOR_KEY=$($BIN keys show orchestrator$i -a $ARGS)
-ETHEREUM_KEY=$(grep address $SHARED_FOLDER/validator-eth-keys | sed -n "$i"p | sed 's/.*://')
-VESTING_KEY=$($BIN keys show vesting$i -a $ARGS)
+  $BIN add-genesis-account $ARGS $VALIDATOR_KEY $ALLOCATION
+  $BIN add-genesis-account $ARGS $ORCHESTRATOR_KEY $ALLOCATION
+  # Add a vesting account
+  $BIN add-genesis-account $ARGS $VESTING_KEY --vesting-amount $VESTING_AMOUNT --vesting-start-time $START_VESTING --vesting-end-time $END_VESTING $VESTING_AMOUNT
+  # move the genesis back out
+  mv /validator$i/config/genesis.json /genesis.json
+done
 
-$BIN add-genesis-account $ARGS $VALIDATOR_KEY $ALLOCATION
-$BIN add-genesis-account $ARGS $ORCHESTRATOR_KEY $ALLOCATION
-# Add a vesting account
-$BIN add-genesis-account $ARGS $VESTING_KEY --vesting-amount $VESTING_AMOUNT --vesting-start-time $START_VESTING --vesting-end-time $END_VESTING $VESTING_AMOUNT
+for i in $(seq 1 $NODES); do
+  cp /genesis.json /validator$i/config/genesis.json
+  VALIDATOR_HOME="--home /validator$i"
+  ARGS="$VALIDATOR_HOME --keyring-backend test"
 
-$BIN gentx $ARGS --moniker=validator$i --chain-id=$CHAIN_ID validator$i 500000000$DENOM $ETHEREUM_KEY $ORCHESTRATOR_KEY
+  ORCHESTRATOR_KEY=$($BIN keys show orchestrator$i -a $ARGS)
+  ETHEREUM_KEY=$(grep address $SHARED_FOLDER/validator-eth-keys | sed -n "$i"p | sed 's/.*://')
 
-$BIN collect-gentxs --home $VALIDATOR_HOME
+  $BIN gentx $ARGS --moniker=validator$i --chain-id=$CHAIN_ID --ip 7.7.7.$i validator$i 500000000$DENOM $ETHEREUM_KEY $ORCHESTRATOR_KEY
+  if [ $i -gt 1 ]; then
+    cp /validator$i/config/gentx/* /validator1/config/gentx/
+  fi
+done
+
+$BIN collect-gentxs --home $STARTING_VALIDATOR_HOME
+
+cp /validator1/config/genesis.json /genesis.json
+cp /genesis.json $SHARED_FOLDER/gravity-genesis.json
+
+# put the now final genesis.json into the correct folders
+for i in $(seq 1 $NODES); do
+  cp /genesis.json /validator$i/config/genesis.json
+  $SED_INPLACE 's/^timeout_commit = ".*"/timeout_commit = "0.5s"/' /validator$i/config/config.toml
+
+  if [[ "$i" -eq 1 ]]; then
+    ### config node
+    $SED_INPLACE 's/^indexer = ".*"/indexer = "kv"/' "$STARTING_VALIDATOR_HOME"/config/config.toml
+
+    $SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(enable = \).*/\1true/' "$STARTING_VALIDATOR_HOME"/config/app.toml
+    $SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(swagger = \).*/\1true/' "$STARTING_VALIDATOR_HOME"/config/app.toml
+    $SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(address = \).*/\1\"tcp:\/\/0.0.0.0:1317\"/' "$STARTING_VALIDATOR_HOME"/config/app.toml
+  fi
+done
