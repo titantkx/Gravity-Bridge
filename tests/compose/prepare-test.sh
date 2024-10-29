@@ -26,4 +26,4 @@ set +e
 docker rm -f gravity-with-titan-orchestrator-test
 set -e
 
-docker run --name gravity-with-titan-orchestrator-test $PLATFORM_CMD --network gravity-with-titan_net --mount type=bind,source="$DIR/shared"/,target=/shared -it orchestrator-test /bin/bash /setup.sh
+docker run --name gravity-with-titan-orchestrator-test $PLATFORM_CMD --network gravity-with-titan_net --mount type=bind,source="$DIR/shared"/,target=/shared -it orchestrator-test /setup.sh

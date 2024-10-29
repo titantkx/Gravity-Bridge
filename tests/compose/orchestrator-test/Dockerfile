@@ -42,4 +42,11 @@ RUN pushd /gravity/orchestrator/test_runner && PATH=$PATH:$HOME/.cargo/bin cargo
 
 RUN git config --global --add safe.directory /gravity
 
+ADD set-env.sh /set-env.sh
 ADD setup.sh /setup.sh
+ADD run-test.sh /run-test.sh
+
+ENTRYPOINT [ "/bin/bash" ]
+
+# CMD for sleeping keeping the container running
+CMD [ "-c", "while true; do sleep 30; done;" ]
