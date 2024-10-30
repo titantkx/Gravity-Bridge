@@ -45,6 +45,8 @@ services:
     build:
       context: ./gravity
       dockerfile: Dockerfile
+      args:
+        NODES: ${NODES}
       additional_contexts:
         - repo=../../
     networks:

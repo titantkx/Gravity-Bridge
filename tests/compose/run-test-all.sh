@@ -1,5 +1,7 @@
 #!/bin/bash
-TEST_TYPE=$1
+
+# Number of gravity validator nodes
+export NODES=${1:-3}
 
 set -eux
 

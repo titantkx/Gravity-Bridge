@@ -10,7 +10,8 @@ RUN pushd /gravity/module/ && PATH=$PATH:/usr/local/go/bin GOPROXY=https://proxy
 ADD setup.sh /setup.sh
 ADD start.sh /start.sh
 
-ENV NODES=1
+ARG NODES=3
+ENV NODES=$NODES
 
 RUN /setup.sh $NODES
 

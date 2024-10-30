@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Number of gravity validator nodes
+export NODES=${1:-3}
+
 set -eux
 
 # this directy of this script

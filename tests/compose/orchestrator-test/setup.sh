@@ -6,7 +6,7 @@ source /set-env.sh
 
 # Setup relayer files to avoid permissions issues later
 set +e
-mkdir /ibc-relayer-logs
+mkdir -p /ibc-relayer-logs
 touch /ibc-relayer-logs/hermes-logs
 touch /ibc-relayer-logs/channel-creation
 set -e

@@ -8,4 +8,4 @@ export ETH_NODE=http://evm:8545
 
 export RUST_BACKTRACE=full
 export NO_GAS_OPT=1
-export RUST_LOG=INFO,relayer=DEBUG,orchestrator=DEBUG
+export RUST_LOG=INFO,relayer=DEBUG,orchestrator=DEBUG,cosmos_gravity=DEBUG

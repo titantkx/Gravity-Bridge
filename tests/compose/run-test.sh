@@ -1,6 +1,8 @@
 #!/bin/bash
 TEST_TYPE=$1
 KEEP_CONTAINER=${KEEP_ORCHESTRATOR_TEST_RUNNING:-false}
+# Number of gravity validator nodes
+export NODES=${NODES:-3}
 set -eu
 
 # this directy of this script
@@ -13,7 +15,7 @@ fi
 # check if `gravity-with-titan-orchestrator-test` container not exists
 if [[ -z $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-orchestrator-test) ]]; then
   echo "Container gravity-with-titan-orchestrator-test not found => run prepare-test.sh"
-  "$DIR"/prepare-test.sh
+  "$DIR"/prepare-test.sh "$NODES"
 fi
 
 # check if any in `gravity-with-titan-titan` `gravity-with-titan-gravity` `gravity-with-titan-evm` is not running
@@ -21,7 +23,7 @@ if [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-titan) ]] |
   [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-gravity) ]] ||
   [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-evm) ]]; then
   echo "Containers gravity-with-titan-titan, gravity-with-titan-gravity, gravity-with-titan-evm not found => run prepare-test.sh"
-  "$DIR"/prepare-test.sh
+  "$DIR"/prepare-test.sh "$NODES"
 fi
 
 # check if container is not running
