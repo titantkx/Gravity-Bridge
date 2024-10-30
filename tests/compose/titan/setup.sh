@@ -30,7 +30,7 @@ $SED_INPLACE 's/^timeout_commit = ".*"/timeout_commit = "2.5s"/' $VALIDATOR_HOME
 
 $SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(enable = \).*/\1true/' $VALIDATOR_HOME/config/app.toml
 $SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(swagger = \).*/\1true/' $VALIDATOR_HOME/config/app.toml
-$SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(address = \).*/\1\"tcp:\/\/0.0.0.0:1417\"/' $VALIDATOR_HOME/config/app.toml
+$SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(address = \).*/\1\"tcp:\/\/0.0.0.0:1317\"/' $VALIDATOR_HOME/config/app.toml
 
 ### config genesis
 

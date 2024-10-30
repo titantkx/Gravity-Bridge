@@ -9,10 +9,10 @@ cp -r /shared_tmp/* /shared
 BIN=/titan/bin/titand
 
 VALIDATOR_HOME="/root/.titand"
-RPC_ADDRESS="--rpc.laddr tcp://0.0.0.0:27657"
-GRPC_ADDRESS="--grpc.address 0.0.0.0:9190"
+RPC_ADDRESS="--rpc.laddr tcp://0.0.0.0:26657"
+GRPC_ADDRESS="--grpc.address 0.0.0.0:9090"
 # Must remap the grpc-web address because it conflicts with what we want to use
-GRPC_WEB_ADDRESS="--grpc-web.address 0.0.0.0:9192"
+GRPC_WEB_ADDRESS="--grpc-web.address 0.0.0.0:9092"
 
 LOG_LEVEL="--log_level info"
 

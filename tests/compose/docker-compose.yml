@@ -32,11 +32,11 @@ services:
     volumes:
       - ./shared:/shared
     ports:
-      - "27657:27657"
-      - "9190:9190"
-      - "1417:1417"
+      - "27657:26657"
+      - "9190:9090"
+      - "1417:1317"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:27657"]
+      test: ["CMD", "curl", "-f", "http://localhost:26657"]
       interval: 10s
       timeout: 10s
       retries: 5
