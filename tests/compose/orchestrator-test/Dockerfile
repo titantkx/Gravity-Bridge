@@ -3,9 +3,8 @@ ENV GOPATH=/go
 ENV PATH=$PATH:/go/bin
 
 RUN dnf install -y git make gcc gcc-c++ which iproute iputils procps-ng vim-minimal tmux net-tools htop tar jq npm openssl-devel perl rust cargo golang wget
-# RUN cargo install sccache --locked
+
 RUN cargo install cargo-chef --locked
-# ENV RUSTC_WRAPPER=sccache SCCACHE_DIR=/sccache
 
 # only required for deployment script
 RUN npm install -g ts-node && npm install -g typescript
@@ -35,12 +34,6 @@ RUN pushd /gravity/orchestrator && cargo chef cook --release --recipe-path recip
 
 COPY --from=repo solidity /gravity/solidity
 RUN pushd /gravity/solidity/ && HUSKY_SKIP_INSTALL=1 npm install && npm run typechain
-
-COPY --from=repo orchestrator /gravity/orchestrator
-# build the test runner specifically to cache a release artifact
-RUN pushd /gravity/orchestrator/test_runner && PATH=$PATH:$HOME/.cargo/bin cargo build --bin test-runner --release
-
-RUN git config --global --add safe.directory /gravity
 
 ADD set-env.sh /set-env.sh
 ADD setup.sh /setup.sh
