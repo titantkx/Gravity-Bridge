@@ -26,7 +26,7 @@ $BIN init --home $VALIDATOR_HOME --chain-id $CHAIN_ID val-1 --default-denom $DEN
 
 ### config node
 $SED_INPLACE 's/^indexer = ".*"/indexer = "kv"/' $VALIDATOR_HOME/config/config.toml
-$SED_INPLACE 's/^timeout_commit = ".*"/timeout_commit = "0.5s"/' $VALIDATOR_HOME/config/config.toml
+$SED_INPLACE 's/^timeout_commit = ".*"/timeout_commit = "2.5s"/' $VALIDATOR_HOME/config/config.toml
 
 $SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(enable = \).*/\1true/' $VALIDATOR_HOME/config/app.toml
 $SED_INPLACE '/^\[api\]$/,/^\[/ s/^\(swagger = \).*/\1true/' $VALIDATOR_HOME/config/app.toml

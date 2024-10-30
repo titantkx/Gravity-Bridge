@@ -105,7 +105,7 @@ cp /genesis.json $SHARED_FOLDER/gravity-genesis.json
 # put the now final genesis.json into the correct folders
 for i in $(seq 1 $NODES); do
   cp /genesis.json /validator$i/config/genesis.json
-  $SED_INPLACE 's/^timeout_commit = ".*"/timeout_commit = "0.5s"/' /validator$i/config/config.toml
+  $SED_INPLACE 's/^timeout_commit = ".*"/timeout_commit = "2.5s"/' /validator$i/config/config.toml
 
   if [[ "$i" -eq 1 ]]; then
     ### config node
