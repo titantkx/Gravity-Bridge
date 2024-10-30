@@ -8,6 +8,7 @@ bash all-up-test.sh # Happy path
 export NO_IMAGE_BUILD=1
 bash all-up-test.sh IBC_METADATA
 bash all-up-test.sh HAPPY_PATH_V2
+bash all-up-test.sh HAPPY_PATH_V2_NATIVE
 bash all-up-test.sh ERC721_HAPPY_PATH
 bash all-up-test.sh IBC_AUTO_FORWARD
 bash all-up-test.sh IBC_AUTO_SEND_ETH

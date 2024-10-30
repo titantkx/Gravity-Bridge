@@ -32,7 +32,10 @@ if [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-orchestrato
   docker start gravity-with-titan-orchestrator-test
 fi
 
-set +e
+# if not `KEEP_CONTAINER` allow to pass the error of the test. Because this script expects to run only one test => error log will print at last
+if [[ "$KEEP_CONTAINER" != "true" ]]; then
+  set +e
+fi
 # Run test entry point script
 docker exec gravity-with-titan-orchestrator-test /bin/sh -c "/run-test.sh $TEST_TYPE"
 set -e
