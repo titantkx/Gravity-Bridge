@@ -20,7 +20,7 @@ set +e
 docker rm -f gravity_test_instance
 set -e
 
-NODES=2
+NODES=3
 
 pushd $DIR/../
 
