@@ -216,7 +216,7 @@ pub async fn test_valset_update(
             delegate_address,
             amount,
             get_fee(None),
-            keys[1].validator_key,
+            keys[0].validator_key,
             Some(TOTAL_TIMEOUT),
         )
         .await

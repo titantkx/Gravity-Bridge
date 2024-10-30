@@ -733,16 +733,17 @@ pub async fn get_validator_to_delegate_to(contact: &Contact) -> (CosmosAddress, 
         }
     }
 
-    // since this is five percent of the total bonded stake
+    // since this is six percent of the total bonded stake
     // delegating this to the validator who has the least should
     // do the trick
-    let five_percent = total_bonded_stake / 20u8.into();
-    let five_percent = Coin {
+    // make a change 6% of the total bonded stake > 5% will trigger `ValsetRequest` in gravity (module/x/gravity/abci.go#createValsets)
+    let six_percent = total_bonded_stake / 100u8.into() * 6u8.into();
+    let six_percent = Coin {
         denom: STAKING_TOKEN.clone(),
-        amount: five_percent,
+        amount: six_percent,
     };
 
-    (has_the_least.unwrap(), five_percent)
+    (has_the_least.unwrap(), six_percent)
 }
 
 /// Waits for a particular block to be created

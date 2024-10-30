@@ -97,6 +97,11 @@ pub async fn get_oldest_unsigned_valsets(
     prefix: String,
     evm_chain_prefix: String,
 ) -> Result<Vec<Valset>, GravityError> {
+    trace!(
+        "Getting oldest unsigned valsets for {} {}",
+        address.to_bech32(prefix.clone()).unwrap(),
+        evm_chain_prefix
+    );
     let request = client
         .last_pending_valset_request_by_addr(QueryLastPendingValsetRequestByAddrRequest {
             address: address.to_bech32(prefix).unwrap(),
@@ -105,7 +110,8 @@ pub async fn get_oldest_unsigned_valsets(
         .await?;
     let valsets = request.into_inner().valsets;
     // convert from proto valset type to rust valset type
-    let valsets = valsets.iter().map(|v| v.into()).collect();
+    let valsets: Vec<Valset> = valsets.iter().map(|v| v.into()).collect();
+    trace!("Got {} valsets", valsets.len());
     Ok(valsets)
 }
 
