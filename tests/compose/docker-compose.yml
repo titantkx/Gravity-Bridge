@@ -83,5 +83,5 @@ services:
 
 networks:
   net:
-    external:
-      name: gravity-with-titan_net
+    internal: false
+    name: gravity-with-titan_net
