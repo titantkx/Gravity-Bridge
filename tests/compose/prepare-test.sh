@@ -29,13 +29,13 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
   fi
 fi
 
+docker compose -f $DIR/docker-compose.yml up --build -d --wait evm gravity titan
+
 docker run -d --name gravity-with-titan-orchestrator-test \
   $PLATFORM_CMD \
   --network gravity-with-titan_net \
   --mount type=bind,source="$DIR/shared",target=/shared \
   --mount type=bind,source="$REPO_DIR/orchestrator",target=/gravity/orchestrator \
   -it orchestrator-test
-
-docker compose -f $DIR/docker-compose.yml up --build -d --wait evm gravity titan
 
 docker exec gravity-with-titan-orchestrator-test /setup.sh
