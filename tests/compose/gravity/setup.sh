@@ -72,8 +72,11 @@ for i in $(seq 1 $NODES); do
   $BIN keys add $ARGS vesting$i 2>>$SHARED_FOLDER/vesting-phrases
 
   VALIDATOR_KEY=$($BIN keys show validator$i -a $ARGS)
+  echo "validator$i: $VALIDATOR_KEY" 1>>$SHARED_FOLDER/validator-addresses
   ORCHESTRATOR_KEY=$($BIN keys show orchestrator$i -a $ARGS)
+  echo "orchestrator$i: $ORCHESTRATOR_KEY" 1>>$SHARED_FOLDER/orchestrator-addresses
   VESTING_KEY=$($BIN keys show vesting$i -a $ARGS)
+  echo "vesting$i: $VESTING_KEY" 1>>$SHARED_FOLDER/vesting-addresses
 
   $BIN add-genesis-account $ARGS $VALIDATOR_KEY $ALLOCATION
   $BIN add-genesis-account $ARGS $ORCHESTRATOR_KEY $ALLOCATION
@@ -90,6 +93,7 @@ for i in $(seq 1 $NODES); do
 
   ORCHESTRATOR_KEY=$($BIN keys show orchestrator$i -a $ARGS)
   ETHEREUM_KEY=$(grep address $SHARED_FOLDER/validator-eth-keys | sed -n "$i"p | sed 's/.*://')
+  echo "validator$i: $ETHEREUM_KEY" 1>>$SHARED_FOLDER/validator-eth-addresses
 
   $BIN gentx $ARGS --moniker=validator$i --chain-id=$CHAIN_ID --ip 7.7.7.$i validator$i 500000000$DENOM $ETHEREUM_KEY $ORCHESTRATOR_KEY
   if [ $i -gt 1 ]; then
