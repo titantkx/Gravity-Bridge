@@ -6,6 +6,7 @@ export IBC_NODE_GRPC=http://titan:9090
 export IBC_NODE_ABCI=http://titan:26657
 export ETH_NODE=http://evm:8545
 export IBC_ADDRESS_PREFIX=titan
+export IBC_ADDRESS_TYPE=ethermint
 export IBC_STAKING_TOKEN=atkx
 
 export RUST_BACKTRACE=full

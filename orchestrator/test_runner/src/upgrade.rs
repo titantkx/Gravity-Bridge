@@ -1,10 +1,11 @@
 use crate::auction::auction_test_random;
 use crate::ibc_metadata::submit_and_pass_ibc_metadata_proposal;
+use crate::types::IBCPrivateKey;
 use crate::{happy_path_test, happy_path_test_v2, utils::*, EVM_CHAIN_PREFIX};
 use clarity::Address as EthAddress;
 use deep_space::client::ChainStatus;
 use deep_space::utils::decode_any;
-use deep_space::{Contact, CosmosPrivateKey};
+use deep_space::Contact;
 use gravity_proto::cosmos_sdk_proto::cosmos::bank::v1beta1::Metadata;
 use gravity_proto::gravity::query_client::{QueryClient as GravityQueryClient, QueryClient};
 use gravity_proto::gravity::{
@@ -46,7 +47,7 @@ pub async fn upgrade_part_1(
     ibc_contact: &Contact,
     grpc_client: GravityQueryClient<Channel>,
     keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     gravity_address: EthAddress,
     erc20_addresses: Vec<EthAddress>,
 ) {
@@ -115,7 +116,7 @@ pub async fn upgrade_part_2(
     ibc_contact: &Contact,
     grpc_client: GravityQueryClient<Channel>,
     keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     gravity_address: EthAddress,
     erc20_addresses: Vec<EthAddress>,
 ) {
@@ -259,7 +260,7 @@ pub async fn run_upgrade_specific_tests(
     _ibc_contact: &Contact,
     grpc_client: GravityQueryClient<Channel>,
     keys: Vec<ValidatorKeys>,
-    _ibc_keys: Vec<CosmosPrivateKey>,
+    _ibc_keys: Vec<IBCPrivateKey>,
     gravity_address: EthAddress,
     erc20_addresses: Vec<EthAddress>,
     post_upgrade: bool,

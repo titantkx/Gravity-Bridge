@@ -315,6 +315,7 @@ pub struct EthermintUserKey {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ValidatorKeys {
     /// The Ethereum key used by this validator to sign Gravity bridge messages
     pub eth_key: EthPrivateKey,

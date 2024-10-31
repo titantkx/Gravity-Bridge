@@ -1,6 +1,7 @@
 use crate::happy_path::send_erc20_deposit;
 use crate::happy_path_v2::send_to_eth_and_confirm;
 use crate::ibc_auto_forward::{get_channel_id, test_ibc_transfer};
+use crate::types::IBCPrivateKey;
 use crate::{
     create_default_test_config, create_parameter_change_proposal, delegate_and_confirm,
     get_ethermint_key, get_fee, get_ibc_chain_id, one_eth, send_eth_bulk, start_orchestrators,
@@ -8,7 +9,7 @@ use crate::{
     ADDRESS_PREFIX, COSMOS_NODE_GRPC, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR,
     IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT, STAKING_TOKEN, TOTAL_TIMEOUT,
 };
-use deep_space::{Coin, Contact, CosmosPrivateKey, PrivateKey};
+use deep_space::{Coin, Contact, PrivateKey};
 use gravity_proto::cosmos_sdk_proto::cosmos::bank::v1beta1::query_client::QueryClient as BankQueryClient;
 use gravity_proto::cosmos_sdk_proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use gravity_proto::cosmos_sdk_proto::cosmos::params::v1beta1::ParamChange;
@@ -26,7 +27,7 @@ pub async fn ethereum_keys_test(
     gravity_client: GravityQueryClient<Channel>,
     contact: &Contact,
     keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     gravity_address: EthAddress,
     erc20_address: EthAddress,
 ) -> bool {
@@ -132,7 +133,7 @@ pub async fn example_ethermint_key_usage(
     contact: &Contact,
     web30: &Web3,
     validator_keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     ethermint_key: EthermintUserKey,
     erc20_address: EthAddress,
 ) -> bool {

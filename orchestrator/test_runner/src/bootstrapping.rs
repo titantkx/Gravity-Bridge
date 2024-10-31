@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use crate::get_deposit;
 use crate::ibc_auto_forward::get_channel;
+use crate::types::IBCPrivateKey;
 use crate::COSMOS_NODE_GRPC;
 use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_RELAYER_ADDRESS;
@@ -77,6 +78,27 @@ fn parse_phrases(filename: &str) -> (Vec<CosmosPrivateKey>, Vec<String>) {
     (ret_keys, ret_phrases)
 }
 
+fn parse_ibc_phrases(filename: &str) -> (Vec<IBCPrivateKey>, Vec<String>) {
+    let file = File::open(filename).expect("Failed to find phrases");
+    let reader = BufReader::new(file);
+    let mut ret_keys = Vec::new();
+    let mut ret_phrases = Vec::new();
+
+    for line in reader.lines() {
+        let phrase = line.expect("Error reading phrase file!");
+        if phrase.is_empty()
+            || phrase.contains("write this mnemonic phrase")
+            || phrase.contains("recover your account if")
+        {
+            continue;
+        }
+        let key = IBCPrivateKey::from_phrase(&phrase, "").expect("Bad phrase!");
+        ret_keys.push(key);
+        ret_phrases.push(phrase);
+    }
+    (ret_keys, ret_phrases)
+}
+
 /// Validator private keys are generated via the gravity key add
 /// command, from there they are used to create gentx's and start the
 /// chain, these keys change every time the container is restarted.
@@ -92,10 +114,10 @@ pub fn parse_validator_keys() -> (Vec<CosmosPrivateKey>, Vec<String>) {
 
 /// The same as parse_validator_keys() except for a second chain accessed
 /// over IBC for testing purposes
-pub fn parse_ibc_validator_keys() -> (Vec<CosmosPrivateKey>, Vec<String>) {
+pub fn parse_ibc_validator_keys() -> (Vec<IBCPrivateKey>, Vec<String>) {
     let filename = "/ibc-validator-phrases";
     info!("Reading mnemonics from {}", filename);
-    parse_phrases(filename)
+    parse_ibc_phrases(filename)
 }
 
 /// Orchestrator private keys are generated via the gravity key add
@@ -215,6 +237,7 @@ pub async fn deploy_contracts(contact: &Contact) {
     file_shared.write_all(&output.stdout).unwrap();
 }
 
+#[allow(dead_code)]
 pub struct BootstrapContractAddresses {
     pub gravity_contract: EthAddress,
     pub gravity_erc721_contract: EthAddress,
@@ -388,7 +411,7 @@ pub async fn start_ibc_relayer(
     gravity_contact: &Contact,
     ibc_contact: &Contact,
     keys: &[ValidatorKeys],
-    ibc_keys: &[CosmosPrivateKey],
+    ibc_keys: &[IBCPrivateKey],
 ) {
     let grav_deposit = get_deposit(None);
     let ibc_deposit = get_deposit(Some(IBC_STAKING_TOKEN.to_string()));

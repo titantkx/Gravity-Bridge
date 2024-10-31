@@ -34,8 +34,8 @@ use crate::vesting::vesting_test;
 use clarity::PrivateKey as EthPrivateKey;
 use clarity::{Address as EthAddress, Uint256};
 use deep_space::coin::Coin;
-use deep_space::Address as CosmosAddress;
 use deep_space::Contact;
+use deep_space::{Address as CosmosAddress, EthermintPrivateKey};
 use deep_space::{CosmosPrivateKey, PrivateKey};
 use erc_721_happy_path::erc721_happy_path_test;
 use evidence_based_slashing::evidence_based_slashing;
@@ -50,6 +50,7 @@ use relay_market::relay_market_test;
 use std::{env, time::Duration};
 use tokio::time::sleep;
 use transaction_stress_test::transaction_stress_test;
+use types::IBCChainAddressType;
 use unhalt_bridge::unhalt_bridge_test;
 use valset_stress::validator_set_stress_test;
 
@@ -68,6 +69,7 @@ mod happy_path_v2;
 mod ibc_auto_forward;
 mod ibc_auto_send_eth;
 mod ibc_metadata;
+mod types;
 // mod ica_host;
 mod inflation_knockdown;
 mod invalid_events;
@@ -111,6 +113,9 @@ lazy_static! {
     // These constants all apply to the gaiad instance running (ibc-test-1)
     static ref IBC_ADDRESS_PREFIX: String =
         env::var("IBC_ADDRESS_PREFIX").unwrap_or_else(|_| "cosmos".to_string());
+    static ref IBC_ADDRESS_TYPE: IBCChainAddressType =
+        env::var("IBC_ADDRESS_TYPE").map(|v| v.parse().unwrap()).unwrap_or(IBCChainAddressType::Cosmos);
+
     static ref IBC_STAKING_TOKEN: String =
         env::var("IBC_STAKING_TOKEN").unwrap_or_else(|_| "stake".to_owned());
     static ref IBC_NODE_GRPC: String =
@@ -150,7 +155,29 @@ lazy_static! {
     static ref RELAYER_MNEMONIC: String = "below great use captain upon ship tiger exhaust orient burger network uphold wink theory focus cloud energy flavor recall joy phone beach symptom hobby".to_string();
     static ref RELAYER_PRIVATE_KEY: CosmosPrivateKey = CosmosPrivateKey::from_phrase(&RELAYER_MNEMONIC, "").unwrap();
     static ref GRAVITY_RELAYER_ADDRESS: CosmosAddress = RELAYER_PRIVATE_KEY.to_address(ADDRESS_PREFIX.as_str()).unwrap(); // IBC relayer on Gravity
-    static ref IBC_RELAYER_ADDRESS: CosmosAddress = RELAYER_PRIVATE_KEY.to_address(IBC_ADDRESS_PREFIX.as_str()).unwrap(); // IBC relayer on test chain
+    static ref IBC_RELAYER_ADDRESS: CosmosAddress = initialize_ibc_relayer_address();
+
+
+    // static ref IBC_RELAYER_ADDRESS: CosmosAddress = RELAYER_PRIVATE_KEY.to_address(IBC_ADDRESS_PREFIX.as_str()).unwrap(); // IBC relayer on test chain
+
+}
+
+fn initialize_ibc_relayer_address() -> CosmosAddress {
+    match *IBC_ADDRESS_TYPE {
+        IBCChainAddressType::Cosmos => {
+            let relayer_ibc_private_key: CosmosPrivateKey = RELAYER_PRIVATE_KEY.clone();
+            relayer_ibc_private_key
+                .to_address(IBC_ADDRESS_PREFIX.as_str())
+                .unwrap()
+        }
+        IBCChainAddressType::Ethermint => {
+            let relayer_ibc_private_key: EthermintPrivateKey =
+                EthermintPrivateKey::from_phrase(&RELAYER_MNEMONIC, "").unwrap();
+            relayer_ibc_private_key
+                .to_address(&IBC_ADDRESS_PREFIX.as_str())
+                .unwrap()
+        }
+    }
 }
 
 /// Gets the standard non-token fee for the testnet. We deploy the test chain with STAKE

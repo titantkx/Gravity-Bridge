@@ -3,6 +3,7 @@ use crate::ibc_auto_forward;
 use crate::ibc_auto_forward::get_channel_id;
 use crate::ibc_auto_forward::get_ibc_balance;
 use crate::signature_slashing::wait_for_height;
+use crate::types::IBCPrivateKey;
 use crate::utils::*;
 use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_DENOM_SEPARATOR;
@@ -13,7 +14,7 @@ use crate::{get_ibc_chain_id, one_eth, COSMOS_NODE_GRPC, IBC_ADDRESS_PREFIX, IBC
 use clarity::Address as EthAddress;
 use deep_space::address::Address as CosmosAddress;
 use deep_space::client::type_urls::MSG_TRANSFER_TYPE_URL;
-use deep_space::private_key::{CosmosPrivateKey, PrivateKey};
+use deep_space::private_key::PrivateKey;
 use deep_space::{Coin as DSCoin, Contact, Msg};
 use gravity_proto::cosmos_sdk_proto::cosmos::bank::v1beta1::query_client::QueryClient as BankQueryClient;
 use gravity_proto::cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
@@ -41,7 +42,7 @@ pub async fn ibc_auto_send_eth_test(
     gravity_contact: &Contact,
     ibc_contact: &Contact,
     keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     gravity_address: EthAddress,
     erc20_address: EthAddress,
 ) {
@@ -168,7 +169,7 @@ pub async fn ibc_auto_send_eth_test(
 }
 
 // Sends 1 ibc-test-1 stake from `sender` to `receiver` on gravity-test-1 and asserts receipt of funds
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, dead_code)]
 pub async fn test_ibc_transfer(
     contact: &Contact,                     // Src chain's deep_space client
     dst_bank_qc: BankQueryClient<Channel>, // Dst chain's GRPC x/bank query client
@@ -303,7 +304,7 @@ pub async fn test_ibc_auto_send_eth_happy_path(
     web30: &Web3,
     contact: &Contact,
     gravity_contact: &Contact,
-    sender: CosmosPrivateKey,  // user who submits ibc transfer
+    sender: IBCPrivateKey,     // user who submits ibc transfer
     dest: EthAddress,          // The bridged + auto-forwarded ERC20 receiver
     erc20_address: EthAddress, // Address of the ERC20 to send to dest on ibc-test-1
     amount: Uint256,           // The amount of erc20_address token to send to dest on ibc-test-1

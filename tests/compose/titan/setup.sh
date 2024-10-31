@@ -48,7 +48,7 @@ $BIN keys add --home $VALIDATOR_HOME --keyring-backend test val-1 2>>$SHARED_FOL
 VALIDATOR_KEY=$($BIN keys show val-1 -a --home $VALIDATOR_HOME --keyring-backend test)
 echo "val-1: $VALIDATOR_KEY" 1>>$SHARED_FOLDER/ibc-validator-addresses
 
-$BIN add-genesis-account --home $VALIDATOR_HOME $VALIDATOR_KEY $ALLOCATION
+$BIN add-genesis-account --home $VALIDATOR_HOME "$VALIDATOR_KEY" $ALLOCATION
 
 $BIN gentx --home $VALIDATOR_HOME --keyring-backend test val-1 2048tkx
 

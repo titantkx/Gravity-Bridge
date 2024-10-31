@@ -1,6 +1,7 @@
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::send_erc20_deposit;
 use crate::signature_slashing::wait_for_height;
+use crate::types::IBCPrivateKey;
 use crate::utils::*;
 use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_DENOM_SEPARATOR;
@@ -56,7 +57,7 @@ pub async fn ibc_auto_forward_test(
     gravity_client: GravityQueryClient<Channel>,
     contact: &Contact,
     keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     gravity_address: EthAddress,
     erc20_address: EthAddress,
 ) {
