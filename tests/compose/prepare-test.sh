@@ -31,7 +31,7 @@ fi
 
 docker compose -f $DIR/docker-compose.yml up --build -d --wait evm gravity titan
 
-docker run -d --name gravity-with-titan-orchestrator-test \
+docker run -d --cpus 5 --name gravity-with-titan-orchestrator-test \
   $PLATFORM_CMD \
   --network gravity-with-titan_net \
   --mount type=bind,source="$DIR/shared",target=/shared \

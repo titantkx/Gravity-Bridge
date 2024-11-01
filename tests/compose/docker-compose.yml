@@ -15,6 +15,10 @@ services:
       - 8545
     ports:
       - "8545:8545"
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8545"]
       interval: 10s
@@ -35,6 +39,10 @@ services:
       - "27657:26657"
       - "9190:9090"
       - "1417:1317"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657"]
       interval: 10s
@@ -59,6 +67,10 @@ services:
       - "26657:26657"
       - "9090:9090"
       - "1317:1317"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:26657"]
       interval: 10s
