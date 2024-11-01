@@ -41,6 +41,8 @@ jq '.app_state.evm.params.evm_denom = "atkx"' $VALIDATOR_HOME/config/genesis.jso
 jq '.app_state.gov.voting_params.voting_period = "60s"' /denom-edited-genesis.json >/gov-edited-genesis.json
 
 mv /gov-edited-genesis.json $VALIDATOR_HOME/config/genesis.json
+cp $VALIDATOR_HOME/config/genesis.json /genesis.json
+cp /genesis.json $SHARED_FOLDER/ibc-genesis.json
 
 ### config validator
 $BIN keys add --home $VALIDATOR_HOME --keyring-backend test val-1 2>>$SHARED_FOLDER/ibc-validator-phrases
