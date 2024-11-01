@@ -22,8 +22,19 @@ fi
 if [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-titan) ]] ||
   [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-gravity) ]] ||
   [[ -z $(docker ps --format '{{.Names}}' | grep gravity-with-titan-evm) ]]; then
-  echo "Containers gravity-with-titan-titan, gravity-with-titan-gravity, gravity-with-titan-evm not found => run prepare-test.sh"
-  "$DIR"/prepare-test.sh "$NODES"
+
+  # check if exited containers are present => start them
+  if [[ -n $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-titan) ]] ||
+    [[ -n $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-gravity) ]] ||
+    [[ -n $(docker ps -a --format '{{.Names}}' | grep gravity-with-titan-evm) ]]; then
+    echo "Containers gravity-with-titan-titan, gravity-with-titan-gravity, gravity-with-titan-evm are exited => start them"
+    docker compose -f "$DIR"/docker-compose.yml stop orchestrator
+    docker compose -f "$DIR"/docker-compose.yml up -d --wait evm gravity titan
+  else
+    # if not exited containers are present => run prepare-test.sh
+    echo "Containers gravity-with-titan-titan, gravity-with-titan-gravity, gravity-with-titan-evm not found => run prepare-test.sh"
+    "$DIR"/prepare-test.sh "$NODES"
+  fi
 fi
 
 # check if container is not running
