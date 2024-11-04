@@ -439,6 +439,9 @@ pub struct PendingIbcAutoForward {
     /// the EventNonce from the MsgSendToCosmosClaim, used for ordering the queue
     #[prost(uint64, tag = "4")]
     pub event_nonce: u64,
+    /// the memo to send with the ibc-transfer
+    #[prost(string, tag = "5")]
+    pub memo: ::prost::alloc::string::String,
 }
 /// MsgSetOrchestratorAddress
 /// this message allows validators to delegate their voting responsibilities
