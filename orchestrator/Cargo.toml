@@ -15,12 +15,12 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-clarity = "1.2.3"
+clarity = "=1.3.0"
 # cosmos-sdk-proto = {git = "https://github.com/althea-net/cosmos-rust", rev = "19f3de7", package = "cosmos-sdk-proto-althea"}
-deep_space = "2.18"
+deep_space = {git = "https://github.com/titantkx/deep_space.git", tag = "v2.23.3", package = "deep_space"}
 gravity_proto = {path = "./gravity_proto"}
 num256 = "0.5"
 prost = "0.12"
 prost-types = "0.12"
 tonic = "0.10"
-web30 = "1.2"
+web30 = "=1.2"
