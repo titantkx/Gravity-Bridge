@@ -48,7 +48,7 @@ if [[ "$KEEP_CONTAINER" != "true" ]]; then
   set +e
 fi
 # Run test entry point script
-docker exec gravity-with-titan-orchestrator-test /bin/sh -c "/run-test.sh $TEST_TYPE"
+docker exec -it gravity-with-titan-orchestrator-test /bin/sh -c "/run-test.sh $TEST_TYPE"
 set -e
 
 # if `KEEP_CONTAINER` is not set to true, stop the container

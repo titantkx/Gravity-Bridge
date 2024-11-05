@@ -40,4 +40,4 @@ docker run -d --cpus 5 --name gravity-with-titan-orchestrator-test \
   --mount type=bind,source="$REPO_DIR/orchestrator",target=/gravity/orchestrator \
   -it orchestrator-test
 
-docker exec gravity-with-titan-orchestrator-test /setup.sh
+docker exec -it gravity-with-titan-orchestrator-test /setup.sh
