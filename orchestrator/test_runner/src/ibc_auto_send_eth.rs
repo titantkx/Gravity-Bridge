@@ -1,3 +1,4 @@
+use crate::get_deposit;
 use crate::get_gravity_chain_id;
 use crate::ibc_auto_forward;
 use crate::ibc_auto_forward::get_channel_id;
@@ -6,9 +7,11 @@ use crate::signature_slashing::wait_for_height;
 use crate::types::IBCChainAddressType;
 use crate::types::IBCPrivateKey;
 use crate::utils::*;
+use crate::ADDRESS_PREFIX;
 use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::IBC_ADDRESS_TYPE;
+use crate::IBC_STAKING_DECIMALS;
 use crate::IBC_STAKING_TOKEN;
 use crate::OPERATION_TIMEOUT;
 use crate::TOTAL_TIMEOUT;
@@ -102,6 +105,24 @@ pub async fn ibc_auto_send_eth_test(
 
     // send some eth to the user
     send_one_eth(ibc_user_keys.eth_address, web30).await;
+    // send some coin in ibc chain to the user to pay for fees
+    let user_ibc_address = match *IBC_ADDRESS_TYPE {
+        IBCChainAddressType::Cosmos => ibc_user_keys.cosmos_address,
+        IBCChainAddressType::Ethermint => ibc_user_keys.ethermint_address,
+    };
+    ibc_contact
+        .send_coins(
+            get_deposit(
+                Some((*IBC_STAKING_TOKEN).to_string()),
+                Some(*IBC_STAKING_DECIMALS),
+            ),
+            None,
+            user_ibc_address,
+            Some(OPERATION_TIMEOUT),
+            ibc_keys[0],
+        )
+        .await
+        .unwrap();
 
     // // Test an IBC transfer of 1 stake from IBC_CHAIN_ID to gravity-test-1
     // let sender = ibc_keys[0];
@@ -363,7 +384,7 @@ pub async fn test_ibc_auto_send_eth_happy_path(
         denom: format!("ibc/{}", denom_hash),
         amount: amount.to_string(),
     };
-    let forwarder_keys = get_user_key(Some("gravity"));
+    let forwarder_keys = get_user_key(Some(&ADDRESS_PREFIX));
     info!("Forwarder {:?}", forwarder_keys.cosmos_address.to_string());
     let msg_transfer = MsgTransfer {
         source_port: "transfer".to_string(),
@@ -395,7 +416,7 @@ pub async fn test_ibc_auto_send_eth_happy_path(
             Some(OPERATION_TIMEOUT),
             sender,
         )
-        .await;
+        .await?;
     info!("Sent MsgTransfer with response {:?}", send_res);
     info!("Locked up {} to send to Gravity to Eth", amount);
 

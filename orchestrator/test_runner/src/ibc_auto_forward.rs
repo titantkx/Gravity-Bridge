@@ -236,7 +236,13 @@ pub async fn test_ibc_transfer(
             sender,
         )
         .await;
-    info!("Sent MsgTransfer with response {:?}", send_res);
+    match send_res {
+        Ok(res) => info!("Sent MsgTransfer with response {:?}", res),
+        Err(e) => {
+            error!("Failed to send MsgTransfer: {:?}", e);
+            return false;
+        }
+    }
 
     // Give the ibc-relayer a bit of time to work in the event of multiple runs
     // delay_for(Duration::from_secs(10)).await;
