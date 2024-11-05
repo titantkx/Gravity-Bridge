@@ -250,7 +250,7 @@ pub async fn test_ibc_transfer(
     info!("Submitting MsgTransfer {:?}", msg_transfer);
     let msg_transfer = Msg::new(MSG_TRANSFER_TYPE_URL, msg_transfer);
     let fee_coin = fee_coin.unwrap_or(DSCoin {
-        amount: 100u16.into(),
+        amount: 0u16.into(),
         denom: (*IBC_STAKING_TOKEN).to_string(),
     });
     let send_res = contact
@@ -404,15 +404,11 @@ pub async fn test_ibc_auto_send_eth_happy_path(
     };
     info!("Submitting MsgTransfer {:?}", msg_transfer);
     let msg_transfer = Msg::new(MSG_TRANSFER_TYPE_URL, msg_transfer);
-    let fee_coin = DSCoin {
-        amount: 100u16.into(),
-        denom: (*IBC_STAKING_TOKEN).to_string(),
-    };
     let send_res = contact
         .send_message(
             &[msg_transfer],
             Some("Test Relaying".to_string()),
-            &[fee_coin],
+            &[],
             Some(OPERATION_TIMEOUT),
             sender,
         )
