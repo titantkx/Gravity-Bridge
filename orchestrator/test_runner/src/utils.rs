@@ -257,6 +257,10 @@ pub fn get_user_key(cosmos_prefix: Option<&str>) -> BridgeUserKey {
     // the destination on cosmos that sends along to the final ethereum destination
     let cosmos_key = CosmosPrivateKey::from_secret(&secret);
     let cosmos_address = cosmos_key.to_address(cosmos_prefix).unwrap();
+    // the destination on ethermint that sends along to the final ethereum destination
+    let ethermint_key = EthermintPrivateKey::from_secret(&secret);
+    let ethermint_address = ethermint_key.to_address(cosmos_prefix).unwrap();
+
     let mut rng = rand::thread_rng();
     let secret: [u8; 32] = rng.gen();
     // the final destination of the tokens back on Ethereum
@@ -267,6 +271,8 @@ pub fn get_user_key(cosmos_prefix: Option<&str>) -> BridgeUserKey {
         eth_key,
         cosmos_address,
         cosmos_key,
+        ethermint_address,
+        ethermint_key,
         eth_dest_address,
         eth_dest_key,
     }
@@ -280,6 +286,9 @@ pub struct BridgeUserKey {
     // the cosmos addresses that get the funds and send them on to the dest eth addresses
     pub cosmos_address: CosmosAddress,
     pub cosmos_key: CosmosPrivateKey,
+    // the ethermint addresses that get the funds and send them on to the dest eth addresses
+    pub ethermint_address: CosmosAddress,
+    pub ethermint_key: EthermintPrivateKey,
     // the location tokens are sent back to on Ethereum
     pub eth_dest_address: EthAddress,
     pub eth_dest_key: EthPrivateKey,
@@ -374,6 +383,8 @@ pub async fn start_orchestrators(
                 COSMOS_NODE_GRPC.as_str(),
                 OPERATION_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             let fut = orchestrator_main_loop(
@@ -462,7 +473,7 @@ pub async fn create_parameter_change_proposal(
     };
     let res = submit_parameter_change_proposal(
         proposal,
-        get_deposit(None),
+        get_deposit(None, None),
         fee_coin,
         contact,
         key,
@@ -529,7 +540,7 @@ pub async fn execute_upgrade_proposal(
     };
     let res = submit_upgrade_proposal(
         proposal,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,

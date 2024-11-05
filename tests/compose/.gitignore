@@ -1,2 +1,5 @@
 shared/*
 !shared/.gitkeep
+
+logs/ibc-relayer/*
+!logs/ibc-relayer/.gitkeep

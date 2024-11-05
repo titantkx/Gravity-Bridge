@@ -35,6 +35,8 @@ docker run -d --cpus 5 --name gravity-with-titan-orchestrator-test \
   $PLATFORM_CMD \
   --network gravity-with-titan_net \
   --mount type=bind,source="$DIR/shared",target=/shared \
+  --mount type=bind,source="$DIR/logs/ibc-relayer",target=/ibc-relayer-logs \
+  --mount type=bind,source="$REPO_DIR/tests",target=/gravity/tests \
   --mount type=bind,source="$REPO_DIR/orchestrator",target=/gravity/orchestrator \
   -it orchestrator-test
 

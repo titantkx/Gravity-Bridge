@@ -4,12 +4,18 @@ use std::time::Duration;
 
 use crate::get_deposit;
 use crate::ibc_auto_forward::get_channel;
+use crate::types::IBCChainAddressType;
 use crate::types::IBCPrivateKey;
+use crate::ADDRESS_PREFIX;
 use crate::COSMOS_NODE_GRPC;
 use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_RELAYER_ADDRESS;
 use crate::HERMES_CONFIG;
+use crate::IBC_ADDRESS_PREFIX;
+use crate::IBC_ADDRESS_TYPE;
+use crate::IBC_CHAIN_ID;
 use crate::IBC_RELAYER_ADDRESS;
+use crate::IBC_STAKING_DECIMALS;
 use crate::IBC_STAKING_TOKEN;
 use crate::MINER_PRIVATE_KEY;
 use crate::OPERATION_TIMEOUT;
@@ -19,6 +25,7 @@ use crate::{get_gravity_chain_id, get_ibc_chain_id, ETH_NODE};
 use crate::{utils::ValidatorKeys, COSMOS_NODE_ABCI};
 use clarity::Address as EthAddress;
 use clarity::PrivateKey as EthPrivateKey;
+use deep_space::private_key::DEFAULT_ETHEREUM_HD_PATH;
 use deep_space::private_key::{CosmosPrivateKey, PrivateKey, DEFAULT_COSMOS_HD_PATH};
 use deep_space::Contact;
 use gravity_proto::cosmos_sdk_proto::ibc::core::channel::v1::query_client::QueryClient as IbcChannelQueryClient;
@@ -314,7 +321,7 @@ fn return_existing<'a>(a: [&'a str; 3], b: [&'a str; 3]) -> [&'a str; 3] {
 pub fn setup_relayer_keys(shared_phrase: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut gkeyring = KeyRing::new(
         Store::Test,
-        "gravity",
+        &ADDRESS_PREFIX,
         &ChainId::from_string(&get_gravity_chain_id()),
         &None,
     )
@@ -324,23 +331,33 @@ pub fn setup_relayer_keys(shared_phrase: &str) -> Result<(), Box<dyn std::error:
         shared_phrase,
         &StandardHDPath::from_str(DEFAULT_COSMOS_HD_PATH).unwrap(),
         &AddressType::Cosmos,
-        "gravity",
+        &ADDRESS_PREFIX,
     )
     .expect("Unable to generate key pair from mnemonic");
     gkeyring.add_key("gravitykey", pair)?;
 
     let mut ckeyring = KeyRing::new(
         Store::Test,
-        "cosmos",
+        &IBC_ADDRESS_PREFIX,
         &ChainId::from_string(&get_ibc_chain_id()),
         &None,
     )
     .expect("Unable to create ibc-chain keyring");
+    let ethermint_address_type = AddressType::Ethermint {
+        pk_type: "/ethermint.crypto.v1.ethsecp256k1.PubKey".to_string(),
+    };
     let pair = Secp256k1KeyPair::from_mnemonic(
         shared_phrase,
-        &StandardHDPath::from_str(DEFAULT_COSMOS_HD_PATH).unwrap(),
-        &AddressType::Cosmos,
-        "cosmos",
+        &StandardHDPath::from_str(match *IBC_ADDRESS_TYPE {
+            IBCChainAddressType::Cosmos => DEFAULT_COSMOS_HD_PATH,
+            IBCChainAddressType::Ethermint => DEFAULT_ETHEREUM_HD_PATH,
+        })
+        .unwrap(),
+        match *IBC_ADDRESS_TYPE {
+            IBCChainAddressType::Ethermint => &ethermint_address_type,
+            IBCChainAddressType::Cosmos => &AddressType::Cosmos,
+        },
+        &IBC_ADDRESS_PREFIX,
     )
     .expect("Unable to generate key pair from mnemonic");
 
@@ -352,7 +369,7 @@ pub fn setup_relayer_keys(shared_phrase: &str) -> Result<(), Box<dyn std::error:
 // Create a channel between gravity chain and the ibc test chain over the "transfer" port
 // Writes the output to /ibc-relayer-logs/channel-creation
 pub fn create_ibc_channel(hermes_base: &mut Command) {
-    // hermes -c config.toml create channel gravity-test-1 ibc-test-1 --port-a transfer --port-b transfer
+    // hermes -c config.toml create channel gravity-test-1 IBC_CHAIN_ID --port-a transfer --port-b transfer
     let create_channel = hermes_base.args([
         "create",
         "channel",
@@ -413,9 +430,15 @@ pub async fn start_ibc_relayer(
     keys: &[ValidatorKeys],
     ibc_keys: &[IBCPrivateKey],
 ) {
-    let grav_deposit = get_deposit(None);
-    let ibc_deposit = get_deposit(Some(IBC_STAKING_TOKEN.to_string()));
-    info!("Sending relayer {grav_deposit:?} on gravity");
+    let grav_deposit = get_deposit(None, None);
+    let ibc_deposit = get_deposit(
+        Some(IBC_STAKING_TOKEN.to_string()),
+        Some(*IBC_STAKING_DECIMALS),
+    );
+    info!(
+        "Sending {grav_deposit:?} to {} on gravity-test",
+        (*GRAVITY_RELAYER_ADDRESS).to_string()
+    );
     gravity_contact
         .send_coins(
             grav_deposit,
@@ -426,14 +449,14 @@ pub async fn start_ibc_relayer(
         )
         .await
         .unwrap();
-    info!("Sending relayer {ibc_deposit:?} on ibc-test");
+    info!(
+        "Sending {ibc_deposit:?} relayer to {} on ibc-test",
+        (*IBC_RELAYER_ADDRESS).to_string()
+    );
     ibc_contact
         .send_coins(
             ibc_deposit,
-            Some(deep_space::Coin {
-                amount: 100u8.into(),
-                denom: IBC_STAKING_TOKEN.to_string(),
-            }),
+            None,
             *IBC_RELAYER_ADDRESS,
             Some(OPERATION_TIMEOUT),
             ibc_keys[0],
@@ -442,7 +465,9 @@ pub async fn start_ibc_relayer(
         .unwrap();
     info!("test-runner starting IBC relayer mode: init hermes, create ibc channel, start hermes");
     let mut hermes_base = Command::new("hermes");
-    let hermes_base = hermes_base.arg("--config").arg(HERMES_CONFIG);
+    let hermes_base = hermes_base
+        .arg("--config")
+        .arg((*HERMES_CONFIG).to_string());
     setup_relayer_keys(&RELAYER_MNEMONIC).unwrap();
 
     let gravity_channel_qc = IbcChannelQueryClient::connect(COSMOS_NODE_GRPC.as_str())
@@ -458,12 +483,17 @@ pub async fn start_ibc_relayer(
     )
     .await;
     if gravity_channel.is_err() {
-        info!("No IBC channels exist between gravity-test-1 and ibc-test-1, creating one now...");
+        info!(
+            "No IBC channels exist between gravity-test-1 and {}, creating one now...",
+            IBC_CHAIN_ID.to_string()
+        );
         create_ibc_channel(hermes_base);
     }
     thread::spawn(|| {
         let mut hermes_base = Command::new("hermes");
-        let hermes_base = hermes_base.arg("--config").arg(HERMES_CONFIG);
+        let hermes_base = hermes_base
+            .arg("--config")
+            .arg((*HERMES_CONFIG).to_string());
         run_ibc_relayer(hermes_base, true); // likely will not return from here, just keep running
     });
     info!("Running ibc relayer in the background, directing output to /ibc-relayer-logs");

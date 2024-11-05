@@ -3,10 +3,12 @@ use crate::ibc_auto_forward;
 use crate::ibc_auto_forward::get_channel_id;
 use crate::ibc_auto_forward::get_ibc_balance;
 use crate::signature_slashing::wait_for_height;
+use crate::types::IBCChainAddressType;
 use crate::types::IBCPrivateKey;
 use crate::utils::*;
 use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_DENOM_SEPARATOR;
+use crate::IBC_ADDRESS_TYPE;
 use crate::IBC_STAKING_TOKEN;
 use crate::OPERATION_TIMEOUT;
 use crate::TOTAL_TIMEOUT;
@@ -48,6 +50,8 @@ pub async fn ibc_auto_send_eth_test(
 ) {
     let no_relay_market_config = create_default_test_config();
     start_orchestrators(keys.clone(), gravity_address, false, no_relay_market_config).await;
+
+    let ibc_user_keys = get_user_key(Some(&IBC_ADDRESS_PREFIX));
 
     let gravity_channel_qc = IbcChannelQueryClient::connect(COSMOS_NODE_GRPC.as_str())
         .await
@@ -96,7 +100,7 @@ pub async fn ibc_auto_send_eth_test(
         ibc_channel_id
     );
 
-    // // Test an IBC transfer of 1 stake from ibc-test-1 to gravity-test-1
+    // // Test an IBC transfer of 1 stake from IBC_CHAIN_ID to gravity-test-1
     // let sender = ibc_keys[0];
     // let receiver = keys[0].validator_key.to_address(&ADDRESS_PREFIX).unwrap();
 
@@ -120,7 +124,11 @@ pub async fn ibc_auto_send_eth_test(
     // send some amount from ethereum to the ibc chain
     info!("Sending token from ether to the IBC chain");
     let sender = keys[0].validator_key;
-    let receiver = ibc_keys[0].to_address(&IBC_ADDRESS_PREFIX).unwrap();
+    // let receiver = ibc_keys[0].to_address(&IBC_ADDRESS_PREFIX).unwrap();
+    let receiver = match *IBC_ADDRESS_TYPE {
+        IBCChainAddressType::Cosmos => ibc_user_keys.cosmos_address,
+        IBCChainAddressType::Ethermint => ibc_user_keys.ethermint_address,
+    };
     ibc_auto_forward::setup_gravity_auto_forwards(
         gravity_contact,
         (*IBC_ADDRESS_PREFIX).clone(),
@@ -147,9 +155,12 @@ pub async fn ibc_auto_send_eth_test(
     // send some amount from ethereum to the ibc chain
     info!("Now send back the token from the IBC chain to ethereum by auto send to eth");
 
-    // Test an IBC transfer of 1 stake from ibc-test-1 to gravity-test-1
-    let sender = ibc_keys[0];
-    let receiver = keys[0].eth_key.to_address();
+    // Test an IBC transfer of 1 stake from IBC_CHAIN_ID to gravity-test-1
+    let sender: IBCPrivateKey = match *IBC_ADDRESS_TYPE {
+        IBCChainAddressType::Cosmos => IBCPrivateKey::Cosmos(ibc_user_keys.cosmos_key),
+        IBCChainAddressType::Ethermint => IBCPrivateKey::Ethermint(ibc_user_keys.ethermint_key),
+    };
+    let receiver = ibc_user_keys.eth_address;
     test_ibc_auto_send_eth_happy_path(
         web30,
         ibc_contact,
@@ -168,7 +179,7 @@ pub async fn ibc_auto_send_eth_test(
     info!("Successful send back the token from the IBC chain to ethereum by auto send to eth");
 }
 
-// Sends 1 ibc-test-1 stake from `sender` to `receiver` on gravity-test-1 and asserts receipt of funds
+// Sends 1 IBC_CHAIN_ID stake from `sender` to `receiver` on gravity-test-1 and asserts receipt of funds
 #[allow(clippy::too_many_arguments, dead_code)]
 pub async fn test_ibc_transfer(
     contact: &Contact,                     // Src chain's deep_space client
@@ -298,7 +309,7 @@ pub async fn test_ibc_transfer(
 }
 
 // Initiates a SendToCosmos with a CosmosReceiver prefixed by "cosmos1", potentially clears a pending
-// IBC Auto-Forward and asserts that the bridged ERC20 is received on ibc-test-1
+// IBC Auto-Forward and asserts that the bridged ERC20 is received on IBC_CHAIN_ID
 #[allow(clippy::too_many_arguments)]
 pub async fn test_ibc_auto_send_eth_happy_path(
     web30: &Web3,
@@ -306,8 +317,8 @@ pub async fn test_ibc_auto_send_eth_happy_path(
     gravity_contact: &Contact,
     sender: IBCPrivateKey,     // user who submits ibc transfer
     dest: EthAddress,          // The bridged + auto-forwarded ERC20 receiver
-    erc20_address: EthAddress, // Address of the ERC20 to send to dest on ibc-test-1
-    amount: Uint256,           // The amount of erc20_address token to send to dest on ibc-test-1
+    erc20_address: EthAddress, // Address of the ERC20 to send to dest on IBC_CHAIN_ID
+    amount: Uint256,           // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
     ibc_transfer_qc: IbcTransferQueryClient<Channel>,
     channel_id: String,
     packet_timeout: Duration, // Used to create ibc-transfer timeout-timestamp
@@ -319,7 +330,7 @@ pub async fn test_ibc_auto_send_eth_happy_path(
         + &GRAVITY_DENOM_SEPARATOR.to_string()
         + &erc20_address.clone().to_string();
 
-    // get ibc denom of `bridged_erc20` in ibc-test-1 get hash from `transfer/<port>/<base denom>`
+    // get ibc denom of `bridged_erc20` in IBC_CHAIN_ID get hash from `transfer/<port>/<base denom>`
     let denom_hash_res = ibc_transfer_qc
         .denom_hash(IbcTransferV1::QueryDenomHashRequest {
             trace: format!("transfer/{}/{}", channel_id.clone(), bridged_erc20.clone()),

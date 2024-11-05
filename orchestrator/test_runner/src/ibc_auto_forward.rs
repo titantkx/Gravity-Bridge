@@ -1,10 +1,13 @@
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::send_erc20_deposit;
 use crate::signature_slashing::wait_for_height;
+use crate::types::IBCChainAddressType;
 use crate::types::IBCPrivateKey;
 use crate::utils::*;
 use crate::EVM_CHAIN_PREFIX;
 use crate::GRAVITY_DENOM_SEPARATOR;
+use crate::IBC_ADDRESS_TYPE;
+use crate::IBC_CHAIN_ID;
 use crate::OPERATION_TIMEOUT;
 use crate::{
     get_ibc_chain_id, one_eth, ADDRESS_PREFIX, COSMOS_NODE_GRPC, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC,
@@ -51,7 +54,7 @@ use tokio::time::sleep as delay_for;
 use tonic::transport::Channel;
 use web30::client::Web3;
 
-// Tests IBC transfers and IBC Auto-Forwarding from gravity to another chain (gravity-test-1 -> ibc-test-1)
+// Tests IBC transfers and IBC Auto-Forwarding from gravity to another chain (gravity-test-1 -> IBC_CHAIN_ID)
 pub async fn ibc_auto_forward_test(
     web30: &Web3,
     gravity_client: GravityQueryClient<Channel>,
@@ -64,7 +67,7 @@ pub async fn ibc_auto_forward_test(
     let no_relay_market_config = create_default_test_config();
     start_orchestrators(keys.clone(), gravity_address, false, no_relay_market_config).await;
 
-    let ibc_user_keys = get_user_key(Some("cosmos"));
+    let ibc_user_keys = get_user_key(Some(&IBC_ADDRESS_PREFIX));
 
     let gravity_channel_qc = IbcChannelQueryClient::connect(COSMOS_NODE_GRPC.as_str())
         .await
@@ -88,7 +91,7 @@ pub async fn ibc_auto_forward_test(
 
     info!("Found gravity-test-1 channel id: {}", gravity_channel_id);
 
-    // Test an IBC transfer of 1 stake from gravity-test-1 to ibc-test-1
+    // Test an IBC transfer of 1 stake from gravity-test-1 to IBC_CHAIN_ID
     let sender = keys[0].validator_key;
     let receiver = ibc_keys[0].to_address(&IBC_ADDRESS_PREFIX).unwrap();
     test_ibc_transfer(
@@ -120,7 +123,10 @@ pub async fn ibc_auto_forward_test(
         ibc_bank_qc.clone(),
         ibc_transfer_qc.clone(),
         sender,
-        ibc_user_keys.cosmos_address,
+        match *IBC_ADDRESS_TYPE {
+            IBCChainAddressType::Cosmos => ibc_user_keys.cosmos_address,
+            IBCChainAddressType::Ethermint => ibc_user_keys.ethermint_address,
+        },
         gravity_address,
         erc20_address,
         one_eth(),
@@ -171,7 +177,7 @@ pub async fn ibc_auto_forward_test(
     info!("Successful IBC Auto-Forward Unregistered Chain Handling");
 }
 
-// Sends 1 gravity-test-1 stake from `sender` to `receiver` on ibc-test-1 and asserts receipt of funds
+// Sends 1 gravity-test-1 stake from `sender` to `receiver` on IBC_CHAIN_ID and asserts receipt of funds
 #[allow(clippy::too_many_arguments)]
 pub async fn test_ibc_transfer(
     contact: &Contact,                     // Src chain's deep_space client
@@ -252,7 +258,12 @@ pub async fn test_ibc_transfer(
     .await;
     match (pre_bal, post_bal) {
         (None, None) => {
-            error!("Failed to transfer stake to ibc-test-1 user {}!", receiver);
+            error!(
+                "Failed to transfer {} to {} user {}!",
+                coin.denom,
+                IBC_CHAIN_ID.to_string(),
+                receiver
+            );
             return false;
         }
         (None, Some(post)) => {
@@ -264,8 +275,11 @@ pub async fn test_ibc_transfer(
                 return false;
             }
             info!(
-                "Successfully transfered {} stake (aka {}) to ibc-test-1!",
-                coin.amount, post.denom
+                "Successfully transfered {} {} (aka {}) to {}!",
+                coin.amount,
+                coin.denom,
+                post.denom,
+                IBC_CHAIN_ID.to_string()
             );
         }
         (Some(pre), Some(post)) => {
@@ -282,8 +296,11 @@ pub async fn test_ibc_transfer(
                 return false;
             }
             info!(
-                "Successfully transfered {} stake (aka {}) to ibc-test-1!",
-                coin.amount, post.denom
+                "Successfully transfered {} {} (aka {}) to {}!",
+                coin.amount,
+                coin.denom,
+                post.denom,
+                IBC_CHAIN_ID.to_string()
             );
         }
         (Some(_), None) => {
@@ -484,7 +501,7 @@ pub async fn setup_gravity_auto_forwards(
 }
 
 // Initiates a SendToCosmos with a CosmosReceiver prefixed by "cosmos1", potentially clears a pending
-// IBC Auto-Forward and asserts that the bridged ERC20 is received on ibc-test-1
+// IBC Auto-Forward and asserts that the bridged ERC20 is received on IBC_CHAIN_ID
 #[allow(clippy::too_many_arguments)]
 pub async fn test_ibc_auto_forward_happy_path(
     web30: &Web3,
@@ -495,8 +512,8 @@ pub async fn test_ibc_auto_forward_happy_path(
     forwarder: CosmosPrivateKey, // user who submits MsgExecutePendingIbcAutoForwards
     dest: CosmosAddress,         // The bridged + auto-forwarded ERC20 receiver
     gravity_address: EthAddress, // Address of the gravity contract
-    erc20_address: EthAddress,   // Address of the ERC20 to send to dest on ibc-test-1
-    amount: Uint256,             // The amount of erc20_address token to send to dest on ibc-test-1
+    erc20_address: EthAddress,   // Address of the ERC20 to send to dest on IBC_CHAIN_ID
+    amount: Uint256, // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
 ) -> Result<(), GravityError> {
     // Make the test idempotent by getting the user's balance now
     let bridged_erc20 = EVM_CHAIN_PREFIX.to_string()
@@ -662,7 +679,7 @@ pub struct IbcAutoForwardFailureTest {
     pub src_address: CosmosAddress, // The balance holding address to check on Src chain
     pub gravity_address: EthAddress, // Address of the gravity contract
     pub erc20_address: EthAddress,  // Address of the ERC20 to send to dest user
-    pub amount: Uint256, // The amount of erc20_address token to send to dest on ibc-test-1
+    pub amount: Uint256, // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
 
     pub forward_pending: bool, // True -> Attempt to execute pending ibc auto forwards
 }
@@ -792,7 +809,7 @@ pub async fn setup_native_hijack(
 
 // Initiates a "SendToCosmos Native Hijack": Runs a SendToCosmos with CosmosReceiver prefixed by
 // "gravity1", asserts no pending IBC Auto-Forward created, and asserts that the bridged ERC20 is
-// NOT received on ibc-test-1, but rather on gravity-test-1 to a gravity re-prefixed account
+// NOT received on IBC_CHAIN_ID, but rather on gravity-test-1 to a gravity re-prefixed account
 #[allow(clippy::too_many_arguments)]
 pub async fn test_ibc_auto_forward_native_hijack(
     web30: &Web3,
@@ -802,8 +819,8 @@ pub async fn test_ibc_auto_forward_native_hijack(
     dst_ibc_transfer_qc: IbcTransferQueryClient<Channel>, // Dst chain's ibc-transfer GRPC client
     dest_keys: BridgeUserKey,                        // The bridged + auto-forwarded ERC20 receiver
     gravity_address: EthAddress,                     // Address of the gravity contract
-    erc20_address: EthAddress, // Address of the ERC20 to send to dest on ibc-test-1
-    amount: Uint256,           // The amount of erc20_address token to send to dest on ibc-test-1
+    erc20_address: EthAddress, // Address of the ERC20 to send to dest on IBC_CHAIN_ID
+    amount: Uint256,           // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
 ) -> Result<(), GravityError> {
     let ibc_dest = dest_keys.cosmos_address;
     let gravity_prefixed_dest = dest_keys
@@ -950,7 +967,7 @@ pub async fn test_ibc_auto_forward_native_hijack(
 }
 
 // Initiates a SendToCosmos to an unregistered ibc chain, asserts no pending IBC Auto-Forward
-// created, and asserts that the bridged ERC20 is NOT received on ibc-test-1, but rather on
+// created, and asserts that the bridged ERC20 is NOT received on IBC_CHAIN_ID, but rather on
 // gravity-test-1 to a gravity re-prefixed account
 #[allow(clippy::too_many_arguments)]
 pub async fn test_ibc_auto_forward_unregistered_chain(
@@ -961,8 +978,8 @@ pub async fn test_ibc_auto_forward_unregistered_chain(
     dst_ibc_transfer_qc: IbcTransferQueryClient<Channel>, // Dst chain's ibc-transfer GRPC client
     dest_keys: BridgeUserKey,                        // The bridged + auto-forwarded ERC20 receiver
     gravity_address: EthAddress,                     // Address of the gravity contract
-    erc20_address: EthAddress, // Address of the ERC20 to send to dest on ibc-test-1
-    amount: Uint256,           // The amount of erc20_address token to send to dest on ibc-test-1
+    erc20_address: EthAddress, // Address of the ERC20 to send to dest on IBC_CHAIN_ID
+    amount: Uint256,           // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
 ) -> Result<(), GravityError> {
     // The account on ibc-test-one that should NOT receive funds
     let ibc_address = dest_keys

@@ -33,6 +33,7 @@ use crate::valset_rewards::valset_rewards_test;
 use crate::vesting::vesting_test;
 use clarity::PrivateKey as EthPrivateKey;
 use clarity::{Address as EthAddress, Uint256};
+use deep_space::client::types::ChainVersionType;
 use deep_space::coin::Coin;
 use deep_space::Contact;
 use deep_space::{Address as CosmosAddress, EthermintPrivateKey};
@@ -44,6 +45,7 @@ use happy_path::happy_path_test;
 use happy_path_v2::happy_path_test_v2;
 use happy_path_v2::happy_path_test_v2_native;
 use lazy_static::lazy_static;
+use num::FromPrimitive;
 use orch_keys::orch_keys;
 use orch_only::orch_only_test;
 use relay_market::relay_market_test;
@@ -93,11 +95,12 @@ mod vesting;
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(30);
 /// the timeout for the total system
 const TOTAL_TIMEOUT: Duration = Duration::from_secs(300);
-// The config file location for hermes
-const HERMES_CONFIG: &str = "/gravity/tests/assets/ibc-relayer-config.toml";
 
 // Retrieve values from runtime ENV vars
 lazy_static! {
+    static ref HERMES_CONFIG: String =
+        env::var("HERMES_CONFIG").unwrap_or_else(|_| "/gravity/tests/assets/ibc-relayer-config.toml".to_string());
+
     // GRAVITY CHAIN CONSTANTS
     // These constants all apply to the gravity instance running (gravity-test-1)
     static ref ADDRESS_PREFIX: String =
@@ -111,10 +114,16 @@ lazy_static! {
 
     // IBC CHAIN CONSTANTS
     // These constants all apply to the gaiad instance running (ibc-test-1)
+    static ref IBC_CHAIN_ID: String =
+        env::var("IBC_CHAIN_ID").unwrap_or_else(|_| "ibc-test-1".to_string());
     static ref IBC_ADDRESS_PREFIX: String =
         env::var("IBC_ADDRESS_PREFIX").unwrap_or_else(|_| "cosmos".to_string());
     static ref IBC_ADDRESS_TYPE: IBCChainAddressType =
         env::var("IBC_ADDRESS_TYPE").map(|v| v.parse().unwrap()).unwrap_or(IBCChainAddressType::Cosmos);
+    static ref IBC_GAS_PRICE: Option<Uint256>  =
+        env::var("IBC_GAS_PRICE").ok().map(|v| v.parse().unwrap());
+    static ref IBC_STAKING_DECIMALS: u8 =
+        env::var("IBC_STAKING_DECIMALS").unwrap_or_else(|_| "6".to_owned()).parse().unwrap();
 
     static ref IBC_STAKING_TOKEN: String =
         env::var("IBC_STAKING_TOKEN").unwrap_or_else(|_| "stake".to_owned());
@@ -197,11 +206,20 @@ pub fn get_fee(denom: Option<String>) -> Coin {
     }
 }
 
-pub fn get_deposit(denom_override: Option<String>) -> Coin {
+pub fn get_factor(decimal: u8) -> Uint256 {
+    let factor_str = format!("1{}", "0".repeat(decimal as usize));
+    factor_str.parse().unwrap()
+}
+
+pub fn get_deposit(denom_override: Option<String>, decimal: Option<u8>) -> Coin {
+    let decimal = decimal.unwrap_or(6);
+    // create string for factor number that have `decimal` zeros
+    let factor = get_factor(decimal);
+
     let denom = denom_override.unwrap_or_else(|| STAKING_TOKEN.to_string());
     Coin {
         denom,
-        amount: 1_000_000_000u64.into(),
+        amount: Uint256::from_u64(1_000u64).unwrap() * factor,
     }
 }
 
@@ -216,7 +234,7 @@ pub fn get_gravity_chain_id() -> String {
 
 /// Returns the chain-id of the gaiad instance running, see IBC CHAIN CONSTANTS above
 pub fn get_ibc_chain_id() -> String {
-    "ibc-test-1".to_string()
+    IBC_CHAIN_ID.to_string()
 }
 
 pub fn one_eth() -> Uint256 {
@@ -246,12 +264,22 @@ pub async fn main() {
         COSMOS_NODE_GRPC.as_str(),
         OPERATION_TIMEOUT,
         ADDRESS_PREFIX.as_str(),
+        None,
+        None,
     )
     .unwrap();
     let ibc_contact = Contact::new(
         IBC_NODE_GRPC.as_str(),
         OPERATION_TIMEOUT,
         IBC_ADDRESS_PREFIX.as_str(),
+        Some(ChainVersionType::Titan),
+        match *IBC_GAS_PRICE {
+            Some(gas_price) => Some(Coin {
+                amount: gas_price,
+                denom: (*IBC_STAKING_TOKEN).to_string(),
+            }),
+            None => None,
+        },
     )
     .unwrap();
 
@@ -359,6 +387,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             transaction_stress_test(
@@ -543,6 +573,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             upgrade_part_1(
@@ -564,6 +596,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             upgrade_part_2(
@@ -584,6 +618,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             let plan_name = env::var("UPGRADE_NAME").unwrap_or_else(|_| UPGRADE_NAME.to_string());

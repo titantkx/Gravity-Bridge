@@ -690,7 +690,7 @@ async fn set_non_auctionable_tokens(
 
     submit_auction_params_proposal(
         params,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,
@@ -710,7 +710,7 @@ pub async fn submit_and_pass_auction_params_proposal(
         .expect("Unable to connect to auction query client");
     let res = submit_auction_params_proposal(
         params.clone(),
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,

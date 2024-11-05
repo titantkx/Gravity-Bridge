@@ -273,7 +273,7 @@ pub async fn example_ethermint_key_usage(
     .await
     .expect("Could not find gravity-test-1 channel");
 
-    // Test an IBC transfer of 1 stake from gravity-test-1 to ibc-test-1
+    // Test an IBC transfer of 1 stake from gravity-test-1 to IBC_CHAIN_ID
     let receiver = ibc_keys[0].to_address(&IBC_ADDRESS_PREFIX).unwrap();
     let success = test_ibc_transfer(
         contact,

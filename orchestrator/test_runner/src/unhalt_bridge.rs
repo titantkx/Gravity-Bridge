@@ -252,7 +252,7 @@ async fn submit_and_pass_unhalt_bridge_proposal(
     info!("Submit and pass gov proposal: nonce is {}", nonce);
     let res = submit_unhalt_bridge_proposal(
         proposal_content,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,
