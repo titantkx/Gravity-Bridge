@@ -9,10 +9,10 @@ set -eux
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$DIR/../.."
 
-$DIR/build-orchestrator-test.sh
-
 # start up evm, gravity and titan
 docker compose -f $DIR/docker-compose.yml down
+
+$DIR/build-orchestrator-test.sh
 
 # Remove existing container instance
 set +e
