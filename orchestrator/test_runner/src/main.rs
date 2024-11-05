@@ -272,7 +272,10 @@ pub async fn main() {
         IBC_NODE_GRPC.as_str(),
         OPERATION_TIMEOUT,
         IBC_ADDRESS_PREFIX.as_str(),
-        Some(ChainVersionType::Titan),
+        match *IBC_ADDRESS_TYPE {
+            IBCChainAddressType::Cosmos => Some(ChainVersionType::Default),
+            IBCChainAddressType::Ethermint => Some(ChainVersionType::Titan),
+        },
         match *IBC_GAS_PRICE {
             Some(gas_price) => Some(Coin {
                 amount: gas_price,

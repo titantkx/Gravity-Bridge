@@ -436,7 +436,7 @@ pub async fn start_ibc_relayer(
         Some(*IBC_STAKING_DECIMALS),
     );
     info!(
-        "Sending {grav_deposit:?} to {} on gravity-test",
+        "Sending {grav_deposit:?} to relayer {} on gravity-test",
         (*GRAVITY_RELAYER_ADDRESS).to_string()
     );
     gravity_contact
@@ -450,7 +450,7 @@ pub async fn start_ibc_relayer(
         .await
         .unwrap();
     info!(
-        "Sending {ibc_deposit:?} relayer to {} on ibc-test",
+        "Sending {ibc_deposit:?} to relayer {} on ibc-test",
         (*IBC_RELAYER_ADDRESS).to_string()
     );
     ibc_contact

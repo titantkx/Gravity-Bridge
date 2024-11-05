@@ -100,6 +100,9 @@ pub async fn ibc_auto_send_eth_test(
         ibc_channel_id
     );
 
+    // send some eth to the user
+    send_one_eth(ibc_user_keys.eth_address, web30).await;
+
     // // Test an IBC transfer of 1 stake from IBC_CHAIN_ID to gravity-test-1
     // let sender = ibc_keys[0];
     // let receiver = keys[0].validator_key.to_address(&ADDRESS_PREFIX).unwrap();
@@ -329,6 +332,11 @@ pub async fn test_ibc_auto_send_eth_happy_path(
     let bridged_erc20 = EVM_CHAIN_PREFIX.to_string()
         + &GRAVITY_DENOM_SEPARATOR.to_string()
         + &erc20_address.clone().to_string();
+
+    info!(
+        "Test send {} denom {} from {} to {}",
+        amount, bridged_erc20, sender_address, dest
+    );
 
     // get ibc denom of `bridged_erc20` in IBC_CHAIN_ID get hash from `transfer/<port>/<base denom>`
     let denom_hash_res = ibc_transfer_qc

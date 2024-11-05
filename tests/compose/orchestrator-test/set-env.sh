@@ -16,4 +16,4 @@ export IBC_STAKING_DECIMALS=18
 
 export RUST_BACKTRACE=full
 export NO_GAS_OPT=1
-export RUST_LOG=INFO,relayer=DEBUG,orchestrator=DEBUG,cosmos_gravity=DEBUG,deep_space=TRACE
+export RUST_LOG=INFO,relayer=INFO,orchestrator=DEBUG,cosmos_gravity=DEBUG,deep_space=TRACE

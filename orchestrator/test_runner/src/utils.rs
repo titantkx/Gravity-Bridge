@@ -266,6 +266,12 @@ pub fn get_user_key(cosmos_prefix: Option<&str>) -> BridgeUserKey {
     // the final destination of the tokens back on Ethereum
     let eth_dest_key = EthPrivateKey::from_bytes(secret).unwrap();
     let eth_dest_address = eth_key.to_address();
+    trace!(
+        "Generated new user key with Eth address {} and Cosmos address {} and Ethermint address {}",
+        eth_address,
+        cosmos_address,
+        ethermint_address
+    );
     BridgeUserKey {
         eth_address,
         eth_key,
