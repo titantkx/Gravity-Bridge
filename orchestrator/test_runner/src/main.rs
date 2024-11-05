@@ -281,7 +281,10 @@ pub async fn main() {
                 amount: gas_price,
                 denom: (*IBC_STAKING_TOKEN).to_string(),
             }),
-            None => None,
+            None => Some(Coin {
+                amount: Uint256::from_u8(0u8).unwrap(),
+                denom: (*IBC_STAKING_TOKEN).to_string(),
+            }),
         },
     )
     .unwrap();
