@@ -29,3 +29,9 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 "$DIR"/run-test.sh VALSET_STRESS
 "$DIR"/run-test.sh AIRDROP_PROPOSAL
 "$DIR"/run-test.sh BATCH_STRESS
+
+echo "Stopping container gravity-with-titan-orchestrator-test"
+docker stop gravity-with-titan-orchestrator-test
+
+echo "Stopping chain container"
+docker compose -f "$DIR"/docker-compose.yml stop orchestrator evm gravity titan
