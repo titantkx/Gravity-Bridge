@@ -55,7 +55,4 @@ set -e
 if [[ "$KEEP_CONTAINER" != "true" ]]; then
   echo "Stopping container gravity-with-titan-orchestrator-test"
   docker stop gravity-with-titan-orchestrator-test
-
-  echo "Stopping chain container"
-  docker compose -f "$DIR"/docker-compose.yml stop orchestrator evm gravity titan
 fi
