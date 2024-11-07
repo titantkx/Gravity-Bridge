@@ -73,6 +73,7 @@ func (k Keeper) GetNextPendingIbcAutoForward(ctx sdk.Context, evmChainPrefix str
 			Token:           nil,
 			IbcChannel:      "",
 			EventNonce:      0,
+			Memo:            "",
 		}
 		k.cdc.MustUnmarshal(iter.Value(), &forward)
 
