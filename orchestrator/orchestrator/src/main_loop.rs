@@ -56,6 +56,7 @@ pub async fn orchestrator_main_loop(
     web3: Web3,
     contact: Contact,
     grpc_client: GravityQueryClient<Channel>,
+    evm_chain_prefix: &str,
     gravity_contract_address: EthAddress,
     gravity_id: String,
     user_fee_amount: Coin,
@@ -72,10 +73,12 @@ pub async fn orchestrator_main_loop(
         web3.clone(),
         contact.clone(),
         grpc_client.clone(),
+        &evm_chain_prefix,
         gravity_contract_address,
         fee.clone(),
     );
     let b = eth_signer_main_loop(
+        &evm_chain_prefix,
         cosmos_key,
         ethereum_key,
         contact.clone(),
@@ -88,6 +91,7 @@ pub async fn orchestrator_main_loop(
         web3.clone(),
         contact.clone(),
         grpc_client.clone(),
+        &evm_chain_prefix,
         gravity_contract_address,
         gravity_id,
         Some(fee.clone()),
@@ -146,6 +150,7 @@ pub async fn eth_oracle_main_loop(
     web3: Web3,
     contact: Contact,
     grpc_client: GravityQueryClient<Channel>,
+    evm_chain_prefix: &str,
     gravity_contract_address: EthAddress,
     fee: Coin,
 ) {
@@ -153,6 +158,7 @@ pub async fn eth_oracle_main_loop(
     let long_timeout_web30 = Web3::new(&web3.get_url(), Duration::from_secs(120));
     let mut last_checked_block: Uint256 = get_last_checked_block(
         grpc_client.clone(),
+        evm_chain_prefix,
         our_cosmos_address,
         contact.get_prefix(),
         gravity_contract_address,
@@ -225,6 +231,7 @@ pub async fn eth_oracle_main_loop(
             &mut grpc_client,
             our_cosmos_address,
             contact.get_prefix().clone(),
+            evm_chain_prefix.to_string(),
         )
         .await
         .into();
@@ -235,6 +242,7 @@ pub async fn eth_oracle_main_loop(
             last_checked_event = last_event_nonce;
             last_checked_block = get_last_checked_block(
                 grpc_client.clone(),
+                evm_chain_prefix,
                 our_cosmos_address,
                 contact.get_prefix(),
                 gravity_contract_address,
@@ -246,6 +254,7 @@ pub async fn eth_oracle_main_loop(
         // Relays events from Ethereum -> Cosmos
         match check_for_events(
             &web3,
+            &evm_chain_prefix,
             &contact,
             &mut grpc_client,
             gravity_contract_address,
@@ -289,6 +298,7 @@ pub async fn eth_oracle_main_loop(
 /// since these are provided directly by a trusted Cosmsos node they can simply be assumed to be
 /// valid and signed off on.
 pub async fn eth_signer_main_loop(
+    evm_chain_prefix: &str,
     cosmos_key: CosmosPrivateKey,
     ethereum_key: EthPrivateKey,
     contact: Contact,
@@ -312,11 +322,27 @@ pub async fn eth_signer_main_loop(
                 continue;
             }
         };
+
         let blocks_until_slashing = min(
             min(params.signed_valsets_window, params.signed_batches_window),
             params.signed_logic_calls_window,
         );
-        let gravity_id = params.gravity_id;
+
+        let evm_chain_params = match params
+            .evm_chain_params
+            .iter()
+            .find(|p| p.evm_chain_prefix.eq(evm_chain_prefix))
+        {
+            Some(p) => p,
+            None => {
+                error!(
+                    "Failed to get Evm chain params with evm chain prefix {}",
+                    evm_chain_prefix
+                );
+                continue;
+            }
+        };
+        let gravity_id = evm_chain_params.gravity_id.to_string();
 
         let latest_cosmos_block = contact.get_chain_status().await;
         match latest_cosmos_block {
@@ -357,6 +383,7 @@ pub async fn eth_signer_main_loop(
             &mut grpc_client,
             our_cosmos_address,
             contact.get_prefix(),
+            evm_chain_prefix.to_string(),
         )
         .await
         {
@@ -370,6 +397,7 @@ pub async fn eth_signer_main_loop(
                         valsets[0].nonce
                     );
                     let res = send_valset_confirms(
+                        evm_chain_prefix,
                         &contact,
                         ethereum_key,
                         fee.clone(),
@@ -391,6 +419,7 @@ pub async fn eth_signer_main_loop(
         // sign the last unsigned batch, TODO check if we already have signed this
         match get_oldest_unsigned_transaction_batches(
             &mut grpc_client,
+            evm_chain_prefix,
             our_cosmos_address,
             contact.get_prefix(),
         )
@@ -407,6 +436,7 @@ pub async fn eth_signer_main_loop(
                     );
 
                     let res = send_batch_confirm(
+                        evm_chain_prefix,
                         &contact,
                         ethereum_key,
                         fee.clone(),
@@ -427,6 +457,7 @@ pub async fn eth_signer_main_loop(
 
         match get_oldest_unsigned_logic_calls(
             &mut grpc_client,
+            evm_chain_prefix,
             our_cosmos_address,
             contact.get_prefix(),
         )
@@ -442,6 +473,7 @@ pub async fn eth_signer_main_loop(
                         last_unsigned_calls[0].invalidation_nonce
                     );
                     let res = send_logic_call_confirm(
+                        evm_chain_prefix,
                         &contact,
                         ethereum_key,
                         fee.clone(),

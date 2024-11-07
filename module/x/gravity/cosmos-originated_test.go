@@ -20,6 +20,7 @@ import (
 
 func TestCosmosOriginated(t *testing.T) {
 	tv := initializeTestingVars(t)
+
 	defer func() {
 		tv.input.Context.Logger().Info("Asserting invariants at test end")
 		tv.input.AssertInvariants()
@@ -40,6 +41,7 @@ type testingVars struct {
 	ctx   sdk.Context
 	h     sdk.Handler
 	t     *testing.T
+	evm   types.EvmChain
 }
 
 func initializeTestingVars(t *testing.T) *testingVars {
@@ -51,6 +53,7 @@ func initializeTestingVars(t *testing.T) *testingVars {
 	tv.denom = "ugraviton"
 
 	tv.input, tv.ctx = keeper.SetupFiveValChain(t)
+	tv.evm = *tv.input.GravityKeeper.GetEvmChainData(tv.ctx, keeper.EthChainPrefix)
 	tv.h = NewHandler(tv.input.GravityKeeper)
 
 	return &tv
@@ -70,9 +73,7 @@ func addDenomToERC20Relation(tv *testingVars) {
 		Display: "graviton",
 	})
 
-	var (
-		myNonce = uint64(1)
-	)
+	myNonce := uint64(1)
 
 	// have all five validators observe this event
 	for _, v := range keeper.OrchAddrs {
@@ -85,6 +86,7 @@ func addDenomToERC20Relation(tv *testingVars) {
 			Symbol:         "GRAV",
 			Decimals:       6,
 			Orchestrator:   v.String(),
+			EvmChainPrefix: tv.evm.EvmChainPrefix,
 		}
 		_, err := tv.h(tv.ctx, &ethClaim)
 		require.NoError(tv.t, err)
@@ -92,20 +94,20 @@ func addDenomToERC20Relation(tv *testingVars) {
 		// check if attestations persisted
 		hash, err := ethClaim.ClaimHash()
 		require.NoError(tv.t, err)
-		a := tv.input.GravityKeeper.GetAttestation(tv.ctx, myNonce, hash)
+		a := tv.input.GravityKeeper.GetAttestation(tv.ctx, tv.evm.EvmChainPrefix, myNonce, hash)
 		require.NotNil(tv.t, a)
 	}
 
 	EndBlocker(tv.ctx, tv.input.GravityKeeper)
 
 	// check if erc20<>denom relation added to db
-	isCosmosOriginated, gotERC20, err := tv.input.GravityKeeper.DenomToERC20Lookup(tv.ctx, tv.denom)
+	isCosmosOriginated, gotERC20, err := tv.input.GravityKeeper.DenomToERC20Lookup(tv.ctx, tv.evm.EvmChainPrefix, tv.denom)
 	require.NoError(tv.t, err)
 	assert.True(tv.t, isCosmosOriginated)
 
 	ethAddr, err := types.NewEthAddress(tv.erc20)
 	require.NoError(tv.t, err)
-	isCosmosOriginated, gotDenom := tv.input.GravityKeeper.ERC20ToDenomLookup(tv.ctx, *ethAddr)
+	isCosmosOriginated, gotDenom := tv.input.GravityKeeper.ERC20ToDenomLookup(tv.ctx, tv.evm.EvmChainPrefix, *ethAddr)
 	assert.True(tv.t, isCosmosOriginated)
 
 	assert.Equal(tv.t, tv.denom, gotDenom)
@@ -137,11 +139,12 @@ func lockCoinsInModule(tv *testingVars) {
 	// nolint: exhaustruct
 	zeroCoin := sdk.Coin{}
 	msg := &types.MsgSendToEth{
-		Sender:    userCosmosAddr.String(),
-		EthDest:   ethDestination,
-		Amount:    sendingCoin,
-		BridgeFee: feeCoin,
-		ChainFee:  zeroCoin,
+		Sender:         userCosmosAddr.String(),
+		EthDest:        ethDestination,
+		Amount:         sendingCoin,
+		BridgeFee:      feeCoin,
+		ChainFee:       zeroCoin,
+		EvmChainPrefix: tv.evm.EvmChainPrefix,
 	}
 
 	_, err = tv.h(tv.ctx, msg)
@@ -182,6 +185,7 @@ func acceptDepositEvent(tv *testingVars) {
 			EthereumSender: anyETHAddr,
 			CosmosReceiver: myCosmosAddr.String(),
 			Orchestrator:   v.String(),
+			EvmChainPrefix: tv.evm.EvmChainPrefix,
 		}
 
 		_, err := tv.h(tv.ctx, &ethClaim)
@@ -191,7 +195,7 @@ func acceptDepositEvent(tv *testingVars) {
 		// check that attestation persisted
 		hash, err := ethClaim.ClaimHash()
 		require.NoError(tv.t, err)
-		a := tv.input.GravityKeeper.GetAttestation(tv.ctx, myNonce, hash)
+		a := tv.input.GravityKeeper.GetAttestation(tv.ctx, tv.evm.EvmChainPrefix, myNonce, hash)
 		require.NotNil(tv.t, a)
 	}
 
@@ -209,7 +213,6 @@ func acceptDepositEvent(tv *testingVars) {
 }
 
 func addIbcDenomToERC20Relation(tv *testingVars) {
-
 	tokenContract := "0xE486cC1a00aA806C3e40224EDAd5FdCA93dDdA62"
 	ibcDenom := "ibc/46B44899322F3CD854D2D46DEEF881958467CDD4B3B10086DA49296BBED94BED/grav"
 	metadata := banktypes.Metadata{
@@ -231,9 +234,7 @@ func addIbcDenomToERC20Relation(tv *testingVars) {
 	}
 	tv.input.BankKeeper.SetDenomMetaData(tv.ctx, metadata)
 
-	var (
-		myNonce = uint64(2)
-	)
+	myNonce := uint64(2)
 
 	// have all five validators observe this event
 	for _, v := range keeper.OrchAddrs {
@@ -246,6 +247,7 @@ func addIbcDenomToERC20Relation(tv *testingVars) {
 			Symbol:         "ATOM",
 			Decimals:       6,
 			Orchestrator:   v.String(),
+			EvmChainPrefix: tv.evm.EvmChainPrefix,
 		}
 		_, err := tv.h(tv.ctx, &ethClaim)
 		require.NoError(tv.t, err)
@@ -253,20 +255,20 @@ func addIbcDenomToERC20Relation(tv *testingVars) {
 		// check if attestations persisted
 		hash, err := ethClaim.ClaimHash()
 		require.NoError(tv.t, err)
-		a := tv.input.GravityKeeper.GetAttestation(tv.ctx, myNonce, hash)
+		a := tv.input.GravityKeeper.GetAttestation(tv.ctx, tv.evm.EvmChainPrefix, myNonce, hash)
 		require.NotNil(tv.t, a)
 	}
 
 	EndBlocker(tv.ctx, tv.input.GravityKeeper)
 
 	// check if erc20<>denom relation added to db
-	isCosmosOriginated, gotERC20, err := tv.input.GravityKeeper.DenomToERC20Lookup(tv.ctx, tv.denom)
+	isCosmosOriginated, gotERC20, err := tv.input.GravityKeeper.DenomToERC20Lookup(tv.ctx, tv.evm.EvmChainPrefix, tv.denom)
 	require.NoError(tv.t, err)
 	assert.True(tv.t, isCosmosOriginated)
 
 	ethAddr, err := types.NewEthAddress(tv.erc20)
 	require.NoError(tv.t, err)
-	isCosmosOriginated, gotDenom := tv.input.GravityKeeper.ERC20ToDenomLookup(tv.ctx, *ethAddr)
+	isCosmosOriginated, gotDenom := tv.input.GravityKeeper.ERC20ToDenomLookup(tv.ctx, tv.evm.EvmChainPrefix, *ethAddr)
 	assert.True(tv.t, isCosmosOriginated)
 
 	assert.Equal(tv.t, tv.denom, gotDenom)

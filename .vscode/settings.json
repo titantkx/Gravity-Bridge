@@ -1,0 +1,5 @@
+{
+  "mochaExplorer.cwd": "solidity/",
+  "mochaExplorer.configFile": "solidity/.mocharc.json",
+  "mochaExplorer.envPath": "solidity/.env",
+}

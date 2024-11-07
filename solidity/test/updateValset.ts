@@ -1,15 +1,15 @@
 import chai from "chai";
-import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
+import { ethers } from "hardhat";
 
 import { deployContracts } from "../test-utils";
 import {
+  examplePowers,
   getSignerAddresses,
   makeCheckpoint,
+  parseEvent,
   signHash,
-  examplePowers,
-  ZeroAddress,
-  parseEvent
+  ZeroAddress
 } from "../test-utils/pure";
 
 chai.use(solidity);
@@ -74,7 +74,7 @@ async function runTest(opts: {
     valsetNonce: currentValsetNonce,
     rewardAmount: 0,
     rewardToken: ZeroAddress
-  }
+  };
 
   let newValset = {
     validators: await getSignerAddresses(newValidators),
@@ -82,7 +82,7 @@ async function runTest(opts: {
     valsetNonce: newValsetNonce,
     rewardAmount: 0,
     rewardToken: ZeroAddress
-  }
+  };
 
   let ERC20contract;
   if (opts.badReward) {
@@ -93,26 +93,32 @@ async function runTest(opts: {
   } else if (opts.withReward) {
     // deploy a ERC20 representing a Cosmos asset, as this is the common
     // case for validator set rewards
-    const eventArgs = await parseEvent(gravity, gravity.deployERC20('uatom', 'Atom', 'ATOM', 6), 1)
-    newValset.rewardToken = eventArgs._tokenContract
+    const eventArgs = await parseEvent(
+      gravity,
+      gravity.deployERC20("uatom", "Atom", "ATOM", 6),
+      1
+    );
+    newValset.rewardToken = eventArgs._tokenContract;
     // five atom, issued as an inflationary reward
-    newValset.rewardAmount = 5000000
+    newValset.rewardAmount = 5000000;
 
     // connect with the contract to check balances later
-    ERC20contract = new ethers.Contract(eventArgs._tokenContract, [
-      "function balanceOf(address account) view returns (uint256 balance)"
-    ], gravity.provider);
-
+    ERC20contract = new ethers.Contract(
+      eventArgs._tokenContract,
+      ["function balanceOf(address account) view returns (uint256 balance)"],
+      gravity.provider
+    );
   } else if (opts.notEnoughReward) {
     // send in 1000 tokens, then have a reward of five million
     await testERC20.functions.approve(gravity.address, 1000);
     await gravity.functions.sendToCosmos(
       testERC20.address,
       ethers.utils.formatBytes32String("myCosmosAddress"),
-      1000
+      1000,
+      ""
     );
-    newValset.rewardToken = testERC20.address
-    newValset.rewardAmount = 5000000
+    newValset.rewardToken = testERC20.address;
+    newValset.rewardAmount = 5000000;
   }
 
   const checkpoint = makeCheckpoint(
@@ -159,7 +165,6 @@ async function runTest(opts: {
     powers.pop();
   }
 
-
   let valsetUpdateTx = await gravity.updateValset(
     newValset,
     currentValset,
@@ -169,7 +174,7 @@ async function runTest(opts: {
   // check that the relayer was paid
   if (opts.withReward) {
     // panic if we failed to deploy the contract earlier
-    expect(ERC20contract)
+    expect(ERC20contract);
     if (ERC20contract) {
       expect(
         await (
@@ -204,9 +209,7 @@ describe("updateValset tests", function () {
   it("throws on non matching checkpoint for current valset", async function () {
     await expect(
       runTest({ nonMatchingCurrentValset: true })
-    ).to.be.revertedWith(
-      "IncorrectCheckpoint()"
-    );
+    ).to.be.revertedWith("IncorrectCheckpoint()");
   });
 
   it("throws on new valset nonce not incremented", async function () {
@@ -251,12 +254,16 @@ describe("updateValset tests", function () {
 
   it("pays reward correctly", async function () {
     let { gravity, checkpoint } = await runTest({ withReward: true });
-    expect((await gravity.functions.state_lastValsetCheckpoint())[0]).to.equal(checkpoint);
+    expect((await gravity.functions.state_lastValsetCheckpoint())[0]).to.equal(
+      checkpoint
+    );
   });
 
   it("happy path", async function () {
     let { gravity, checkpoint } = await runTest({});
-    expect((await gravity.functions.state_lastValsetCheckpoint())[0]).to.equal(checkpoint);
+    expect((await gravity.functions.state_lastValsetCheckpoint())[0]).to.equal(
+      checkpoint
+    );
   });
 });
 
@@ -264,21 +271,18 @@ describe("updateValset tests", function () {
 // the use of anyone updating the Go tests.
 describe("updateValset Go test hash", function () {
   it("produces good hash", async function () {
-
-
     // Prep and deploy contract
     // ========================
     const gravityId = ethers.utils.formatBytes32String("foo");
     const methodName = ethers.utils.formatBytes32String("checkpoint");
     // note these are manually sorted, functions in Go and Rust auto-sort
     // but this does not so be aware of the order!
-    const validators = ["0xE5904695748fe4A84b40b3fc79De2277660BD1D3",
+    const validators = [
+      "0xE5904695748fe4A84b40b3fc79De2277660BD1D3",
       "0xc783df8a850f42e7F7e57013759C285caa701eB6",
-      "0xeAD9C93b79Ae7C1591b1FB5323BD777E86e150d4",
+      "0xeAD9C93b79Ae7C1591b1FB5323BD777E86e150d4"
     ];
     const powers = [1431655765, 1431655765, 1431655765];
-
-
 
     let newValset = {
       validators: validators,
@@ -286,7 +290,7 @@ describe("updateValset Go test hash", function () {
       valsetNonce: 0,
       rewardAmount: 0,
       rewardToken: ZeroAddress
-    }
+    };
 
     const checkpoint = makeCheckpoint(
       newValset.validators,
@@ -296,7 +300,6 @@ describe("updateValset Go test hash", function () {
       newValset.rewardToken,
       gravityId
     );
-
 
     const abiEncodedValset = ethers.utils.defaultAbiCoder.encode(
       [
@@ -315,24 +318,24 @@ describe("updateValset Go test hash", function () {
         newValset.validators,
         newValset.powers,
         newValset.rewardAmount,
-        newValset.rewardToken,
+        newValset.rewardToken
       ]
     );
     const valsetDigest = ethers.utils.keccak256(abiEncodedValset);
 
     // these should be equal, otherwise either our abi encoding here
     // or over in test-utils/pure.ts is incorrect
-    expect(valsetDigest).equal(checkpoint)
+    expect(valsetDigest).equal(checkpoint);
 
     console.log("elements in Valset digest:", {
-      "gravityId": gravityId,
-      "validators": validators,
-      "powers": powers,
-      "valsetNonce": newValset.valsetNonce,
-      "rewardAmount": newValset.rewardAmount,
-      "rewardToken": newValset.rewardToken
-    })
-    console.log("abiEncodedValset:", abiEncodedValset)
-    console.log("valsetDigest:", valsetDigest)
-  })
+      gravityId: gravityId,
+      validators: validators,
+      powers: powers,
+      valsetNonce: newValset.valsetNonce,
+      rewardAmount: newValset.rewardAmount,
+      rewardToken: newValset.rewardToken
+    });
+    console.log("abiEncodedValset:", abiEncodedValset);
+    console.log("valsetDigest:", valsetDigest);
+  });
 });

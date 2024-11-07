@@ -4,6 +4,8 @@
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::{test_erc20_deposit_panic, test_erc20_deposit_result};
 use crate::utils::*;
+use crate::EVM_CHAIN_PREFIX;
+use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::MINER_ADDRESS;
 use crate::{get_fee, OPERATION_TIMEOUT, TOTAL_TIMEOUT};
 use clarity::Address as EthAddress;
@@ -25,6 +27,7 @@ use web30::client::Web3;
 pub async fn pause_bridge_test(
     web30: &Web3,
     grpc_client: GravityQueryClient<Channel>,
+    evm_chain_prefix: &str,
     contact: &Contact,
     keys: Vec<ValidatorKeys>,
     gravity_address: EthAddress,
@@ -36,7 +39,12 @@ pub async fn pause_bridge_test(
     // helpful if the last run crashed and you're trying to run a second time, not
     // realizing the starting state is incorrect
     let params = get_gravity_params(&mut grpc_client).await.unwrap();
-    assert!(params.bridge_active);
+    let evm_chain_params = params
+        .evm_chain_params
+        .iter()
+        .find(|p| p.evm_chain_prefix.eq(evm_chain_prefix))
+        .unwrap();
+    assert!(evm_chain_params.bridge_active);
 
     let no_relay_market_config = create_no_batch_requests_config();
     start_orchestrators(keys.clone(), gravity_address, false, no_relay_market_config).await;
@@ -65,8 +73,10 @@ pub async fn pause_bridge_test(
     let mut params_to_change = Vec::new();
     let halt = ParamChange {
         subspace: "gravity".to_string(),
-        key: "BridgeActive".to_string(),
-        value: format!("{}", false),
+        key: "EvmChainParams".to_string(),
+        value: make_evm_chain_param_proposal(params, evm_chain_prefix, |p| {
+            p.bridge_active = false;
+        }),
     };
     params_to_change.push(halt);
 
@@ -84,7 +94,12 @@ pub async fn pause_bridge_test(
     // wait for the voting period to pass
     wait_for_proposals_to_execute(contact).await;
     let params = get_gravity_params(&mut grpc_client).await.unwrap();
-    assert!(!params.bridge_active);
+    let evm_chain_params = params
+        .evm_chain_params
+        .iter()
+        .find(|p| p.evm_chain_prefix.eq(evm_chain_prefix))
+        .unwrap();
+    assert!(!evm_chain_params.bridge_active);
 
     // now we try to bridge some tokens
     let result = test_erc20_deposit_result(
@@ -109,7 +124,12 @@ pub async fn pause_bridge_test(
     let coin = contact
         .get_balance(
             user_keys.cosmos_address,
-            format!("gravity{}", erc20_address),
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
         )
         .await
         .unwrap()
@@ -130,6 +150,7 @@ pub async fn pause_bridge_test(
         denom: token_name.clone(),
     };
     send_to_eth(
+        evm_chain_prefix,
         user_keys.cosmos_key,
         user_keys.eth_address,
         Coin {
@@ -144,6 +165,7 @@ pub async fn pause_bridge_test(
     .await
     .unwrap();
     let res = send_request_batch(
+        evm_chain_prefix,
         keys[0].orch_key,
         token_name.clone(),
         Some(get_fee(None)),
@@ -169,11 +191,14 @@ pub async fn pause_bridge_test(
     info!("Batch creation was blocked by bridge pause!");
 
     info!("Voting to resume bridge operations!");
+    let params = get_gravity_params(&mut grpc_client).await.unwrap();
     let mut params_to_change = Vec::new();
     let unhalt = ParamChange {
         subspace: "gravity".to_string(),
-        key: "BridgeActive".to_string(),
-        value: format!("{}", true),
+        key: "EvmChainParams".to_string(),
+        value: make_evm_chain_param_proposal(params, evm_chain_prefix, |p| {
+            p.bridge_active = true;
+        }),
     };
     params_to_change.push(unhalt);
 
@@ -191,13 +216,23 @@ pub async fn pause_bridge_test(
     // wait for the voting period to pass
     wait_for_proposals_to_execute(contact).await;
     let params = get_gravity_params(&mut grpc_client).await.unwrap();
-    assert!(params.bridge_active);
+    let evm_chain_params = params
+        .evm_chain_params
+        .iter()
+        .find(|p| p.evm_chain_prefix.eq(evm_chain_prefix))
+        .unwrap();
+    assert!(evm_chain_params.bridge_active);
 
     // finally we check that our batch executes and our new withdraw processes
     let res = contact
         .get_balance(
             user_keys.cosmos_address,
-            format!("gravity{}", erc20_address),
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
         )
         .await
         .unwrap()
@@ -216,6 +251,7 @@ pub async fn pause_bridge_test(
 
     // now we make sure our tokens in the batch queue make it across
     send_request_batch(
+        evm_chain_prefix,
         keys[0].orch_key,
         token_name.clone(),
         Some(get_fee(None)),

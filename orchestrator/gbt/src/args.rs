@@ -40,6 +40,8 @@ pub enum SubCommand {
     Init(InitOpts),
 }
 
+// @todo must update the default values to our own
+
 const DEFAULT_GRPC_ADDRESS: &str = "http://gravitychain.io:9090";
 const DEFAULT_ETH_RPC_ADDRESS: &str = "https://eth.althea.net";
 
@@ -166,6 +168,9 @@ pub struct CosmosToEthOpts {
     /// The destination address on the Ethereum chain
     #[clap(short, long, parse(try_from_str))]
     pub eth_destination: EthAddress,
+    /// The evm_chain_prefix or net_version of blockchain
+    #[clap(short, long)]
+    pub evm_chain_prefix: String,
 }
 
 /// Send an Ethereum ERC20 token to Cosmos
@@ -189,6 +194,9 @@ pub struct EthToCosmosOpts {
     /// The destination address on the Cosmos blockchain
     #[clap(short, long, parse(try_from_str))]
     pub destination: CosmosAddress,
+    /// Memo to attach to the transaction
+    #[clap(short, long)]
+    pub memo: String,
 }
 
 /// Deploy an ERC20 representation of a Cosmos asset on the Ethereum chain
@@ -342,6 +350,9 @@ pub struct RecoverFundsOpts {
     /// **Only use this with the send-on-cosmos flag**
     #[clap(long, parse(try_from_str))]
     pub cosmos_destination: Option<CosmosAddress>,
+    /// The evm_chain_prefix or net_version of blockchain
+    #[clap(short, long)]
+    pub evm_chain_prefix: String,
 }
 
 /// Initialize configuration

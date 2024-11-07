@@ -37,6 +37,7 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      chainId: 420,
       gas: "auto",
       mining: {
         auto: false,
@@ -838,7 +839,9 @@ module.exports = {
     runOnCompile: true
   },
   gasReporter: {
-    enabled: true
+    enabled: true,
+    currency: "USD",
+    coinmarketcap: process.env.COIN_MARKET_CAP_KEY || undefined
   },
   mocha: {
     timeout: 2000000

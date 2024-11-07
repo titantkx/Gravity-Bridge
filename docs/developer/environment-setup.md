@@ -40,7 +40,7 @@ If you are a linux user and prefer your package manager to manually installed de
 `sudo dnf install golang rust cargo npm -y`
 
 **Ubuntu**
-` audo apt-get update && sudo apt-get install golang rust cargo npm -y`
+`audo apt-get update && sudo apt-get install golang rust cargo npm -y`
 
 ## Getting everything built
 
@@ -136,8 +136,8 @@ cargo build --all
 
 # you will need to do this every time you edit a proto file
 
+```
 cd proto-build && cargo run
-
 ```
 
 ### Tips for IDEs
@@ -163,15 +163,17 @@ The integration tests have two methods of operation, one that runs one of a pre-
 of Gravity bridge for you as a developer to interact with. This is very useful for iterating quickly on changes.
 
 ```
-
 # builds the original docker container, only have to run this once
 
 ./tests/build-container.sh
+```
 
-# This starts the Ethereum chain, Cosmos chain,
+# This starts the Ethereum chain, Cosmos chain
 
 ```
+
 ./tests/start-chains.sh
+
 ```
 
 switch to a new terminal and run a test case. A list of all predefined tests can be found [here](https://github.com/Gravity-Bridge/Gravity-Bridge/blob/main/orchestrator/test_runner/src/main.rs#L169)
@@ -179,15 +181,20 @@ switch to a new terminal and run a test case. A list of all predefined tests can
 These test cases spawn Orchestrators as well as an IBC relayer, run through their test scenario and then exit. If you just want to have a fully functioning instance of GB running locally you can use this command.
 
 ```
+
 ./tests/run-tests.sh RUN_ORCH_ONLY
+
 ```
 
 This will just kick off the orchestrators and ibc relayer and not run any particular test case.
 
+```
 # This runs a pre-defined test against the chains, keeping state between runs
 
 ./tests/run-tests.sh
+```
 
+```
 # This provides shell access to the running testnet
 
 # RPC endpoints are passed through the container to localhost:8545 (ethereum) and localhost:9090 (Cosmos GRPC)
@@ -218,7 +225,7 @@ To use a stepping debugger in VS Code, follow the "Working inside the container"
 All up tests are pre-defined test patterns that are run 'all up' which means including re-building all dependencies and deploying a fresh testnet for each test.
 These tests _only_ work on checked in code. You must commit your latest changes to git.
 
-A list of test patterns is defined [here](https://github.com/Gravity-Bridge/Gravity-Bridge/blob/main/orchestrator/test_runner/src/main.rs#L169)
+A list of test patterns is defined [here](../../orchestrator/test_runner/src/main.rs#L271)
 
 To run an individual test run
 
@@ -252,4 +259,3 @@ This is essentially a local emulation of the Github tests. Including linting and
 ## Next steps
 
 Now that you are ready to edit, build, and test Gravity Bridge code you can view the [code structure intro](/docs/developer/code-structure.md)
-```

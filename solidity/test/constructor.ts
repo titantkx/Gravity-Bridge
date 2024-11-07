@@ -1,11 +1,9 @@
-import chai from "chai";
-import { ethers } from "hardhat";
-import { solidity } from "ethereum-waffle";
-import { deployContracts } from "../test-utils";
-import {
-  examplePowers
-} from "../test-utils/pure";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import chai from "chai";
+import { solidity } from "ethereum-waffle";
+import { ethers } from "hardhat";
+import { deployContracts } from "../test-utils";
+import { examplePowers } from "../test-utils/pure";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -20,7 +18,7 @@ describe("constructor tests", function () {
     let validators = signers.slice(0, powers.length - 1);
 
     await expect(
-      deployContracts(gravityId, validators, powers,)
+      deployContracts(gravityId, validators, powers)
     ).to.be.revertedWith("MalformedCurrentValidatorSet()");
   });
 
@@ -32,12 +30,9 @@ describe("constructor tests", function () {
     let powers = examplePowers().slice(0, 2);
     let validators = signers.slice(0, 2);
 
-
     await expect(
       deployContracts(gravityId, validators, powers)
-    ).to.be.revertedWith(
-      "InsufficientPower(570372016, 2863311530)"
-    );
+    ).to.be.revertedWith("InsufficientPower(570372016, 2863311530)");
   });
 
   it("throws on empty validator set", async function () {
@@ -48,11 +43,8 @@ describe("constructor tests", function () {
     let powers: number[] = [];
     let validators: SignerWithAddress[] = [];
 
-
     await expect(
       deployContracts(gravityId, validators, powers)
-    ).to.be.revertedWith(
-      "MalformedCurrentValidatorSet()"
-    );
+    ).to.be.revertedWith("MalformedCurrentValidatorSet()");
   });
 });

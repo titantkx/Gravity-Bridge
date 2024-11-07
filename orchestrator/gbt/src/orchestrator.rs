@@ -4,11 +4,13 @@ use crate::config::load_keys;
 use crate::utils::print_relaying_explanation;
 use clarity::constants::zero_address;
 use cosmos_gravity::query::get_gravity_params;
+use cosmos_gravity::query::query_evm_chain_from_net_version;
 use deep_space::{CosmosPrivateKey, PrivateKey};
 use gravity_utils::connection_prep::{
     check_delegate_addresses, check_for_eth, wait_for_cosmos_node_ready,
 };
 use gravity_utils::connection_prep::{check_for_fee, create_rpc_connections};
+use gravity_utils::get_with_retry::get_net_version_with_retry;
 use gravity_utils::types::BatchRequestMode;
 use gravity_utils::types::GravityBridgeToolsConfig;
 use metrics_exporter::metrics_server;
@@ -88,6 +90,8 @@ pub async fn orchestrator(
     let mut grpc = connections.grpc.clone().unwrap();
     let contact = connections.contact.clone().unwrap();
     let web3 = connections.web3.clone().unwrap();
+    let net_version = get_net_version_with_retry(&web3).await;
+    info!("net version of the eth-rpc is: {}", net_version);
 
     let public_eth_key = ethereum_key.to_address();
     let public_cosmos_key = cosmos_key.to_address(&contact.get_prefix()).unwrap();
@@ -120,11 +124,29 @@ pub async fn orchestrator(
         .await
         .expect("Failed to get Gravity Bridge module parameters!");
 
+    let contact = connections.contact.unwrap();
+    let grpc_client = connections.grpc.unwrap();
+
+    // get correct evm_chain from rpc by querying net_id
+    let evm_chain_prefix = match query_evm_chain_from_net_version(&mut grpc, net_version).await {
+        Some(evm_chain) => evm_chain.evm_chain_prefix,
+        None => {
+            error!("Could not find the matching net version of evm chains on the network. Network from eth-rpc: {}", net_version);
+            return;
+        }
+    };
+
+    let evm_chain_params = params
+        .evm_chain_params
+        .iter()
+        .find(|p| p.evm_chain_prefix.eq(&evm_chain_prefix))
+        .expect("Failed to get evm chain params");
+
     // get the gravity contract address, if not provided
     let contract_address = if let Some(c) = args.gravity_contract_address {
         c
     } else {
-        let c = params.bridge_ethereum_address.parse();
+        let c = evm_chain_params.bridge_ethereum_address.parse();
         match c {
             Ok(v) => {
                 if v == zero_address() {
@@ -160,10 +182,11 @@ pub async fn orchestrator(
         cosmos_key,
         ethereum_key,
         connections.web3.unwrap(),
-        connections.contact.unwrap(),
-        connections.grpc.unwrap(),
+        contact.clone(),
+        grpc_client.clone(),
+        &evm_chain_prefix,
         contract_address,
-        params.gravity_id,
+        evm_chain_params.gravity_id.clone(),
         fee,
         config,
     )

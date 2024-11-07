@@ -4,6 +4,7 @@ use crate::get_fee;
 use crate::ADDRESS_PREFIX;
 use crate::COSMOS_NODE_GRPC;
 use crate::ETH_NODE;
+use crate::EVM_CHAIN_PREFIX;
 use crate::STAKING_TOKEN;
 use crate::TOTAL_TIMEOUT;
 use crate::{one_eth, MINER_PRIVATE_KEY};
@@ -31,7 +32,9 @@ use gravity_proto::cosmos_sdk_proto::cosmos::staking::v1beta1::{
 };
 use gravity_proto::cosmos_sdk_proto::cosmos::upgrade::v1beta1::{Plan, SoftwareUpgradeProposal};
 use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
+use gravity_proto::gravity::EvmChainParam;
 use gravity_proto::gravity::MsgSendToCosmosClaim;
+use gravity_proto::gravity::Params;
 use gravity_utils::types::BatchRelayingMode;
 use gravity_utils::types::BatchRequestMode;
 use gravity_utils::types::GravityBridgeToolsConfig;
@@ -254,16 +257,28 @@ pub fn get_user_key(cosmos_prefix: Option<&str>) -> BridgeUserKey {
     // the destination on cosmos that sends along to the final ethereum destination
     let cosmos_key = CosmosPrivateKey::from_secret(&secret);
     let cosmos_address = cosmos_key.to_address(cosmos_prefix).unwrap();
+    // the destination on ethermint that sends along to the final ethereum destination
+    let ethermint_key = EthermintPrivateKey::from_secret(&secret);
+    let ethermint_address = ethermint_key.to_address(cosmos_prefix).unwrap();
+
     let mut rng = rand::thread_rng();
     let secret: [u8; 32] = rng.gen();
     // the final destination of the tokens back on Ethereum
     let eth_dest_key = EthPrivateKey::from_bytes(secret).unwrap();
     let eth_dest_address = eth_key.to_address();
+    trace!(
+        "Generated new user key with Eth address {} and Cosmos address {} and Ethermint address {}",
+        eth_address,
+        cosmos_address,
+        ethermint_address
+    );
     BridgeUserKey {
         eth_address,
         eth_key,
         cosmos_address,
         cosmos_key,
+        ethermint_address,
+        ethermint_key,
         eth_dest_address,
         eth_dest_key,
     }
@@ -277,6 +292,9 @@ pub struct BridgeUserKey {
     // the cosmos addresses that get the funds and send them on to the dest eth addresses
     pub cosmos_address: CosmosAddress,
     pub cosmos_key: CosmosPrivateKey,
+    // the ethermint addresses that get the funds and send them on to the dest eth addresses
+    pub ethermint_address: CosmosAddress,
+    pub ethermint_key: EthermintPrivateKey,
     // the location tokens are sent back to on Ethereum
     pub eth_dest_address: EthAddress,
     pub eth_dest_key: EthPrivateKey,
@@ -312,6 +330,7 @@ pub struct EthermintUserKey {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ValidatorKeys {
     /// The Ethereum key used by this validator to sign Gravity bridge messages
     pub eth_key: EthPrivateKey,
@@ -355,6 +374,13 @@ pub async fn start_orchestrators(
             .await
             .expect("Failed to get Gravity Bridge module parameters!");
 
+        let evm_chain_params = params
+            .evm_chain_params
+            .iter()
+            .find(|p| p.evm_chain_prefix.eq(EVM_CHAIN_PREFIX.as_str()))
+            .expect("Failed to get evm chain params")
+            .clone();
+
         // we have only one actual futures executor thread (see the actix runtime tag on our main function)
         // but that will execute all the orchestrators in our test in parallel
         thread::spawn(move || {
@@ -363,6 +389,8 @@ pub async fn start_orchestrators(
                 COSMOS_NODE_GRPC.as_str(),
                 OPERATION_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             let fut = orchestrator_main_loop(
@@ -371,8 +399,9 @@ pub async fn start_orchestrators(
                 web30,
                 contact,
                 grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
                 gravity_address,
-                params.gravity_id,
+                evm_chain_params.gravity_id,
                 get_fee(None),
                 config,
             );
@@ -416,6 +445,8 @@ pub async fn submit_false_claims(
             cosmos_receiver: cosmos_receiver.to_string(),
             ethereum_sender: ethereum_sender.to_string(),
             orchestrator: orch_addr.to_string(),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
+            memo: "All your bridge are belong to us".to_string(),
         };
         info!("Oracle number {} submitting false deposit {:?}", i, claim);
         let msg_url = "/gravity.v1.MsgSendToCosmosClaim";
@@ -448,7 +479,7 @@ pub async fn create_parameter_change_proposal(
     };
     let res = submit_parameter_change_proposal(
         proposal,
-        get_deposit(None),
+        get_deposit(None, None),
         fee_coin,
         contact,
         key,
@@ -515,7 +546,7 @@ pub async fn execute_upgrade_proposal(
     };
     let res = submit_upgrade_proposal(
         proposal,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,
@@ -599,8 +630,8 @@ pub async fn vote_yes_with_retry(
     }
     let res = res.unwrap();
     info!(
-        "Voting yes on governance proposal costing {} gas",
-        res.gas_used
+        "Voting yes on governance proposal {} costing {} gas",
+        proposal_id, res.gas_used
     );
 }
 
@@ -720,16 +751,17 @@ pub async fn get_validator_to_delegate_to(contact: &Contact) -> (CosmosAddress, 
         }
     }
 
-    // since this is five percent of the total bonded stake
+    // since this is six percent of the total bonded stake
     // delegating this to the validator who has the least should
     // do the trick
-    let five_percent = total_bonded_stake / 20u8.into();
-    let five_percent = Coin {
+    // make a change 6% of the total bonded stake > 5% will trigger `ValsetRequest` in gravity (module/x/gravity/abci.go#createValsets)
+    let six_percent = total_bonded_stake / 100u8.into() * 6u8.into();
+    let six_percent = Coin {
         denom: STAKING_TOKEN.clone(),
-        amount: five_percent,
+        amount: six_percent,
     };
 
-    (has_the_least.unwrap(), five_percent)
+    (has_the_least.unwrap(), six_percent)
 }
 
 /// Waits for a particular block to be created
@@ -834,4 +866,51 @@ pub async fn wait_for_balance(
     }
 
     panic!("User did not attain >= expected balance");
+}
+
+#[derive(serde::Serialize, Clone)]
+pub struct EvmChainParamForProposal {
+    pub gravity_id: String,
+    pub bridge_active: bool,
+    pub contract_source_hash: String,
+    pub bridge_ethereum_address: String,
+    pub bridge_chain_id: String,
+    pub average_ethereum_block_time: String,
+    pub ethereum_blacklist: Vec<String>,
+    pub evm_chain_prefix: String,
+}
+
+impl EvmChainParamForProposal {
+    pub fn from_evm_chain_param(param: EvmChainParam) -> Self {
+        EvmChainParamForProposal {
+            gravity_id: param.gravity_id,
+            bridge_active: param.bridge_active,
+            contract_source_hash: param.contract_source_hash,
+            bridge_ethereum_address: param.bridge_ethereum_address,
+            bridge_chain_id: param.bridge_chain_id.to_string(),
+            average_ethereum_block_time: param.average_ethereum_block_time.to_string(),
+            ethereum_blacklist: param.ethereum_blacklist,
+            evm_chain_prefix: param.evm_chain_prefix,
+        }
+    }
+}
+
+pub fn make_evm_chain_param_proposal<F>(params: Params, evm_chain_prefix: &str, func: F) -> String
+where
+    F: Fn(&mut EvmChainParamForProposal),
+{
+    let mut evm_chains_params_for_proposal: Vec<EvmChainParamForProposal> = params
+        .evm_chain_params
+        .clone()
+        .iter()
+        .map(|c| EvmChainParamForProposal::from_evm_chain_param(c.clone()))
+        .collect();
+    evm_chains_params_for_proposal.iter_mut().for_each(|c| {
+        if c.evm_chain_prefix.eq(evm_chain_prefix) {
+            func(c);
+        }
+    });
+    serde_json::to_string(&evm_chains_params_for_proposal)
+        .unwrap()
+        .clone()
 }

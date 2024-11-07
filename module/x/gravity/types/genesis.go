@@ -21,18 +21,6 @@ var (
 	// AttestationVotesPowerThreshold threshold of votes power to succeed
 	AttestationVotesPowerThreshold = sdk.NewInt(66)
 
-	// ParamsStoreKeyGravityID stores the gravity id
-	ParamsStoreKeyGravityID = []byte("GravityID")
-
-	// ParamsStoreKeyContractHash stores the contract hash
-	ParamsStoreKeyContractHash = []byte("ContractHash")
-
-	// ParamsStoreKeyBridgeContractAddress stores the ethereum address
-	ParamsStoreKeyBridgeEthereumAddress = []byte("BridgeEthereumAddress")
-
-	// ParamsStoreKeyBridgeContractChainID stores the bridge chain id
-	ParamsStoreKeyBridgeContractChainID = []byte("BridgeChainID")
-
 	// ParamsStoreKeySignedValsetsWindow stores the signed blocks window
 	ParamsStoreKeySignedValsetsWindow = []byte("SignedValsetsWindow")
 
@@ -47,9 +35,6 @@ var (
 
 	// ParamsStoreKeySignedClaimsWindow stores the signed blocks window
 	ParamsStoreKeyAverageBlockTime = []byte("AverageBlockTime")
-
-	// ParamsStoreKeySignedClaimsWindow stores the signed blocks window
-	ParamsStoreKeyAverageEthereumBlockTime = []byte("AverageEthereumBlockTime")
 
 	// ParamsStoreSlashFractionValset stores the slash fraction valset
 	ParamsStoreSlashFractionValset = []byte("SlashFractionValset")
@@ -73,15 +58,6 @@ var (
 	// ResetBridgeHeight stores the nonce after which oracle events should be discarded when resetting the bridge
 	ParamStoreResetBridgeNonce = []byte("ResetBridgeNonce")
 
-	// ParamBridgeActive allows governance to temporarily halt the bridge via vote, in this context halting
-	// means no more batches will be created and no oracle events executed. Valset creation will continue
-	// to be allowed as it must continue to ensure bridge continuity.
-	ParamStoreBridgeActive = []byte("BridgeActive")
-
-	// ParamStoreEthereumBlacklist allows storage of blocked Ethereum addresses blocked for use with the bridge
-	// this could be for technical reasons (zero address) or non-technical reasons, these apply across all ERC20 tokens
-	ParamStoreEthereumBlacklist = []byte("EthereumBlacklist")
-
 	// ParamStoreMinChainFeeBasisPoints allows governance to set the minimum SendToEth `ChainFee` in terms of basis points
 	// or hundredths of a percent, e.g. 10% fee = 1000 and 0.02% fee = 2. If this is set > 0 and a MsgSendToEth is
 	// submitted with too low of a ChainFee value, it will be rejected in the AnteHandler
@@ -94,18 +70,16 @@ var (
 	// the ChainFee will go to stakers
 	ParamStoreChainFeeAuctionPoolFraction = []byte("ChainFeeAuctionPoolFraction")
 
+	ParamStoreEvmChainParams = []byte("EvmChainParams")
+
 	// Ensure that params implements the proper interface
 	_ paramtypes.ParamSet = &Params{
-		GravityId:                    "",
-		ContractSourceHash:           "",
-		BridgeEthereumAddress:        "",
-		BridgeChainId:                0,
-		SignedValsetsWindow:          0,
-		SignedBatchesWindow:          0,
-		SignedLogicCallsWindow:       0,
-		TargetBatchTimeout:           0,
-		AverageBlockTime:             0,
-		AverageEthereumBlockTime:     0,
+		SignedValsetsWindow:    0,
+		SignedBatchesWindow:    0,
+		SignedLogicCallsWindow: 0,
+		TargetBatchTimeout:     0,
+		AverageBlockTime:       0,
+
 		SlashFractionValset:          sdk.Dec{},
 		SlashFractionBatch:           sdk.Dec{},
 		SlashFractionLogicCall:       sdk.Dec{},
@@ -115,10 +89,22 @@ var (
 			Denom:  "",
 			Amount: sdk.Int{},
 		},
-		BridgeActive:                true,
-		EthereumBlacklist:           []string{},
+
 		MinChainFeeBasisPoints:      0,
 		ChainFeeAuctionPoolFraction: sdk.Dec{},
+
+		EvmChainParams: []*EvmChainParam{
+			{
+				EvmChainPrefix:           "gravity",
+				GravityId:                "",
+				ContractSourceHash:       "",
+				BridgeEthereumAddress:    "",
+				BridgeChainId:            0,
+				AverageEthereumBlockTime: 0,
+				BridgeActive:             true,
+				EthereumBlacklist:        []string{},
+			},
+		},
 	}
 )
 
@@ -135,50 +121,76 @@ func (s GenesisState) ValidateBasic() error {
 // nolint: exhaustruct
 func DefaultGenesisState() *GenesisState {
 	return &GenesisState{
-		Params:                 DefaultParams(),
-		GravityNonces:          GravityNonces{},
-		Valsets:                []Valset{},
-		ValsetConfirms:         []MsgValsetConfirm{},
-		Batches:                []OutgoingTxBatch{},
-		BatchConfirms:          []MsgConfirmBatch{},
-		LogicCalls:             []OutgoingLogicCall{},
-		LogicCallConfirms:      []MsgConfirmLogicCall{},
-		Attestations:           []Attestation{},
-		DelegateKeys:           []MsgSetOrchestratorAddress{},
-		Erc20ToDenoms:          []ERC20ToDenom{},
-		UnbatchedTransfers:     []OutgoingTransferTx{},
-		PendingIbcAutoForwards: []PendingIbcAutoForward{},
+		Params:    DefaultParams(),
+		EvmChains: []EvmChainData{},
+	}
+}
+
+func DefaultEvmChains() []EvmChainData {
+	return []EvmChainData{
+		{
+			EvmChain:               EvmChain{EvmChainPrefix: "evm", EvmChainName: "evm"},
+			GravityNonces:          GravityNonces{},
+			Valsets:                []Valset{},
+			ValsetConfirms:         []MsgValsetConfirm{},
+			Batches:                []OutgoingTxBatch{},
+			BatchConfirms:          []MsgConfirmBatch{},
+			LogicCalls:             []OutgoingLogicCall{},
+			LogicCallConfirms:      []MsgConfirmLogicCall{},
+			Attestations:           []Attestation{},
+			DelegateKeys:           []MsgSetOrchestratorAddress{},
+			Erc20ToDenoms:          []ERC20ToDenom{},
+			UnbatchedTransfers:     []OutgoingTransferTx{},
+			PendingIbcAutoForwards: []PendingIbcAutoForward{},
+		},
 	}
 }
 
 // DefaultParams returns a copy of the default params
 func DefaultParams() *Params {
 	return &Params{
-		GravityId:                    "defaultgravityid",
-		ContractSourceHash:           "",
-		BridgeEthereumAddress:        "0x0000000000000000000000000000000000000000",
-		BridgeChainId:                0,
-		SignedValsetsWindow:          10000,
-		SignedBatchesWindow:          10000,
-		SignedLogicCallsWindow:       10000,
-		TargetBatchTimeout:           43200000,
-		AverageBlockTime:             5000,
-		AverageEthereumBlockTime:     15000,
+		SignedValsetsWindow:    10000,
+		SignedBatchesWindow:    10000,
+		SignedLogicCallsWindow: 10000,
+		TargetBatchTimeout:     43200000,
+		AverageBlockTime:       5000,
+
 		SlashFractionValset:          sdk.NewDec(1).Quo(sdk.NewDec(1000)),
 		SlashFractionBatch:           sdk.NewDec(1).Quo(sdk.NewDec(1000)),
 		SlashFractionLogicCall:       sdk.NewDec(1).Quo(sdk.NewDec(1000)),
 		UnbondSlashingValsetsWindow:  10000,
 		SlashFractionBadEthSignature: sdk.NewDec(1).Quo(sdk.NewDec(1000)),
 		ValsetReward:                 sdk.Coin{Denom: "", Amount: sdk.ZeroInt()},
-		BridgeActive:                 true,
-		EthereumBlacklist:            []string{},
-		MinChainFeeBasisPoints:       2,
-		ChainFeeAuctionPoolFraction:  sdk.NewDecWithPrec(50, 2), // 50%, the prec parameter moves the decimal to the left that many places
+
+		MinChainFeeBasisPoints:      2,
+		ChainFeeAuctionPoolFraction: sdk.NewDecWithPrec(50, 2), // 50%, the prec parameter moves the decimal to the left that many places
+		EvmChainParams: []*EvmChainParam{
+			{
+				EvmChainPrefix:           GravityDenomPrefix,
+				GravityId:                "defaultgravityid",
+				ContractSourceHash:       "",
+				BridgeEthereumAddress:    "0x0000000000000000000000000000000000000000",
+				BridgeChainId:            0,
+				AverageEthereumBlockTime: 15000,
+				BridgeActive:             true,
+				EthereumBlacklist:        []string{},
+			},
+		},
 	}
 }
 
+func (p *Params) GetEvmChain(evmChainPrefix string) *EvmChainParam {
+	for _, v := range p.EvmChainParams {
+		if v.EvmChainPrefix == evmChainPrefix {
+			// Found!
+			return v
+		}
+	}
+	return nil
+}
+
 // ValidateBasic checks that the parameters have valid values.
-func (p Params) ValidateBasic() error {
+func (p *EvmChainParam) ValidateBasic() error {
 	if err := validateGravityID(p.GravityId); err != nil {
 		return sdkerrors.Wrap(err, "gravity id")
 	}
@@ -191,15 +203,34 @@ func (p Params) ValidateBasic() error {
 	if err := validateBridgeChainID(p.BridgeChainId); err != nil {
 		return sdkerrors.Wrap(err, "bridge chain id")
 	}
+	if err := validateAverageEthereumBlockTime(p.AverageEthereumBlockTime); err != nil {
+		return sdkerrors.Wrap(err, "Ethereum block time")
+	}
+	if err := validateBridgeActive(p.BridgeActive); err != nil {
+		return sdkerrors.Wrap(err, "bridge active parameter")
+	}
+	if err := validateEthereumBlacklistAddresses(p.EthereumBlacklist); err != nil {
+		return sdkerrors.Wrap(err, "ethereum blacklist parameter")
+	}
+	return nil
+}
+
+// ValidateBasic checks that the parameters have valid values.
+func (p Params) ValidateBasic() error {
+	// validate all evm chain param
+	for _, v := range p.EvmChainParams {
+		if err := v.ValidateBasic(); err != nil {
+			return err
+		}
+	}
+
 	if err := validateTargetBatchTimeout(p.TargetBatchTimeout); err != nil {
 		return sdkerrors.Wrap(err, "Batch timeout")
 	}
 	if err := validateAverageBlockTime(p.AverageBlockTime); err != nil {
 		return sdkerrors.Wrap(err, "Block time")
 	}
-	if err := validateAverageEthereumBlockTime(p.AverageEthereumBlockTime); err != nil {
-		return sdkerrors.Wrap(err, "Ethereum block time")
-	}
+
 	if err := validateSignedValsetsWindow(p.SignedValsetsWindow); err != nil {
 		return sdkerrors.Wrap(err, "signed blocks window valsets")
 	}
@@ -227,12 +258,7 @@ func (p Params) ValidateBasic() error {
 	if err := validateValsetRewardAmount(p.ValsetReward); err != nil {
 		return sdkerrors.Wrap(err, "ValsetReward amount")
 	}
-	if err := validateBridgeActive(p.BridgeActive); err != nil {
-		return sdkerrors.Wrap(err, "bridge active parameter")
-	}
-	if err := validateEthereumBlacklistAddresses(p.EthereumBlacklist); err != nil {
-		return sdkerrors.Wrap(err, "ethereum blacklist parameter")
-	}
+
 	if err := validateMinChainFeeBasisPoints(p.MinChainFeeBasisPoints); err != nil {
 		return sdkerrors.Wrap(err, "min chain fee basis points parameter")
 	}
@@ -245,26 +271,20 @@ func (p Params) ValidateBasic() error {
 // ParamKeyTable for auth module
 func ParamKeyTable() paramtypes.KeyTable {
 	return paramtypes.NewKeyTable().RegisterParamSet(&Params{
-		GravityId:                    "",
-		ContractSourceHash:           "",
-		BridgeEthereumAddress:        "",
-		BridgeChainId:                0,
 		SignedValsetsWindow:          0,
 		SignedBatchesWindow:          0,
 		SignedLogicCallsWindow:       0,
 		TargetBatchTimeout:           0,
 		AverageBlockTime:             0,
-		AverageEthereumBlockTime:     0,
 		SlashFractionValset:          sdk.Dec{},
 		SlashFractionBatch:           sdk.Dec{},
 		SlashFractionLogicCall:       sdk.Dec{},
 		UnbondSlashingValsetsWindow:  0,
 		SlashFractionBadEthSignature: sdk.Dec{},
 		ValsetReward:                 sdk.Coin{Denom: "", Amount: sdk.Int{}},
-		BridgeActive:                 false,
-		EthereumBlacklist:            []string{},
 		MinChainFeeBasisPoints:       0,
 		ChainFeeAuctionPoolFraction:  sdk.Dec{},
+		EvmChainParams:               []*EvmChainParam{},
 	})
 }
 
@@ -272,25 +292,20 @@ func ParamKeyTable() paramtypes.KeyTable {
 // pairs of auth module's parameters.
 func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 	return paramtypes.ParamSetPairs{
-		paramtypes.NewParamSetPair(ParamsStoreKeyGravityID, &p.GravityId, validateGravityID),
-		paramtypes.NewParamSetPair(ParamsStoreKeyContractHash, &p.ContractSourceHash, validateContractHash),
-		paramtypes.NewParamSetPair(ParamsStoreKeyBridgeEthereumAddress, &p.BridgeEthereumAddress, validateBridgeContractAddress),
-		paramtypes.NewParamSetPair(ParamsStoreKeyBridgeContractChainID, &p.BridgeChainId, validateBridgeChainID),
 		paramtypes.NewParamSetPair(ParamsStoreKeySignedValsetsWindow, &p.SignedValsetsWindow, validateSignedValsetsWindow),
 		paramtypes.NewParamSetPair(ParamsStoreKeySignedBatchesWindow, &p.SignedBatchesWindow, validateSignedBatchesWindow),
 		paramtypes.NewParamSetPair(ParamsStoreKeySignedLogicCallsWindow, &p.SignedLogicCallsWindow, validateSignedLogicCallsWindow),
 		paramtypes.NewParamSetPair(ParamsStoreKeyTargetBatchTimeout, &p.TargetBatchTimeout, validateTargetBatchTimeout),
 		paramtypes.NewParamSetPair(ParamsStoreKeyAverageBlockTime, &p.AverageBlockTime, validateAverageBlockTime),
-		paramtypes.NewParamSetPair(ParamsStoreKeyAverageEthereumBlockTime, &p.AverageEthereumBlockTime, validateAverageEthereumBlockTime),
+
 		paramtypes.NewParamSetPair(ParamsStoreSlashFractionValset, &p.SlashFractionValset, validateSlashFractionValset),
 		paramtypes.NewParamSetPair(ParamsStoreSlashFractionBatch, &p.SlashFractionBatch, validateSlashFractionBatch),
 		paramtypes.NewParamSetPair(ParamStoreUnbondSlashingValsetsWindow, &p.UnbondSlashingValsetsWindow, validateUnbondSlashingValsetsWindow),
 		paramtypes.NewParamSetPair(ParamStoreSlashFractionBadEthSignature, &p.SlashFractionBadEthSignature, validateSlashFractionBadEthSignature),
 		paramtypes.NewParamSetPair(ParamStoreValsetRewardAmount, &p.ValsetReward, validateValsetRewardAmount),
-		paramtypes.NewParamSetPair(ParamStoreBridgeActive, &p.BridgeActive, validateBridgeActive),
-		paramtypes.NewParamSetPair(ParamStoreEthereumBlacklist, &p.EthereumBlacklist, validateEthereumBlacklistAddresses),
 		paramtypes.NewParamSetPair(ParamStoreMinChainFeeBasisPoints, &p.MinChainFeeBasisPoints, validateMinChainFeeBasisPoints),
 		paramtypes.NewParamSetPair(ParamStoreChainFeeAuctionPoolFraction, &p.ChainFeeAuctionPoolFraction, validateChainFeeAuctionPoolFraction),
+		paramtypes.NewParamSetPair(ParamStoreEvmChainParams, &p.EvmChainParams, validateEvmChainParams),
 	}
 }
 
@@ -299,6 +314,20 @@ func (p Params) Equal(p2 Params) bool {
 	bz1 := ModuleCdc.MustMarshalLengthPrefixed(&p)
 	bz2 := ModuleCdc.MustMarshalLengthPrefixed(&p2)
 	return bytes.Equal(bz1, bz2)
+}
+
+func validateEvmChainParams(i interface{}) error {
+	evmChainParams, ok := i.([]*EvmChainParam)
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+	// validate all evm chain param
+	for _, v := range evmChainParams {
+		if err := v.ValidateBasic(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func validateGravityID(i interface{}) error {
@@ -457,7 +486,6 @@ func validateEthereumBlacklistAddresses(i interface{}) error {
 	}
 	for index, value := range strArr {
 		if err := ValidateEthAddress(value); err != nil {
-
 			if !strings.Contains(err.Error(), "empty, index is"+strconv.Itoa(index)) {
 				return err
 			}

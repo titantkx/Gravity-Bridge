@@ -1,0 +1,99 @@
+name: gravity-with-titan
+
+services:
+  evm:
+    build:
+      context: ./evm
+      dockerfile: Dockerfile
+      additional_contexts:
+        - repo=../../
+    networks:
+      - net
+    volumes:
+      - ./shared:/shared
+    expose:
+      - 8545
+    ports:
+      - "8545:8545"
+    deploy:
+      resources:
+        limits:
+          cpus: "3"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8545"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  titan:
+    build:
+      context: ./titan
+      dockerfile: Dockerfile
+    networks:
+      - net
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./shared:/shared
+    ports:
+      - "27657:26657"
+      - "9190:9090"
+      - "1417:1317"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26657"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  gravity:
+    build:
+      context: ./gravity
+      dockerfile: Dockerfile
+      args:
+        NODES: ${NODES}
+      additional_contexts:
+        - repo=../../
+    networks:
+      - net
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./shared:/shared
+    ports:
+      - "26657:26657"
+      - "9090:9090"
+      - "1317:1317"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:26657"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+      target: builder
+      additional_contexts:
+        - repo=../../
+    networks:
+      - net
+    volumes:
+      - ./shared:/shared
+    depends_on:
+      - evm
+      - titan
+      - gravity
+
+networks:
+  net:
+    internal: false
+    name: gravity-with-titan_net

@@ -1,23 +1,21 @@
 import chai from "chai";
-import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
+import { ethers } from "hardhat";
 
 import { deployContracts } from "../test-utils";
 import {
+  examplePowers,
   getSignerAddresses,
   makeCheckpoint,
   signHash,
-  examplePowers,
-  ZeroAddress,
+  ZeroAddress
 } from "../test-utils/pure";
 
 chai.use(solidity);
 const { expect } = chai;
 
-
 describe("Gravity happy path valset update + batch submit", function () {
   it("Happy path", async function () {
-
     // DEPLOY CONTRACTS
     // ================
 
@@ -31,18 +29,13 @@ describe("Gravity happy path valset update + batch submit", function () {
       valsetNonce: 0,
       rewardAmount: 0,
       rewardToken: ZeroAddress
-    }
-
-
+    };
 
     const {
       gravity,
       testERC20,
       checkpoint: deployCheckpoint
     } = await deployContracts(gravityId, valset0.validators, valset0.powers);
-
-
-
 
     // UDPATEVALSET
     // ============
@@ -60,8 +53,8 @@ describe("Gravity happy path valset update + batch submit", function () {
         valsetNonce: 1,
         rewardAmount: 0,
         rewardToken: ZeroAddress
-      }
-    })()
+      };
+    })();
 
     // redefine valset0 and 1 with strings for 'validators'
     const valset0_str = {
@@ -70,14 +63,14 @@ describe("Gravity happy path valset update + batch submit", function () {
       valsetNonce: valset0.valsetNonce,
       rewardAmount: valset0.rewardAmount,
       rewardToken: valset0.rewardToken
-    }
+    };
     const valset1_str = {
       powers: valset1.powers,
       validators: await getSignerAddresses(valset1.validators),
       valsetNonce: valset1.valsetNonce,
       rewardAmount: valset1.rewardAmount,
       rewardToken: valset1.rewardToken
-    }
+    };
 
     const checkpoint1 = makeCheckpoint(
       valset1_str.validators,
@@ -95,13 +88,12 @@ describe("Gravity happy path valset update + batch submit", function () {
 
       valset0_str,
 
-      sigs1,
+      sigs1
     );
 
-    expect((await gravity.functions.state_lastValsetCheckpoint())[0]).to.equal(checkpoint1);
-
-
-
+    expect((await gravity.functions.state_lastValsetCheckpoint())[0]).to.equal(
+      checkpoint1
+    );
 
     // SUBMITBATCH
     // ==========================
@@ -111,7 +103,8 @@ describe("Gravity happy path valset update + batch submit", function () {
     await gravity.functions.sendToCosmos(
       testERC20.address,
       ethers.utils.formatBytes32String("myCosmosAddress"),
-      1000
+      1000,
+      ""
     );
 
     // Transferring into ERC20 from Cosmos
@@ -129,12 +122,10 @@ describe("Gravity happy path valset update + batch submit", function () {
 
     const txDestinations = await getSignerAddresses(txDestinationsInt);
 
-    const batchNonce = 1
-    const batchTimeout = 10000000
+    const batchNonce = 1;
+    const batchTimeout = 10000000;
 
-    const methodName = ethers.utils.formatBytes32String(
-      "transactionBatch"
-    );
+    const methodName = ethers.utils.formatBytes32String("transactionBatch");
 
     let abiEncoded = ethers.utils.defaultAbiCoder.encode(
       [

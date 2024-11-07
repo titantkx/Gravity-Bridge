@@ -190,7 +190,7 @@ pub async fn check_vesting_accounts_at_height(
             .amount
             .parse()
             .expect("Invalid spendable amount returned from bank query!");
-        info!("Discovered spendable balance of {}, expecting that to be less than {} but more than {}", spendable_amt, hi_amount, lo_amount);
+        info!("Discovered spendable balance of {} is {}, expecting that to be less than {} but more than {}",addr, spendable_amt, hi_amount, lo_amount);
         assert!(lo_amount <= spendable_amt && spendable_amt <= hi_amount);
 
         debug!(

@@ -5,7 +5,8 @@ use crate::utils::{
     footoken_metadata, get_user_key, vote_yes_on_proposals, BridgeUserKey, ValidatorKeys,
 };
 use crate::{
-    get_deposit, get_fee, one_eth, ADDRESS_PREFIX, OPERATION_TIMEOUT, STAKING_TOKEN, TOTAL_TIMEOUT,
+    get_deposit, get_fee, one_eth, ADDRESS_PREFIX, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR,
+    OPERATION_TIMEOUT, STAKING_TOKEN, TOTAL_TIMEOUT,
 };
 use actix::clock::sleep;
 use clarity::Address as EthAddress;
@@ -46,7 +47,12 @@ pub async fn send_to_eth_fees_test(
     )
     .await;
     let cosmos_denom = ibc_metadata.base;
-    let erc20_denom: String = format!("gravity{}", erc20_addresses.first().unwrap().clone());
+    let erc20_denom: String = format!(
+        "{}{}{}",
+        EVM_CHAIN_PREFIX.as_str(),
+        GRAVITY_DENOM_SEPARATOR.as_str(),
+        erc20_addresses.first().unwrap().clone()
+    );
     let (_staker_key, _staker_addr) = (staker_key.cosmos_key, staker_key.cosmos_address);
 
     let val0_cosmos_key = keys[0].validator_key;
@@ -399,6 +405,7 @@ async fn send_single_msg_txs(
             amount: Some(bridge_coin.into()),
             bridge_fee: Some(fee_for_relayer.clone().into()),
             chain_fee: Some(fee_coin.into()),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         };
 
         let msg = Msg::new(MSG_SEND_TO_ETH_TYPE_URL, msg_send_to_eth);
@@ -560,6 +567,7 @@ async fn send_multi_msg_txs(
             amount: Some(bridge_coin.into()),
             bridge_fee: Some(fee_for_relayer.clone().into()),
             chain_fee: Some(fee_coin.into()),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         };
 
         let msg = Msg::new(MSG_SEND_TO_ETH_TYPE_URL, msg_send_to_eth);
@@ -789,6 +797,7 @@ fn build_param_change_msgs(
         amount: Some(bridge_coin.into()),
         bridge_fee: Some(fee_for_relayer.into()),
         chain_fee: Some(fee_coin.into()),
+        evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
     };
 
     let msg = Msg::new(MSG_SEND_TO_ETH_TYPE_URL, msg_send_to_eth);
@@ -992,7 +1001,7 @@ pub async fn submit_and_pass_send_to_eth_fees_proposal(
     };
     let res = submit_send_to_eth_fees_proposal(
         proposal_content,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,

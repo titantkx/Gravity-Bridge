@@ -3,7 +3,7 @@ use std::str::FromStr;
 use clarity::Address as EthAddress;
 use deep_space::{
     client::type_urls::MSG_SEND_TYPE_URL, utils::decode_bytes, Address as CosmosAddress, Coin,
-    Contact, CosmosPrivateKey, EthermintPrivateKey, PrivateKey,
+    Contact, EthermintPrivateKey, PrivateKey,
 };
 use gravity_proto::{
     cosmos_sdk_proto::cosmos::{
@@ -21,6 +21,7 @@ use web30::client::Web3;
 
 use crate::{
     get_fee,
+    types::IBCPrivateKey,
     utils::{get_user_key, BridgeUserKey, ValidatorKeys},
     ADDRESS_PREFIX, OPERATION_TIMEOUT, STAKING_TOKEN,
 };
@@ -69,7 +70,7 @@ pub async fn eip_712_test(
     _gravity_client: GravityQueryClient<Channel>,
     contact: &Contact,
     keys: Vec<ValidatorKeys>,
-    _ibc_keys: Vec<CosmosPrivateKey>,
+    _ibc_keys: Vec<IBCPrivateKey>,
     _gravity_address: EthAddress,
     _erc20_address: EthAddress,
 ) {

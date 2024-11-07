@@ -1,14 +1,15 @@
 use crate::happy_path::send_erc20_deposit;
 use crate::happy_path_v2::send_to_eth_and_confirm;
 use crate::ibc_auto_forward::{get_channel_id, test_ibc_transfer};
+use crate::types::IBCPrivateKey;
 use crate::{
     create_default_test_config, create_parameter_change_proposal, delegate_and_confirm,
     get_ethermint_key, get_fee, get_ibc_chain_id, one_eth, send_eth_bulk, start_orchestrators,
     wait_for_balance, EthAddress, EthermintUserKey, GravityQueryClient, ValidatorKeys,
-    ADDRESS_PREFIX, COSMOS_NODE_GRPC, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT,
-    STAKING_TOKEN, TOTAL_TIMEOUT,
+    ADDRESS_PREFIX, COSMOS_NODE_GRPC, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR,
+    IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT, STAKING_TOKEN, TOTAL_TIMEOUT,
 };
-use deep_space::{Coin, Contact, CosmosPrivateKey, PrivateKey};
+use deep_space::{Coin, Contact, PrivateKey};
 use gravity_proto::cosmos_sdk_proto::cosmos::bank::v1beta1::query_client::QueryClient as BankQueryClient;
 use gravity_proto::cosmos_sdk_proto::cosmos::base::v1beta1::Coin as ProtoCoin;
 use gravity_proto::cosmos_sdk_proto::cosmos::params::v1beta1::ParamChange;
@@ -26,7 +27,7 @@ pub async fn ethereum_keys_test(
     gravity_client: GravityQueryClient<Channel>,
     contact: &Contact,
     keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     gravity_address: EthAddress,
     erc20_address: EthAddress,
 ) -> bool {
@@ -104,7 +105,9 @@ pub async fn setup_ethermint_test(
     // Send the user a bit of eth for future queries
     send_eth_bulk(one_eth(), &[user_eth_address], web30).await;
 
-    let erc20_denom = "gravity".to_string() + &erc20_address.to_string();
+    let erc20_denom = EVM_CHAIN_PREFIX.to_string()
+        + &GRAVITY_DENOM_SEPARATOR.to_string()
+        + &erc20_address.to_string();
     let send_amount: Uint256 = one_eth() * 10u8.into();
     send_erc20_deposit(
         web30,
@@ -113,6 +116,7 @@ pub async fn setup_ethermint_test(
         gravity_address,
         erc20_address,
         send_amount,
+        "",
     )
     .await
     .unwrap();
@@ -129,7 +133,7 @@ pub async fn example_ethermint_key_usage(
     contact: &Contact,
     web30: &Web3,
     validator_keys: Vec<ValidatorKeys>,
-    ibc_keys: Vec<CosmosPrivateKey>,
+    ibc_keys: Vec<IBCPrivateKey>,
     ethermint_key: EthermintUserKey,
     erc20_address: EthAddress,
 ) -> bool {
@@ -137,7 +141,9 @@ pub async fn example_ethermint_key_usage(
     let user_cosmos_address = ethermint_key.ethermint_address;
     let user_eth_address = ethermint_key.eth_address;
     let denom: String = STAKING_TOKEN.clone().to_string();
-    let erc20_denom = "gravity".to_string() + &erc20_address.to_string();
+    let erc20_denom = EVM_CHAIN_PREFIX.to_string()
+        + &GRAVITY_DENOM_SEPARATOR.to_string()
+        + &erc20_address.to_string();
     // BANK Module
     // Send some tokens out of the Ethermint account
     let send_amount: Uint256 = 1u8.into();
@@ -267,7 +273,7 @@ pub async fn example_ethermint_key_usage(
     .await
     .expect("Could not find gravity-test-1 channel");
 
-    // Test an IBC transfer of 1 stake from gravity-test-1 to ibc-test-1
+    // Test an IBC transfer of 1 stake from gravity-test-1 to IBC_CHAIN_ID
     let receiver = ibc_keys[0].to_address(&IBC_ADDRESS_PREFIX).unwrap();
     let success = test_ibc_transfer(
         contact,
@@ -344,7 +350,7 @@ pub async fn example_ethermint_key_usage(
         .get_balance(user_cosmos_address, STAKING_TOKEN.to_string())
         .await
         .expect("Could not get stake balance");
-    let _res = contact
+    let res = contact
         .withdraw_delegator_rewards(
             delegate_to,
             Coin {
@@ -354,7 +360,12 @@ pub async fn example_ethermint_key_usage(
             user_key,
             Some(TOTAL_TIMEOUT),
         )
-        .await;
+        .await
+        .unwrap();
+    info!(
+        "Rewards withdraw result for {} delegation is {:?}",
+        user_cosmos_address, res
+    );
     let rewarded_stake_balance = contact
         .get_balance(user_cosmos_address, STAKING_TOKEN.to_string())
         .await

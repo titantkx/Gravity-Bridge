@@ -25,6 +25,7 @@ func AllInvariants(k Keeper) sdk.Invariant {
 		if stop {
 			return res, stop
 		}
+
 		return ModuleBalanceInvariant(k)(ctx)
 
 		/*
@@ -42,36 +43,39 @@ func AllInvariants(k Keeper) sdk.Invariant {
 // Note that the returned bool should be true if there is an error, e.g. an unexpected module balance
 func ModuleBalanceInvariant(k Keeper) sdk.Invariant {
 	return func(ctx sdk.Context) (string, bool) {
-		modAcc := k.accountKeeper.GetModuleAddress(types.ModuleName)
-		actualBals := k.bankKeeper.GetAllBalances(ctx, modAcc)
-		expectedBals := make(map[string]*sdk.Int, len(actualBals)) // Collect balances by contract
-		for _, v := range actualBals {
-			newInt := sdk.NewInt(0)
-			expectedBals[v.Denom] = &newInt
-		}
-		expectedBals = sumUnconfirmedBatchModuleBalances(ctx, k, expectedBals)
-		expectedBals = sumUnbatchedTxModuleBalances(ctx, k, expectedBals)
-		expectedBals = sumPendingIbcAutoForwards(ctx, k, expectedBals)
-
-		// Compare actual vs expected balances
-		for _, actual := range actualBals {
-			denom := actual.GetDenom()
-			cosmosOriginated, _, err := k.DenomToERC20Lookup(ctx, denom)
-			if err != nil {
-				// Here we do not return because a user could halt the chain by gifting gravity a cosmos asset with no erc20 repr
-				ctx.Logger().Error("Unexpected gravity module balance of cosmos-originated asset with no erc20 representation", "asset", denom)
-				continue
+		evmChains := k.GetEvmChains(ctx)
+		for _, evmChain := range evmChains {
+			modAcc := k.accountKeeper.GetModuleAddress(types.ModuleName)
+			actualBals := k.bankKeeper.GetAllBalances(ctx, modAcc)
+			expectedBals := make(map[string]*sdk.Int, len(actualBals)) // Collect balances by contract
+			for _, v := range actualBals {
+				newInt := sdk.NewInt(0)
+				expectedBals[v.Denom] = &newInt
 			}
-			expected, ok := expectedBals[denom]
-			if !ok {
-				return fmt.Sprint("Could not find expected balance for actual module balance of ", actual), true
-			}
+			expectedBals = sumUnconfirmedBatchModuleBalances(ctx, evmChain.EvmChainPrefix, k, expectedBals)
+			expectedBals = sumUnbatchedTxModuleBalances(ctx, evmChain.EvmChainPrefix, k, expectedBals)
+			expectedBals = sumPendingIbcAutoForwards(ctx, evmChain.EvmChainPrefix, k, expectedBals)
 
-			if cosmosOriginated { // Cosmos originated mismatched balance
-				// We cannot make any assertions about cosmosOriginated assets because we do not have enough information.
-				// There is no index of denom => amount bridged, which would force us to parse all logs in existence
-			} else if !actual.Amount.Equal(*expected) { // Eth originated mismatched balance
-				return fmt.Sprint("Mismatched balance of eth-originated ", denom, ": actual balance ", actual.Amount, " != expected balance ", expected), true
+			// Compare actual vs expected balances
+			for _, actual := range actualBals {
+				denom := actual.GetDenom()
+				cosmosOriginated, _, err := k.DenomToERC20Lookup(ctx, evmChain.EvmChainPrefix, denom)
+				if err != nil {
+					// Here we do not return because a user could halt the chain by gifting gravity a cosmos asset with no erc20 repr
+					ctx.Logger().Error("Unexpected gravity module balance of cosmos-originated asset with no erc20 representation", "asset", denom)
+					continue
+				}
+				expected, ok := expectedBals[denom]
+				if !ok {
+					return fmt.Sprint("Could not find expected balance for actual module balance of ", actual), true
+				}
+
+				if cosmosOriginated { // Cosmos originated mismatched balance
+					// We cannot make any assertions about cosmosOriginated assets because we do not have enough information.
+					// There is no index of denom => amount bridged, which would force us to parse all logs in existence
+				} else if !actual.Amount.Equal(*expected) { // Eth originated mismatched balance
+					return fmt.Sprint("Mismatched balance of eth-originated ", denom, ": actual balance ", actual.Amount, " != expected balance ", expected), true
+				}
 			}
 		}
 		return "", false
@@ -81,8 +85,8 @@ func ModuleBalanceInvariant(k Keeper) sdk.Invariant {
 /////// MODULE BALANCE HELPERS
 
 // sumUnconfirmedBatchModuleBalances calculate the value the module should have stored due to unconfirmed batches
-func sumUnconfirmedBatchModuleBalances(ctx sdk.Context, k Keeper, expectedBals map[string]*sdk.Int) map[string]*sdk.Int {
-	k.IterateOutgoingTxBatches(ctx, func(_ []byte, batch types.InternalOutgoingTxBatch) bool {
+func sumUnconfirmedBatchModuleBalances(ctx sdk.Context, evmChainPrefix string, k Keeper, expectedBals map[string]*sdk.Int) map[string]*sdk.Int {
+	k.IterateOutgoingTxBatches(ctx, evmChainPrefix, func(_ []byte, batch types.InternalOutgoingTxBatch) bool {
 		batchTotal := sdk.NewInt(0)
 		// Collect the send amount + fee amount for each tx
 		for _, tx := range batch.Transactions {
@@ -90,7 +94,7 @@ func sumUnconfirmedBatchModuleBalances(ctx sdk.Context, k Keeper, expectedBals m
 			batchTotal = newTotal
 		}
 		contract := batch.TokenContract
-		_, denom := k.ERC20ToDenomLookup(ctx, contract)
+		_, denom := k.ERC20ToDenomLookup(ctx, evmChainPrefix, contract)
 		// Add the batch total to the contract counter
 		_, ok := expectedBals[denom]
 		if !ok {
@@ -107,11 +111,11 @@ func sumUnconfirmedBatchModuleBalances(ctx sdk.Context, k Keeper, expectedBals m
 }
 
 // sumUnbatchedTxModuleBalances calculates the value the module should have stored due to unbatched txs
-func sumUnbatchedTxModuleBalances(ctx sdk.Context, k Keeper, expectedBals map[string]*sdk.Int) map[string]*sdk.Int {
+func sumUnbatchedTxModuleBalances(ctx sdk.Context, evmChainPrefix string, k Keeper, expectedBals map[string]*sdk.Int) map[string]*sdk.Int {
 	// It is also given the balance of all unbatched txs in the pool
-	k.IterateUnbatchedTransactions(ctx, func(_ []byte, tx *types.InternalOutgoingTransferTx) bool {
+	k.IterateUnbatchedTransactions(ctx, evmChainPrefix, func(_ []byte, tx *types.InternalOutgoingTransferTx) bool {
 		contract := tx.Erc20Token.Contract
-		_, denom := k.ERC20ToDenomLookup(ctx, contract)
+		_, denom := k.ERC20ToDenomLookup(ctx, evmChainPrefix, contract)
 
 		// Collect the send amount + fee amount for each tx
 		txTotal := tx.Erc20Token.Amount.Add(tx.Erc20Fee.Amount)
@@ -128,8 +132,8 @@ func sumUnbatchedTxModuleBalances(ctx sdk.Context, k Keeper, expectedBals map[st
 	return expectedBals
 }
 
-func sumPendingIbcAutoForwards(ctx sdk.Context, k Keeper, expectedBals map[string]*sdk.Int) map[string]*sdk.Int {
-	for _, forward := range k.PendingIbcAutoForwards(ctx, uint64(0)) {
+func sumPendingIbcAutoForwards(ctx sdk.Context, evmChainPrefix string, k Keeper, expectedBals map[string]*sdk.Int) map[string]*sdk.Int {
+	for _, forward := range k.PendingIbcAutoForwards(ctx, evmChainPrefix, uint64(0)) {
 		if _, ok := expectedBals[forward.Token.Denom]; !ok {
 			zero := sdk.ZeroInt()
 			expectedBals[forward.Token.Denom] = &zero
@@ -145,26 +149,30 @@ func sumPendingIbcAutoForwards(ctx sdk.Context, k Keeper, expectedBals map[strin
 // Note that the returned bool should be true if there is an error, e.g. an unexpected batch was processed
 func StoreValidityInvariant(k Keeper) sdk.Invariant {
 	return func(ctx sdk.Context) (string, bool) {
-		err := ValidateStore(ctx, k)
-		if err != nil {
-			return err.Error(), true
-		}
-		// Assert that batch metadata is consistent and expected
-		err = CheckBatches(ctx, k)
-		if err != nil {
-			return err.Error(), true
-		}
+		evmChains := k.GetEvmChains(ctx)
 
-		// Assert that valsets have been updated in the expected manner
-		err = CheckValsets(ctx, k)
-		if err != nil {
-			return err.Error(), true
-		}
+		for _, evmChain := range evmChains {
+			err := ValidateStore(ctx, evmChain.EvmChainPrefix, k)
+			if err != nil {
+				return err.Error(), true
+			}
+			// Assert that batch metadata is consistent and expected
+			err = CheckBatches(ctx, evmChain.EvmChainPrefix, k)
+			if err != nil {
+				return err.Error(), true
+			}
 
-		// Assert that pending ibc auto-forwards are only outgoing
-		err = CheckPendingIbcAutoForwards(ctx, k)
-		if err != nil {
-			return err.Error(), true
+			// Assert that valsets have been updated in the expected manner
+			err = CheckValsets(ctx, evmChain.EvmChainPrefix, k)
+			if err != nil {
+				return err.Error(), true
+			}
+
+			// Assert that pending ibc auto-forwards are only outgoing
+			err = CheckPendingIbcAutoForwards(ctx, evmChain.EvmChainPrefix, k)
+			if err != nil {
+				return err.Error(), true
+			}
 		}
 
 		// SUCCESS: If execution made it here, everything passes the sanity checks
@@ -177,7 +185,7 @@ func StoreValidityInvariant(k Keeper) sdk.Invariant {
 // ValidateStore checks that all values in the store can be decoded and pass a ValidateBasic check
 // Returns an error string and a boolean indicating an error if true, for use in an invariant
 // nolint: gocyclo
-func ValidateStore(ctx sdk.Context, k Keeper) error {
+func ValidateStore(ctx sdk.Context, evmChainPrefix string, k Keeper) error {
 	// TODO: Check the newly added iterators with unit tests
 	// EthAddressByValidatorKey
 	var err error = nil
@@ -206,7 +214,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 	}
 	// ValsetRequestKey
 	var actualLatestValsetNonce uint64 = 0
-	k.IterateValsets(ctx, func(key []byte, valset *types.Valset) (stop bool) {
+	k.IterateValsets(ctx, evmChainPrefix, func(key []byte, valset *types.Valset) (stop bool) {
 		err = valset.ValidateBasic()
 		if err != nil {
 			err = fmt.Errorf("Invalid valset %v in IterateValsets: %v", valset, err)
@@ -222,7 +230,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// ValsetConfirmKey
-	k.IterateValsetConfirms(ctx, func(key []byte, confirms []types.MsgValsetConfirm, nonce uint64) (stop bool) {
+	k.IterateValsetConfirms(ctx, evmChainPrefix, func(key []byte, confirms []types.MsgValsetConfirm, nonce uint64) (stop bool) {
 		for _, confirm := range confirms {
 			err = confirm.ValidateBasic()
 			if err != nil {
@@ -241,12 +249,13 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 	// OracleClaimKey HAS BEEN REMOVED
 
 	// LastObservedEventNonceKey (type checked when fetching)
-	lastObservedEventNonce := k.GetLastObservedEventNonce(ctx)
+	lastObservedEventNonce := k.GetLastObservedEventNonce(ctx, evmChainPrefix)
 	lastObservedEthereumClaimHeight := uint64(0) // used later to validate ethereum claim height
 	// OracleAttestationKey
-	k.IterateAttestations(ctx, false, func(key []byte, att types.Attestation) (stop bool) {
+	k.IterateAttestations(ctx, evmChainPrefix, false, func(key []byte, att types.Attestation) (stop bool) {
 		er := att.ValidateBasic(k.cdc)
 		if er != nil {
+
 			err = fmt.Errorf("Invalid attestation %v in IterateAttestations: %v", att, er)
 			return true
 		}
@@ -271,7 +280,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// OutgoingTXPoolKey
-	k.IterateUnbatchedTransactions(ctx, func(key []byte, tx *types.InternalOutgoingTransferTx) (stop bool) {
+	k.IterateUnbatchedTransactions(ctx, evmChainPrefix, func(key []byte, tx *types.InternalOutgoingTransferTx) (stop bool) {
 		err = tx.ValidateBasic()
 		if err != nil {
 			err = fmt.Errorf("Invalid unbatched transaction %v under key %v in IterateUnbatchedTransactions: %v", tx, key, err)
@@ -283,7 +292,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// OutgoingTXBatchKey
-	k.IterateOutgoingTxBatches(ctx, func(key []byte, batch types.InternalOutgoingTxBatch) (stop bool) {
+	k.IterateOutgoingTxBatches(ctx, evmChainPrefix, func(key []byte, batch types.InternalOutgoingTxBatch) (stop bool) {
 		err = batch.ValidateBasic()
 		if err != nil {
 			err = fmt.Errorf("Invalid outgoing batch %v under key %v in IterateOutgoingTxBatches: %v", batch, key, err)
@@ -295,7 +304,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// BatchConfirmKey
-	k.IterateBatchConfirms(ctx, func(key []byte, confirm types.MsgConfirmBatch) (stop bool) {
+	k.IterateBatchConfirms(ctx, evmChainPrefix, func(key []byte, confirm types.MsgConfirmBatch) (stop bool) {
 		err = confirm.ValidateBasic()
 		if err != nil {
 			err = fmt.Errorf("Invalid batch confirm %v under key %v in IterateBatchConfirms: %v", confirm, key, err)
@@ -307,7 +316,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// LastEventNonceByValidatorKey (type checked when fetching)
-	k.IterateValidatorLastEventNonces(ctx, func(key []byte, nonce uint64) (stop bool) {
+	k.IterateValidatorLastEventNonces(ctx, evmChainPrefix, func(key []byte, nonce uint64) (stop bool) {
 		return false
 	})
 	if err != nil {
@@ -316,9 +325,9 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 	// SequenceKeyPrefix HAS BEEN REMOVED
 
 	// KeyLastTXPoolID (type checked when fetching)
-	_ = k.getID(ctx, types.KeyLastTXPoolID)
+	_ = k.getID(ctx, types.AppendChainPrefix(types.KeyLastTXPoolID, evmChainPrefix))
 	// KeyLastOutgoingBatchID (type checked when fetching)
-	_ = k.getID(ctx, types.KeyLastOutgoingBatchID)
+	_ = k.getID(ctx, types.AppendChainPrefix(types.KeyLastOutgoingBatchID, evmChainPrefix))
 	// KeyOrchestratorAddress
 	k.IterateValidatorsByOrchestratorAddress(ctx, func(key []byte, addr sdk.ValAddress) (stop bool) {
 		bech := addr.String()
@@ -331,8 +340,9 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 	if err != nil {
 		return err
 	}
+
 	// KeyOutgoingLogicCall
-	k.IterateOutgoingLogicCalls(ctx, func(key []byte, logicCall types.OutgoingLogicCall) (stop bool) {
+	k.IterateOutgoingLogicCalls(ctx, evmChainPrefix, func(key []byte, logicCall types.OutgoingLogicCall) (stop bool) {
 		err = logicCall.ValidateBasic()
 		if err != nil {
 			err = fmt.Errorf("Invalid logic call %v under key %v in IterateOutgoingLogicCalls: %v", logicCall, key, err)
@@ -344,7 +354,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// KeyOutgoingLogicConfirm
-	k.IterateLogicConfirms(ctx, func(key []byte, confirm *types.MsgConfirmLogicCall) (stop bool) {
+	k.IterateLogicConfirms(ctx, evmChainPrefix, func(key []byte, confirm *types.MsgConfirmLogicCall) (stop bool) {
 		err = confirm.ValidateBasic()
 		if err != nil {
 			err = fmt.Errorf("Invalid logic call confirm %v under key %v in IterateLogicConfirms: %v", confirm, key, err)
@@ -356,7 +366,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// LastObservedEthereumBlockHeightKey
-	lastEthHeight := k.GetLastObservedEthereumBlockHeight(ctx)
+	lastEthHeight := k.GetLastObservedEthereumBlockHeight(ctx, evmChainPrefix)
 	if lastEthHeight.EthereumBlockHeight < lastObservedEthereumClaimHeight {
 		err = fmt.Errorf(
 			"Stored last observed ethereum block height is less than the actual last observed height (%d < %d)",
@@ -367,8 +377,9 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 	if err != nil {
 		return err
 	}
+
 	// DenomToERC20Key
-	k.IterateCosmosOriginatedERC20s(ctx, func(key []byte, erc20 *types.EthAddress) (stop bool) {
+	k.IterateCosmosOriginatedERC20s(ctx, evmChainPrefix, func(key []byte, erc20 *types.EthAddress) (stop bool) {
 		if err = erc20.ValidateBasic(); err != nil {
 			err = fmt.Errorf("Discovered invalid cosmos originated erc20 %v under key %v: %v", erc20, key, err)
 			return true
@@ -379,7 +390,7 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// ERC20ToDenomKey
-	k.IterateERC20ToDenom(ctx, func(key []byte, erc20ToDenom *types.ERC20ToDenom) (stop bool) {
+	k.IterateERC20ToDenom(ctx, evmChainPrefix, func(key []byte, erc20ToDenom *types.ERC20ToDenom) (stop bool) {
 		if err = erc20ToDenom.ValidateBasic(); err != nil {
 			err = fmt.Errorf("Discovered invalid ERC20ToDenom %v under key %v: %v", erc20ToDenom, key, err)
 			return true
@@ -390,10 +401,10 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return err
 	}
 	// LastSlashedValsetNonce (type is checked when fetching)
-	_ = k.GetLastSlashedValsetNonce(ctx)
+	_ = k.GetLastSlashedValsetNonce(ctx, evmChainPrefix)
 
 	// LatestValsetNonce
-	latestValsetNonce := k.GetLatestValsetNonce(ctx)
+	latestValsetNonce := k.GetLatestValsetNonce(ctx, evmChainPrefix)
 	if latestValsetNonce != actualLatestValsetNonce {
 		return fmt.Errorf(
 			"GetLatestValsetNonce <> max(IterateValsets' nonce) mismatch (%d != %d)",
@@ -402,16 +413,16 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		)
 	}
 	// LastSlashedBatchBlock (type is checked when fetching)
-	_ = k.GetLastSlashedBatchBlock(ctx)
+	_ = k.GetLastSlashedBatchBlock(ctx, evmChainPrefix)
 
 	// LastSlashedLogicCallBlock (type is checked when fetching)
-	_ = k.GetLastSlashedLogicCallBlock(ctx)
+	_ = k.GetLastSlashedLogicCallBlock(ctx, evmChainPrefix)
 
 	// LastUnBondingBlockHeight (type is checked when fetching)
 	_ = k.GetLastUnBondingBlockHeight(ctx)
 
 	// LastObservedValsetKey
-	valset := k.GetLastObservedValset(ctx)
+	valset := k.GetLastObservedValset(ctx, evmChainPrefix)
 
 	if valset != nil {
 		err = valset.ValidateBasic()
@@ -420,13 +431,13 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 		return fmt.Errorf("Discovered invalid last observed valset %v: %v", valset, err)
 	}
 	// PastEthSignatureCheckpointKey
-	k.IteratePastEthSignatureCheckpoints(ctx, func(key []byte, value []byte) (stop bool) {
+	k.IteratePastEthSignatureCheckpoints(ctx, evmChainPrefix, func(key []byte, value []byte) (stop bool) {
 		// Check is performed in the iterator function
 		return false
 	})
 
 	// PendingIbcAutoForwards
-	k.IteratePendingIbcAutoForwards(ctx, func(key []byte, forward *types.PendingIbcAutoForward) (stop bool) {
+	k.IteratePendingIbcAutoForwards(ctx, evmChainPrefix, func(key []byte, forward *types.PendingIbcAutoForward) (stop bool) {
 		if err = forward.ValidateBasic(); err != nil {
 			err = fmt.Errorf("Discovered invalid PendingIbcAutoForward %v under key %v: %v", forward, key, err)
 			return true
@@ -449,9 +460,9 @@ func ValidateStore(ctx sdk.Context, k Keeper) error {
 
 // CheckBatches checks that all batch related data in the store is appropriate
 // Returns an error string and a boolean indicating an error if true, for use in an invariant
-func CheckBatches(ctx sdk.Context, k Keeper) error {
+func CheckBatches(ctx sdk.Context, evmChainPrefix string, k Keeper) error {
 	// Get the in-progress batches by the batch nonces
-	inProgressBatches := k.GetOutgoingTxBatchesByNonce(ctx)
+	inProgressBatches := k.GetOutgoingTxBatchesByNonce(ctx, evmChainPrefix)
 	if len(inProgressBatches) == 0 {
 		return nil // nothing to check against
 	}
@@ -479,7 +490,7 @@ func CheckBatches(ctx sdk.Context, k Keeper) error {
 	}
 
 	var err error = nil
-	k.IterateClaims(ctx, true, types.CLAIM_TYPE_BATCH_SEND_TO_ETH, func(key []byte, att types.Attestation, claim types.EthereumClaim) (stop bool) {
+	k.IterateClaims(ctx, evmChainPrefix, true, types.CLAIM_TYPE_BATCH_SEND_TO_ETH, func(key []byte, att types.Attestation, claim types.EthereumClaim) (stop bool) {
 		batchClaim := claim.(*types.MsgBatchSendToEthClaim)
 		// Executed (aka observed) batches should have strictly lesser batch nonces than the in progress batches for the same token contract
 		// note that batches for different tokens have the same nonce stream but don't invalidate each other (nonces should probably be separate per token type)
@@ -498,15 +509,15 @@ func CheckBatches(ctx sdk.Context, k Keeper) error {
 
 // CheckValsets checks that all valset related data in the store is appropriate
 // Returns an error string and a boolean indicating an error if true, for use in an invariant
-func CheckValsets(ctx sdk.Context, k Keeper) error {
-	valsets := k.GetValsets(ctx) // Highest to lowest nonce
+func CheckValsets(ctx sdk.Context, evmChainPrefix string, k Keeper) error {
+	valsets := k.GetValsets(ctx, evmChainPrefix) // Highest to lowest nonce
 	if len(valsets) == 0 {
-		if k.GetLatestValsetNonce(ctx) != 0 {
+		if k.GetLatestValsetNonce(ctx, evmChainPrefix) != 0 {
 			return fmt.Errorf("No valsets in store but the latest valset nonce is nonzero!")
 		}
 		return nil
 	}
-	latest := k.GetLatestValset(ctx) // Should have the highest nonce
+	latest := k.GetLatestValset(ctx, evmChainPrefix) // Should have the highest nonce
 	equal, err := latest.Equal(valsets[0])
 	if err != nil {
 		return fmt.Errorf("Unable to compare latest valsets: %s", err.Error())
@@ -515,7 +526,7 @@ func CheckValsets(ctx sdk.Context, k Keeper) error {
 		return fmt.Errorf("Latest stored valset (%v) is unexpectedly different from GetLatestValset() (%v)", valsets[0], latest)
 	}
 	// Should have power diff of less than 0.05 between the current valset and the last stored one
-	current, err := k.GetCurrentValset(ctx)
+	current, err := k.GetCurrentValset(ctx, evmChainPrefix)
 	if err != nil {
 		return fmt.Errorf("Unable to retrieve current valsets: %s", err.Error())
 	}
@@ -531,17 +542,17 @@ func CheckValsets(ctx sdk.Context, k Keeper) error {
 	// The previously stored valsets may have been created for multiple reasons, so we make no more power diff checks
 
 	// Check the stored valsets against the observed valset update attestations
-	k.IterateClaims(ctx, true, types.CLAIM_TYPE_VALSET_UPDATED, func(key []byte, att types.Attestation, claim types.EthereumClaim) (stop bool) {
+	k.IterateClaims(ctx, evmChainPrefix, true, types.CLAIM_TYPE_VALSET_UPDATED, func(key []byte, att types.Attestation, claim types.EthereumClaim) (stop bool) {
 		if !att.Observed {
 			// This claim is in-progress, malicious, or erroneous - continue to the next one
 			return false
 		}
 		claimVs := claim.(*types.MsgValsetUpdatedClaim) // Claim's valset
 		claimNonce := claimVs.ValsetNonce
-		storedVs := k.GetValset(ctx, claimNonce)
+		storedVs := k.GetValset(ctx, evmChainPrefix, claimNonce)
 		if storedVs == nil {
 			// We have found the earliest stored valset, all valsets before it should have been pruned
-			shouldNotExist := k.GetValset(ctx, claimNonce-1)
+			shouldNotExist := k.GetValset(ctx, evmChainPrefix, claimNonce-1)
 			if shouldNotExist != nil {
 				err = fmt.Errorf("Discovered a valset missing from the store: nonce %d is present but nonce %d is not", shouldNotExist.Nonce, claimNonce)
 				return true
@@ -562,7 +573,7 @@ func CheckValsets(ctx sdk.Context, k Keeper) error {
 			err = fmt.Errorf("invalid valset updated claim in store for event nonce %d, valset nonce %d", claimVs.EventNonce, claimVs.ValsetNonce)
 			return true
 		}
-		if currIntBvs.PowerDiff(*claimIntBvs) > 0.0001 {
+		if currIntBvs.PowerDiff(*claimIntBvs).GT(sdk.NewDecWithPrec(1, 4)) {
 			err = fmt.Errorf("power difference discovered between stored valset %v and observed attestation valset %v", storedVs, claimVs)
 			return true
 		}
@@ -573,9 +584,9 @@ func CheckValsets(ctx sdk.Context, k Keeper) error {
 }
 
 // CheckPendingIbcAutoForwards checks each forward is appropriate and also that the transfer module holds enough of each token
-func CheckPendingIbcAutoForwards(ctx sdk.Context, k Keeper) error {
+func CheckPendingIbcAutoForwards(ctx sdk.Context, evmChainPrefix string, k Keeper) error {
 	nativeHrp := sdk.GetConfig().GetBech32AccountAddrPrefix()
-	pendingForwards := k.PendingIbcAutoForwards(ctx, 0)
+	pendingForwards := k.PendingIbcAutoForwards(ctx, evmChainPrefix, 0)
 	for _, fwd := range pendingForwards {
 		// Check the foreign address
 		hrp, _, err := bech32.DecodeAndConvert(fwd.ForeignReceiver)

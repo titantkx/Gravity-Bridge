@@ -3,7 +3,10 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
-use crate::{get_deposit, get_fee, MINER_PRIVATE_KEY, STAKING_TOKEN, TOTAL_TIMEOUT};
+use crate::{
+    get_deposit, get_fee, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR, MINER_PRIVATE_KEY,
+    STAKING_TOKEN, TOTAL_TIMEOUT,
+};
 use crate::{
     happy_path_v2::deploy_cosmos_representing_erc20_and_check_adoption, one_eth, utils::*,
     ADDRESS_PREFIX, OPERATION_TIMEOUT,
@@ -509,6 +512,7 @@ pub async fn setup(
     if grpc_client
         .denom_to_erc20(QueryDenomToErc20Request {
             denom: footoken.base.clone(),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         })
         .await
         .is_err()
@@ -528,6 +532,7 @@ pub async fn setup(
     if grpc_client
         .denom_to_erc20(QueryDenomToErc20Request {
             denom: footoken2.base.clone(),
+            evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
         })
         .await
         .is_err()
@@ -553,6 +558,7 @@ pub async fn setup(
             gravity_address,
             one_eth() * 1_000u64.into(),
             receiver,
+            "",
             *MINER_PRIVATE_KEY,
             None,
             web30,
@@ -614,7 +620,12 @@ pub async fn setup(
 
 // Seeds the auction pool with the bridged `erc20_address`, footoken, and footoken2
 async fn seed_pool_multi(contact: &Contact, keys: &[ValidatorKeys], erc20_address: EthAddress) {
-    let denom = format!("gravity{}", erc20_address);
+    let denom = format!(
+        "{}{}{}",
+        EVM_CHAIN_PREFIX.as_str(),
+        GRAVITY_DENOM_SEPARATOR.as_str(),
+        erc20_address
+    );
     seed_pool(contact, keys, denom).await;
     let footoken = footoken_metadata(contact).await;
     seed_pool(contact, keys, footoken.base).await;
@@ -647,6 +658,7 @@ async fn seed_pool(contact: &Contact, keys: &[ValidatorKeys], denom: String) {
                 eth_dest: v.eth_key.to_address().to_string(),
                 bridge_fee: Some(get_fee(Some(denom.clone())).into()),
                 chain_fee: Some(chain_fee_coin.clone().into()),
+                evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
             };
             let msg = Msg::new(MSG_SEND_TO_ETH_TYPE_URL, ste_msg);
             let send_tx = contact
@@ -678,7 +690,7 @@ async fn set_non_auctionable_tokens(
 
     submit_auction_params_proposal(
         params,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,
@@ -698,7 +710,7 @@ pub async fn submit_and_pass_auction_params_proposal(
         .expect("Unable to connect to auction query client");
     let res = submit_auction_params_proposal(
         params.clone(),
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,

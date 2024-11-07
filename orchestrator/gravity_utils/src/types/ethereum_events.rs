@@ -50,7 +50,7 @@ where
     /// If the event with the given `event_nonce` is in `input`, returns the block that occurred on
     fn get_block_for_nonce(event_nonce: u64, input: &[Self]) -> Option<Uint256>;
     /// Creates the associated Msg for the given claim, e.g. ValsetUpdated -> MsgValsetUpdatedClaim
-    fn to_claim_msg(self, orchestrator: Address) -> Msg;
+    fn to_claim_msg(self, orchestrator: Address, evm_chain_prefix: String) -> Msg;
 }
 
 /// A parsed struct representing the Ethereum event fired by the Gravity contract
@@ -296,7 +296,7 @@ impl EthereumEvent for ValsetUpdatedEvent {
         None
     }
 
-    fn to_claim_msg(self, orchestrator: Address) -> Msg {
+    fn to_claim_msg(self, orchestrator: Address, evm_chain_prefix: String) -> Msg {
         let claim = MsgValsetUpdatedClaim {
             event_nonce: self.event_nonce,
             valset_nonce: self.valset_nonce,
@@ -305,6 +305,7 @@ impl EthereumEvent for ValsetUpdatedEvent {
             reward_amount: self.reward_amount.to_string(),
             reward_token: self.reward_token.unwrap_or(zero_address()).to_string(),
             orchestrator: orchestrator.to_string(),
+            evm_chain_prefix,
         };
         Msg::new(MSG_VALSET_UPDATED_CLAIM_TYPE_URL, claim)
     }
@@ -410,13 +411,14 @@ impl EthereumEvent for TransactionBatchExecutedEvent {
         None
     }
 
-    fn to_claim_msg(self, orchestrator: Address) -> Msg {
+    fn to_claim_msg(self, orchestrator: Address, evm_chain_prefix: String) -> Msg {
         let claim = MsgBatchSendToEthClaim {
             event_nonce: self.event_nonce,
             eth_block_height: self.get_block_height(),
             token_contract: self.erc20.to_string(),
             batch_nonce: self.batch_nonce,
             orchestrator: orchestrator.to_string(),
+            evm_chain_prefix,
         };
         Msg::new(MSG_BATCH_SEND_TO_ETH_TYPE_URL, claim)
     }
@@ -445,6 +447,8 @@ pub struct SendToCosmosEvent {
     pub event_nonce: u64,
     /// The block height this event occurred at
     pub block_height: Uint256,
+    /// memo
+    pub memo: String,
 }
 
 /// struct for holding the data encoded fields
@@ -457,11 +461,13 @@ struct SendToCosmosEventData {
     pub amount: Uint256,
     /// The transaction's nonce, used to make sure there can be no accidental duplication
     pub event_nonce: Uint256,
+    /// Memo
+    pub memo: String,
 }
 
 impl SendToCosmosEvent {
     fn decode_data_bytes(data: &[u8]) -> Result<SendToCosmosEventData, GravityError> {
-        if data.len() < 4 * 32 {
+        if data.len() < 5 * 32 {
             return Err(GravityError::InvalidEventLogError(
                 "too short for SendToCosmosEventData".to_string(),
             ));
@@ -470,9 +476,9 @@ impl SendToCosmosEvent {
         let amount = Uint256::from_be_bytes(&data[32..64]);
         let event_nonce = Uint256::from_be_bytes(&data[64..96]);
 
-        // discard words three and four which contain the data type and length
-        let destination_str_len_start = 3 * 32;
-        let destination_str_len_end = 4 * 32;
+        // discard words 4 and 5 which contain the data type and length
+        let destination_str_len_start = 4 * 32;
+        let destination_str_len_end = 5 * 32;
         let destination_str_len =
             Uint256::from_be_bytes(&data[destination_str_len_start..destination_str_len_end]);
 
@@ -483,7 +489,7 @@ impl SendToCosmosEvent {
         }
         let destination_str_len: usize = destination_str_len.to_string().parse().unwrap();
 
-        let destination_str_start = 4 * 32;
+        let destination_str_start = 5 * 32;
         let destination_str_end = destination_str_start + destination_str_len;
 
         if data.len() < destination_str_end {
@@ -505,6 +511,7 @@ impl SendToCosmosEvent {
                 destination: String::new(),
                 event_nonce,
                 amount,
+                memo: String::new(),
             });
         }
         // whitespace can not be a valid part of a bech32 address, so we can safely trim it
@@ -512,18 +519,69 @@ impl SendToCosmosEvent {
 
         if dest.as_bytes().len() > ONE_MEGABYTE {
             warn!("Event nonce {} sends tokens to a destination that exceeds the length limit, these funds will be allocated to the community pool", event_nonce);
-            Ok(SendToCosmosEventData {
+            return Ok(SendToCosmosEventData {
                 destination: String::new(),
                 event_nonce,
                 amount,
-            })
-        } else {
-            Ok(SendToCosmosEventData {
-                destination: dest,
+                memo: String::new(),
+            });
+        }
+
+        // memo
+        let memo_str_len_start = ((destination_str_end + 31) / 32) * 32;
+        let memo_str_len_end = memo_str_len_start + 32;
+        let memo_str_len = Uint256::from_be_bytes(&data[memo_str_len_start..memo_str_len_end]);
+
+        if memo_str_len > u32::MAX.into() {
+            return Err(GravityError::InvalidEventLogError(
+                "memo length overflow, probably incorrect parsing".to_string(),
+            ));
+        }
+        let memo_str_len: usize = memo_str_len.to_string().parse().unwrap();
+
+        let memo_str_start = memo_str_len_end;
+        let memo_str_end = memo_str_start + memo_str_len;
+
+        if data.len() < memo_str_end {
+            return Err(GravityError::InvalidEventLogError(
+                "Erc20DeployedEvent dynamic data too short".to_string(),
+            ));
+        }
+        let memo_data = &data[memo_str_start..memo_str_end];
+        let memo = String::from_utf8(memo_data.to_vec());
+
+        if memo.is_err() {
+            if memo_data.len() < 1000 {
+                warn!("Event nonce {} sends tokens to {} which is invalid utf-8, these funds will be allocated to the community pool", event_nonce, bytes_to_hex_str(destination));
+            } else {
+                warn!("Event nonce {} sends tokens to a destination that is invalid utf-8, these funds will be allocated to the community pool", event_nonce);
+            }
+            return Ok(SendToCosmosEventData {
+                destination: String::new(),
                 event_nonce,
                 amount,
-            })
+                memo: String::new(),
+            });
         }
+        // whitespace can not be a valid part of a bech32 address, so we can safely trim it
+        let memo = memo.unwrap().trim().to_string();
+
+        if memo.as_bytes().len() > ONE_MEGABYTE {
+            warn!("Event nonce {} sends tokens to a destination that exceeds the length limit, these funds will be allocated to the community pool", event_nonce);
+            return Ok(SendToCosmosEventData {
+                destination: String::new(),
+                event_nonce,
+                amount,
+                memo: String::new(),
+            });
+        }
+
+        Ok(SendToCosmosEventData {
+            destination: dest,
+            event_nonce,
+            amount,
+            memo,
+        })
     }
 }
 impl EthereumEvent for SendToCosmosEvent {
@@ -581,6 +639,7 @@ impl EthereumEvent for SendToCosmosEvent {
                     amount: data.amount,
                     event_nonce,
                     block_height,
+                    memo: data.memo,
                 })
             }
         } else {
@@ -619,7 +678,7 @@ impl EthereumEvent for SendToCosmosEvent {
         None
     }
 
-    fn to_claim_msg(self, orchestrator: Address) -> Msg {
+    fn to_claim_msg(self, orchestrator: Address, evm_chain_prefix: String) -> Msg {
         let claim = MsgSendToCosmosClaim {
             event_nonce: self.event_nonce,
             eth_block_height: self.get_block_height(),
@@ -628,6 +687,8 @@ impl EthereumEvent for SendToCosmosEvent {
             cosmos_receiver: self.destination,
             ethereum_sender: self.sender.to_string(),
             orchestrator: orchestrator.to_string(),
+            evm_chain_prefix,
+            memo: self.memo,
         };
         Msg::new(MSG_SEND_TO_COSMOS_CLAIM_TYPE_URL, claim)
     }
@@ -938,7 +999,7 @@ impl EthereumEvent for Erc20DeployedEvent {
         None
     }
 
-    fn to_claim_msg(self, orchestrator: Address) -> Msg {
+    fn to_claim_msg(self, orchestrator: Address, evm_chain_prefix: String) -> Msg {
         let claim = MsgErc20DeployedClaim {
             event_nonce: self.event_nonce,
             eth_block_height: self.get_block_height(),
@@ -948,6 +1009,7 @@ impl EthereumEvent for Erc20DeployedEvent {
             symbol: self.symbol,
             decimals: self.decimals as u64,
             orchestrator: orchestrator.to_string(),
+            evm_chain_prefix,
         };
         Msg::new(MSG_ERC20_DEPLOYED_CLAIM_TYPE_URL, claim)
     }
@@ -1004,13 +1066,14 @@ impl EthereumEvent for LogicCallExecutedEvent {
         None
     }
 
-    fn to_claim_msg(self, orchestrator: Address) -> Msg {
+    fn to_claim_msg(self, orchestrator: Address, evm_chain_prefix: String) -> Msg {
         let claim = MsgLogicCallExecutedClaim {
             event_nonce: self.event_nonce,
             eth_block_height: self.get_block_height(),
             invalidation_id: self.invalidation_id,
             invalidation_nonce: self.invalidation_nonce,
             orchestrator: orchestrator.to_string(),
+            evm_chain_prefix,
         };
         Msg::new(MSG_LOGIC_CALL_EXECUTED_CLAIM_TYPE_URL, claim)
     }
@@ -1104,18 +1167,22 @@ mod tests {
 
     #[test]
     fn test_send_to_cosmos_decode() {
-        let event = "0x0000000000000000000000000000000000000000000000000000000000000060\
-        0000000000000000000000000000000000000000000000000000000000000064\
-        0000000000000000000000000000000000000000000000000000000000000002\
-        000000000000000000000000000000000000000000000000000000000000002f\
-        67726176697479313139347a613679766737646a7a33633676716c63787a7877\
-        636a6b617a397264717332656739700000000000000000000000000000000000";
+        let event = "0x0000000000000000000000000000000000000000000000000000000000000080\
+                            0000000000000000000000000000000000000000000000000000000000000064\
+                            0000000000000000000000000000000000000000000000000000000000000002\
+                            00000000000000000000000000000000000000000000000000000000000000e0\
+                            000000000000000000000000000000000000000000000000000000000000002f\
+                            67726176697479313139347a613679766737646a7a33633676716c63787a7877\
+                            636a6b617a397264717332656739700000000000000000000000000000000000\
+                            0000000000000000000000000000000000000000000000000000000000000005\
+                            6168696869000000000000000000000000000000000000000000000000000000";
         let event_bytes = hex_str_to_bytes(event).unwrap();
 
         let correct = SendToCosmosEventData {
             destination: "gravity1194za6yvg7djz3c6vqlcxzxwcjkaz9rdqs2eg9p".to_string(),
             amount: 100u8.into(),
             event_nonce: 2u8.into(),
+            memo: "ahihi".to_string(),
         };
         let res = SendToCosmosEvent::decode_data_bytes(&event_bytes).unwrap();
         assert_eq!(correct, res);

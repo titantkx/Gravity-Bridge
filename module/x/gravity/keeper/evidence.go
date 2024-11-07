@@ -14,36 +14,31 @@ import (
 
 func (k Keeper) CheckBadSignatureEvidence(
 	ctx sdk.Context,
-	msg *types.MsgSubmitBadSignatureEvidence) error {
+	msg *types.MsgSubmitBadSignatureEvidence,
+) error {
 	var subject types.EthereumSigned
 
 	err := k.cdc.UnpackAny(msg.Subject, &subject)
-
 	if err != nil {
 		return sdkerrors.Wrap(types.ErrInvalid, fmt.Sprintf("Invalid Any encoded evidence %s", err))
 	}
 
 	switch subject := subject.(type) {
-	case *types.OutgoingTxBatch:
-		return k.checkBadSignatureEvidenceInternal(ctx, subject, msg.Signature)
-	case *types.Valset:
-		return k.checkBadSignatureEvidenceInternal(ctx, subject, msg.Signature)
-	case *types.OutgoingLogicCall:
-		return k.checkBadSignatureEvidenceInternal(ctx, subject, msg.Signature)
-
+	case *types.OutgoingTxBatch, *types.Valset, *types.OutgoingLogicCall:
+		return k.checkBadSignatureEvidenceInternal(ctx, msg.EvmChainPrefix, subject, msg.Signature)
 	default:
 		return sdkerrors.Wrap(types.ErrInvalid, fmt.Sprintf("Bad signature must be over a batch, valset, or logic call got %s", subject))
 	}
 }
 
-func (k Keeper) checkBadSignatureEvidenceInternal(ctx sdk.Context, subject types.EthereumSigned, signature string) error {
+func (k Keeper) checkBadSignatureEvidenceInternal(ctx sdk.Context, evmChainPrefix string, subject types.EthereumSigned, signature string) error {
 	// Get checkpoint of the supposed bad signature (fake valset, batch, or logic call submitted to eth)
-	gravityID := k.GetGravityID(ctx)
+	gravityID := k.GetGravityID(ctx, evmChainPrefix)
 	checkpoint := subject.GetCheckpoint(gravityID)
 
 	// Try to find the checkpoint in the archives. If it exists, we don't slash because
 	// this is not a bad signature
-	if k.GetPastEthSignatureCheckpoint(ctx, checkpoint) {
+	if k.GetPastEthSignatureCheckpoint(ctx, evmChainPrefix, checkpoint) {
 		return sdkerrors.Wrap(types.ErrInvalid, "Checkpoint exists, cannot slash")
 	}
 
@@ -87,23 +82,23 @@ func (k Keeper) checkBadSignatureEvidenceInternal(ctx sdk.Context, subject types
 
 // SetPastEthSignatureCheckpoint puts the checkpoint of a valset, batch, or logic call into a set
 // in order to prove later that it existed at one point.
-func (k Keeper) SetPastEthSignatureCheckpoint(ctx sdk.Context, checkpoint []byte) {
+func (k Keeper) SetPastEthSignatureCheckpoint(ctx sdk.Context, evmChainPrefix string, checkpoint []byte) {
 	store := ctx.KVStore(k.storeKey)
-	store.Set(types.GetPastEthSignatureCheckpointKey(checkpoint), []byte{0x1})
+	store.Set(types.GetPastEthSignatureCheckpointKey(evmChainPrefix, checkpoint), []byte{0x1})
 }
 
 // GetPastEthSignatureCheckpoint tells you whether a given checkpoint has ever existed
-func (k Keeper) GetPastEthSignatureCheckpoint(ctx sdk.Context, checkpoint []byte) (found bool) {
+func (k Keeper) GetPastEthSignatureCheckpoint(ctx sdk.Context, evmChainPrefix string, checkpoint []byte) (found bool) {
 	store := ctx.KVStore(k.storeKey)
-	if bytes.Equal(store.Get(types.GetPastEthSignatureCheckpointKey(checkpoint)), []byte{0x1}) {
+	if bytes.Equal(store.Get(types.GetPastEthSignatureCheckpointKey(evmChainPrefix, checkpoint)), []byte{0x1}) {
 		return true
 	} else {
 		return false
 	}
 }
 
-func (k Keeper) IteratePastEthSignatureCheckpoints(ctx sdk.Context, cb func(key []byte, value []byte) (stop bool)) {
-	prefixStore := prefix.NewStore(ctx.KVStore(k.storeKey), types.PastEthSignatureCheckpointKey)
+func (k Keeper) IteratePastEthSignatureCheckpoints(ctx sdk.Context, evmChainPrefix string, cb func(key []byte, value []byte) (stop bool)) {
+	prefixStore := prefix.NewStore(ctx.KVStore(k.storeKey), types.AppendChainPrefix(types.PastEthSignatureCheckpointKey, evmChainPrefix))
 	iter := prefixStore.Iterator(nil, nil)
 	defer iter.Close()
 

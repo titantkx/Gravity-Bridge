@@ -1,9 +1,13 @@
 use crate::{args::DeployErc20RepresentationOpts, utils::TIMEOUT};
-
-use cosmos_gravity::query::get_gravity_params;
+use clarity::utils::display_uint256_as_address;
+use clarity::Address as EthAddress;
+use cosmos_gravity::query::{get_gravity_params, query_evm_chain_from_net_version};
 use ethereum_gravity::deploy_erc20::deploy_erc20;
 use gravity_proto::gravity::{QueryAttestationsRequest, QueryDenomToErc20Request};
-use gravity_utils::connection_prep::{check_for_eth, create_rpc_connections};
+use gravity_utils::{
+    connection_prep::{check_for_eth, create_rpc_connections},
+    get_with_retry::get_net_version_with_retry,
+};
 
 use std::{
     process::exit,
@@ -25,8 +29,17 @@ pub async fn deploy_erc20_representation(
         create_rpc_connections(address_prefix, Some(grpc_url), Some(ethereum_rpc), TIMEOUT).await;
     let web3 = connections.web3.unwrap();
     let contact = connections.contact.unwrap();
-
     let mut grpc = connections.grpc.unwrap();
+
+    let net_version = get_net_version_with_retry(&web3).await;
+    // get correct evm_chain from rpc by querying net_id
+    let evm_chain_prefix = match query_evm_chain_from_net_version(&mut grpc, net_version).await {
+        Some(evm_chain) => evm_chain.evm_chain_prefix,
+        None => {
+            error!("Could not find the matching net version of evm chains on the network. Network from eth-rpc: {}", net_version);
+            return;
+        }
+    };
 
     let ethereum_public_key = ethereum_key.to_address();
     check_for_eth(ethereum_public_key, &web3).await;
@@ -35,7 +48,12 @@ pub async fn deploy_erc20_representation(
         c
     } else {
         let params = get_gravity_params(&mut grpc).await.unwrap();
-        let c = params.bridge_ethereum_address.parse();
+        let evm_chain_params = params
+            .evm_chain_params
+            .iter()
+            .find(|p| p.evm_chain_prefix.eq(&evm_chain_prefix))
+            .expect("Failed to get evm chain params");
+        let c = evm_chain_params.bridge_ethereum_address.parse();
         if c.is_err() {
             error!("The Gravity address is not yet set as a chain parameter! You must specify --gravity-contract-address");
             exit(1);
@@ -45,6 +63,7 @@ pub async fn deploy_erc20_representation(
 
     let res = grpc
         .denom_to_erc20(QueryDenomToErc20Request {
+            evm_chain_prefix: evm_chain_prefix.to_string(),
             denom: denom.clone(),
         })
         .await;
@@ -81,13 +100,19 @@ pub async fn deploy_erc20_representation(
             )
             .await
             .unwrap();
+            // converts uint256 contract call response into an ETH address
+            let contract_to_be_adopted: EthAddress =
+                display_uint256_as_address(_contract_to_be_adopted)
+                    .parse()
+                    .unwrap();
 
-            info!("We have deployed ERC20 contract, waiting to see if the Cosmos chain choses to adopt it");
+            info!("We have deployed ERC20 contract {}, waiting to see if the Cosmos chain choses to adopt it", contract_to_be_adopted);
 
             let start = Instant::now();
             loop {
                 let res = grpc
                     .denom_to_erc20(QueryDenomToErc20Request {
+                        evm_chain_prefix: evm_chain_prefix.to_string(),
                         denom: denom.clone(),
                     })
                     .await;
@@ -111,7 +136,7 @@ pub async fn deploy_erc20_representation(
                             claim_type: String::new(),
                             nonce: 0,
                             height: 0,
-                            use_v1_key: false,
+                            evm_chain_prefix: evm_chain_prefix.to_string(),
                         })
                         .await;
                     match attestations {
@@ -164,12 +189,14 @@ mod tests {
     #[actix_rt::test]
     #[ignore]
     async fn get_representations() {
+        // @todo : must update this to use the our's grpc client
         let mut grpc = GravityQueryClient::connect("http://gravitychain.io:9090")
             .await
             .unwrap();
         let res = grpc
             .denom_to_erc20(QueryDenomToErc20Request {
                 denom: "ugraviton".to_string(),
+                evm_chain_prefix: "ethereum".to_string(),
             })
             .await
             .unwrap();
@@ -181,6 +208,7 @@ mod tests {
     #[actix_rt::test]
     #[ignore]
     async fn test_endpoints() {
+        // @todo : must update this to use the our's grpc client
         let mut grpc = GravityQueryClient::connect("http://gravitychain.io:9090")
             .await
             .unwrap();
@@ -191,7 +219,7 @@ mod tests {
                 claim_type: String::new(),
                 nonce: 0,
                 height: 0,
-                use_v1_key: false,
+                evm_chain_prefix: "ethereum".to_string(),
             })
             .await
             .unwrap();

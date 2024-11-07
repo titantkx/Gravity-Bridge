@@ -1,6 +1,6 @@
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::{test_erc20_deposit_panic, test_erc20_deposit_result};
-use crate::{get_deposit, utils::*, TOTAL_TIMEOUT};
+use crate::{get_deposit, utils::*, EVM_CHAIN_PREFIX, GRAVITY_DENOM_SEPARATOR, TOTAL_TIMEOUT};
 use crate::{get_fee, one_eth, OPERATION_TIMEOUT};
 use bytes::BytesMut;
 use clarity::{Address as EthAddress, Uint256};
@@ -173,7 +173,12 @@ pub async fn unhalt_bridge_test(
     let balance_after_halt = contact
         .get_balance(
             bridge_user.cosmos_address,
-            format!("gravity{}", erc20_address),
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
         )
         .await
         .unwrap()
@@ -242,11 +247,12 @@ async fn submit_and_pass_unhalt_bridge_proposal(
         title: "Proposal to reset the oracle".to_string(),
         description: "this resets the oracle to an earlier nonce".to_string(),
         target_nonce: nonce,
+        evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
     };
     info!("Submit and pass gov proposal: nonce is {}", nonce);
     let res = submit_unhalt_bridge_proposal(
         proposal_content,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,
@@ -272,6 +278,7 @@ pub async fn get_nonces(
                 grpc_client,
                 validator_keys.orch_key.to_address(prefix).unwrap(),
                 prefix.to_string(),
+                EVM_CHAIN_PREFIX.to_string(),
             )
             .await
             .unwrap(),
@@ -282,7 +289,9 @@ pub async fn get_nonces(
 
 async fn print_sends_to_cosmos(grpc_client: &GravityQueryClient<Channel>, print_others: bool) {
     let grpc_client = &mut grpc_client.clone();
-    let attestations = get_attestations(grpc_client, Some(1000)).await.unwrap();
+    let attestations = get_attestations(grpc_client, EVM_CHAIN_PREFIX.as_str(), Some(1000))
+        .await
+        .unwrap();
     for (i, attestation) in attestations.into_iter().enumerate() {
         let claim = attestation.clone().claim.unwrap();
         if print_others && claim.type_url != "/gravity.v1.MsgSendToCosmosClaim" {
@@ -312,7 +321,15 @@ async fn wait_for_balance_increase(
     let start = Instant::now();
     while Instant::now() - start < TOTAL_TIMEOUT {
         if let Some(new_balance) = contact
-            .get_balance(destination, format!("gravity{}", erc20_address))
+            .get_balance(
+                destination,
+                format!(
+                    "{}{}{}",
+                    EVM_CHAIN_PREFIX.as_str(),
+                    GRAVITY_DENOM_SEPARATOR.as_str(),
+                    erc20_address
+                ),
+            )
             .await
             .unwrap()
         {

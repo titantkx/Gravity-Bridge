@@ -17,6 +17,7 @@ pub async fn send_to_cosmos(
     gravity_contract: Address,
     amount: Uint256,
     cosmos_destination: CosmosAddress,
+    memo: &str,
     sender_secret: EthPrivateKey,
     wait_timeout: Option<Duration>,
     web3: &Web3,
@@ -84,7 +85,7 @@ pub async fn send_to_cosmos(
         options.push(SendTxOption::Nonce(nonce + 1u8.into()));
     }
 
-    info!("sending to on cosmos {}", cosmos_destination);
+    info!("sending to cosmos {}", cosmos_destination);
     let encoded_destination_address = Token::String(cosmos_destination.to_string());
 
     let tx_hash = web3
@@ -92,8 +93,13 @@ pub async fn send_to_cosmos(
             web3.prepare_transaction(
                 gravity_contract,
                 encode_call(
-                    "sendToCosmos(address,string,uint256)",
-                    &[erc20.into(), encoded_destination_address, amount.into()],
+                    "sendToCosmos(address,string,uint256,string)",
+                    &[
+                        erc20.into(),
+                        encoded_destination_address,
+                        amount.into(),
+                        memo.into(),
+                    ],
                 )?,
                 0u32.into(),
                 sender_secret,

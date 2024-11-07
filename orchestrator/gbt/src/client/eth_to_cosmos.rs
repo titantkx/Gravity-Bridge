@@ -17,6 +17,7 @@ pub async fn eth_to_cosmos(args: EthToCosmosOpts, prefix: String) {
     let ethereum_public_key = ethereum_key.to_address();
     let ethereum_rpc = args.ethereum_rpc;
     let amount = args.amount;
+    let memo = args.memo;
 
     let connections = create_rpc_connections(prefix, None, Some(ethereum_rpc), TIMEOUT).await;
 
@@ -61,6 +62,7 @@ pub async fn eth_to_cosmos(args: EthToCosmosOpts, prefix: String) {
         gravity_address,
         amount,
         cosmos_dest,
+        &memo,
         ethereum_key,
         Some(TIMEOUT),
         &web3,

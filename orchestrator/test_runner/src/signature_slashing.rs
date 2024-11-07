@@ -34,7 +34,7 @@ pub async fn signature_slashing_test(
 
     test_valset_update(web30, contact, &mut grpc_client, &keys, gravity_address).await;
 
-    reduce_slashing_window(contact, &mut grpc_client, &keys).await;
+    change_slashing_window(contact, &mut grpc_client, &keys, 10).await;
 
     // check that the block height is greater than 20 if not wait until it is
     // there's some logic here to handle the chian progressing slowly over blocks
@@ -43,12 +43,15 @@ pub async fn signature_slashing_test(
 
     // make sure everything is still moving!
     test_valset_update(web30, contact, &mut grpc_client, &keys, gravity_address).await;
+
+    change_slashing_window(contact, &mut grpc_client, &keys, 10000).await;
 }
 
 pub async fn wait_for_height(target_height: u64, contact: &Contact) {
+    let current_block = get_latest_block(contact).await;
     let mut last_update = Instant::now();
     let mut last_seen_block = 0;
-    while get_latest_block(contact).await < 20 {
+    while get_latest_block(contact).await - current_block < 20 {
         let latest = get_latest_block(contact).await;
         if last_seen_block != latest {
             last_seen_block = latest;
@@ -77,28 +80,29 @@ pub async fn get_latest_block(contact: &Contact) -> u64 {
 /// from 10k blocks to 10 blocks in order to trigger Gravity's slashing
 /// code in the integration test environment. This also reduces the
 /// unbonding time down to 60 seconds so that unbonding can be tested
-pub async fn reduce_slashing_window(
+pub async fn change_slashing_window(
     contact: &Contact,
     grpc_client: &mut GravityQueryClient<Channel>,
     keys: &[ValidatorKeys],
+    number_of_blocks: u64,
 ) {
     let mut params_to_change = Vec::new();
     let signed_valsets_window = ParamChange {
         subspace: "gravity".to_string(),
         key: "SignedValsetsWindow".to_string(),
-        value: r#""10""#.to_string(),
+        value: format!("\"{}\"", number_of_blocks.to_string()),
     };
     params_to_change.push(signed_valsets_window);
     let signed_batches_window = ParamChange {
         subspace: "gravity".to_string(),
         key: "SignedBatchesWindow".to_string(),
-        value: r#""10""#.to_string(),
+        value: format!("\"{}\"", number_of_blocks.to_string()),
     };
     params_to_change.push(signed_batches_window);
     let signed_logic_call_window = ParamChange {
         subspace: "gravity".to_string(),
         key: "SignedLogicCallsWindow".to_string(),
-        value: r#""10""#.to_string(),
+        value: format!("\"{}\"", number_of_blocks.to_string()),
     };
     params_to_change.push(signed_logic_call_window);
 
@@ -120,7 +124,7 @@ pub async fn reduce_slashing_window(
 
     let params = get_gravity_params(grpc_client).await.unwrap();
     // check that params have changed
-    assert_eq!(params.signed_valsets_window, 10);
-    assert_eq!(params.signed_batches_window, 10);
-    assert_eq!(params.signed_logic_calls_window, 10);
+    assert_eq!(params.signed_valsets_window, number_of_blocks);
+    assert_eq!(params.signed_batches_window, number_of_blocks);
+    assert_eq!(params.signed_logic_calls_window, number_of_blocks);
 }

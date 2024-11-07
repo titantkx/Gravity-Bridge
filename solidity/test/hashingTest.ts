@@ -1,17 +1,16 @@
 import chai from "chai";
-import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
-import { HashingTest } from "../typechain/HashingTest";
 import { BigNumberish } from "ethers";
+import { ethers } from "hardhat";
+import { HashingTest } from "../typechain/HashingTest";
 
-import { deployContracts } from "../test-utils";
 import { getSignerAddresses } from "../test-utils/pure";
 
 chai.use(solidity);
 const { expect } = chai;
 
-describe("Hashing test", function() {
-  it("Hashing test", async function() {
+describe("Hashing test", function () {
+  it("Hashing test", async function () {
     const signers = await ethers.getSigners();
     const gravityId = ethers.utils.formatBytes32String("foo");
 

@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.10;
+pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -98,7 +98,8 @@ contract Gravity is ReentrancyGuard {
 		address indexed _sender,
 		string _destination,
 		uint256 _amount,
-		uint256 _eventNonce
+		uint256 _eventNonce,
+		string _memo
 	);
 	event ERC20DeployedEvent(
 		// FYI: Can't index on a string without doing a bunch of weird stuff
@@ -180,11 +181,10 @@ contract Gravity is ReentrancyGuard {
 	// Where h is the keccak256 hash function.
 	// The validator powers must be decreasing or equal. This is important for checking the signatures on the
 	// next valset, since it allows the caller to stop verifying signatures once a quorum of signatures have been verified.
-	function makeCheckpoint(ValsetArgs memory _valsetArgs, bytes32 _gravityId)
-		private
-		pure
-		returns (bytes32)
-	{
+	function makeCheckpoint(
+		ValsetArgs memory _valsetArgs,
+		bytes32 _gravityId
+	) private pure returns (bytes32) {
 		// bytes32 encoding of the string "checkpoint"
 		bytes32 methodName = 0x636865636b706f696e7400000000000000000000000000000000000000000000;
 
@@ -555,7 +555,8 @@ contract Gravity is ReentrancyGuard {
 	function sendToCosmos(
 		address _tokenContract,
 		string calldata _destination,
-		uint256 _amount
+		uint256 _amount,
+		string calldata _memo
 	) external nonReentrant {
 		// we snapshot our current balance of this token
 		uint256 ourStartingBalance = IERC20(_tokenContract).balanceOf(address(this));
@@ -583,7 +584,8 @@ contract Gravity is ReentrancyGuard {
 			msg.sender,
 			_destination,
 			ourEndingBalance - ourStartingBalance,
-			state_lastEventNonce
+			state_lastEventNonce,
+			_memo
 		);
 	}
 

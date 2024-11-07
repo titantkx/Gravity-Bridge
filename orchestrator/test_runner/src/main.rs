@@ -17,8 +17,9 @@ use crate::eip_712::eip_712_test;
 use crate::ethereum_blacklist_test::ethereum_blacklist_test;
 use crate::ethereum_keys::ethereum_keys_test;
 use crate::ibc_auto_forward::ibc_auto_forward_test;
+use crate::ibc_auto_send_eth::ibc_auto_send_eth_test;
 use crate::ibc_metadata::ibc_metadata_proposal_test;
-use crate::ica_host::ica_host_happy_path;
+// use crate::ica_host::ica_host_happy_path;
 use crate::inflation_knockdown::inflation_knockdown_test;
 use crate::invalid_events::invalid_events;
 use crate::pause_bridge::pause_bridge_test;
@@ -32,9 +33,10 @@ use crate::valset_rewards::valset_rewards_test;
 use crate::vesting::vesting_test;
 use clarity::PrivateKey as EthPrivateKey;
 use clarity::{Address as EthAddress, Uint256};
+use deep_space::client::types::ChainVersionType;
 use deep_space::coin::Coin;
-use deep_space::Address as CosmosAddress;
 use deep_space::Contact;
+use deep_space::{Address as CosmosAddress, EthermintPrivateKey};
 use deep_space::{CosmosPrivateKey, PrivateKey};
 use erc_721_happy_path::erc721_happy_path_test;
 use evidence_based_slashing::evidence_based_slashing;
@@ -43,12 +45,14 @@ use happy_path::happy_path_test;
 use happy_path_v2::happy_path_test_v2;
 use happy_path_v2::happy_path_test_v2_native;
 use lazy_static::lazy_static;
+use num::FromPrimitive;
 use orch_keys::orch_keys;
 use orch_only::orch_only_test;
 use relay_market::relay_market_test;
 use std::{env, time::Duration};
 use tokio::time::sleep;
 use transaction_stress_test::transaction_stress_test;
+use types::IBCChainAddressType;
 use unhalt_bridge::unhalt_bridge_test;
 use valset_stress::validator_set_stress_test;
 
@@ -65,8 +69,10 @@ mod evidence_based_slashing;
 mod happy_path;
 mod happy_path_v2;
 mod ibc_auto_forward;
+mod ibc_auto_send_eth;
 mod ibc_metadata;
-mod ica_host;
+mod types;
+// mod ica_host;
 mod inflation_knockdown;
 mod invalid_events;
 mod orch_keys;
@@ -89,11 +95,12 @@ mod vesting;
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(30);
 /// the timeout for the total system
 const TOTAL_TIMEOUT: Duration = Duration::from_secs(300);
-// The config file location for hermes
-const HERMES_CONFIG: &str = "/gravity/tests/assets/ibc-relayer-config.toml";
 
 // Retrieve values from runtime ENV vars
 lazy_static! {
+    static ref HERMES_CONFIG: String =
+        env::var("HERMES_CONFIG").unwrap_or_else(|_| "/gravity/tests/assets/ibc-relayer-config.toml".to_string());
+
     // GRAVITY CHAIN CONSTANTS
     // These constants all apply to the gravity instance running (gravity-test-1)
     static ref ADDRESS_PREFIX: String =
@@ -107,8 +114,17 @@ lazy_static! {
 
     // IBC CHAIN CONSTANTS
     // These constants all apply to the gaiad instance running (ibc-test-1)
+    static ref IBC_CHAIN_ID: String =
+        env::var("IBC_CHAIN_ID").unwrap_or_else(|_| "ibc-test-1".to_string());
     static ref IBC_ADDRESS_PREFIX: String =
         env::var("IBC_ADDRESS_PREFIX").unwrap_or_else(|_| "cosmos".to_string());
+    static ref IBC_ADDRESS_TYPE: IBCChainAddressType =
+        env::var("IBC_ADDRESS_TYPE").map(|v| v.parse().unwrap()).unwrap_or(IBCChainAddressType::Cosmos);
+    static ref IBC_GAS_PRICE: Option<Uint256>  =
+        env::var("IBC_GAS_PRICE").ok().map(|v| v.parse().unwrap());
+    static ref IBC_STAKING_DECIMALS: u8 =
+        env::var("IBC_STAKING_DECIMALS").unwrap_or_else(|_| "6".to_owned()).parse().unwrap();
+
     static ref IBC_STAKING_TOKEN: String =
         env::var("IBC_STAKING_TOKEN").unwrap_or_else(|_| "stake".to_owned());
     static ref IBC_NODE_GRPC: String =
@@ -119,6 +135,12 @@ lazy_static! {
     // LOCAL ETHEREUM CONSTANTS
     static ref ETH_NODE: String =
         env::var("ETH_NODE").unwrap_or_else(|_| "http://localhost:8545".to_owned());
+
+    static ref EVM_CHAIN_PREFIX: String =
+        env::var("EVM_CHAIN_PREFIX").unwrap_or_else(|_| "ethereum".to_owned());
+
+    static ref GRAVITY_DENOM_SEPARATOR: String =
+        env::var("GRAVITY_DENOM_SEPARATOR").unwrap_or_else(|_| "".to_owned());
 }
 
 /// this value reflects the contents of /tests/container-scripts/setup-validator.sh
@@ -142,7 +164,29 @@ lazy_static! {
     static ref RELAYER_MNEMONIC: String = "below great use captain upon ship tiger exhaust orient burger network uphold wink theory focus cloud energy flavor recall joy phone beach symptom hobby".to_string();
     static ref RELAYER_PRIVATE_KEY: CosmosPrivateKey = CosmosPrivateKey::from_phrase(&RELAYER_MNEMONIC, "").unwrap();
     static ref GRAVITY_RELAYER_ADDRESS: CosmosAddress = RELAYER_PRIVATE_KEY.to_address(ADDRESS_PREFIX.as_str()).unwrap(); // IBC relayer on Gravity
-    static ref IBC_RELAYER_ADDRESS: CosmosAddress = RELAYER_PRIVATE_KEY.to_address(IBC_ADDRESS_PREFIX.as_str()).unwrap(); // IBC relayer on test chain
+    static ref IBC_RELAYER_ADDRESS: CosmosAddress = initialize_ibc_relayer_address();
+
+
+    // static ref IBC_RELAYER_ADDRESS: CosmosAddress = RELAYER_PRIVATE_KEY.to_address(IBC_ADDRESS_PREFIX.as_str()).unwrap(); // IBC relayer on test chain
+
+}
+
+fn initialize_ibc_relayer_address() -> CosmosAddress {
+    match *IBC_ADDRESS_TYPE {
+        IBCChainAddressType::Cosmos => {
+            let relayer_ibc_private_key: CosmosPrivateKey = RELAYER_PRIVATE_KEY.clone();
+            relayer_ibc_private_key
+                .to_address(IBC_ADDRESS_PREFIX.as_str())
+                .unwrap()
+        }
+        IBCChainAddressType::Ethermint => {
+            let relayer_ibc_private_key: EthermintPrivateKey =
+                EthermintPrivateKey::from_phrase(&RELAYER_MNEMONIC, "").unwrap();
+            relayer_ibc_private_key
+                .to_address(&IBC_ADDRESS_PREFIX.as_str())
+                .unwrap()
+        }
+    }
 }
 
 /// Gets the standard non-token fee for the testnet. We deploy the test chain with STAKE
@@ -162,11 +206,20 @@ pub fn get_fee(denom: Option<String>) -> Coin {
     }
 }
 
-pub fn get_deposit(denom_override: Option<String>) -> Coin {
+pub fn get_factor(decimal: u8) -> Uint256 {
+    let factor_str = format!("1{}", "0".repeat(decimal as usize));
+    factor_str.parse().unwrap()
+}
+
+pub fn get_deposit(denom_override: Option<String>, decimal: Option<u8>) -> Coin {
+    let decimal = decimal.unwrap_or(6);
+    // create string for factor number that have `decimal` zeros
+    let factor = get_factor(decimal);
+
     let denom = denom_override.unwrap_or_else(|| STAKING_TOKEN.to_string());
     Coin {
         denom,
-        amount: 1_000_000_000u64.into(),
+        amount: Uint256::from_u64(1_000u64).unwrap() * factor,
     }
 }
 
@@ -181,7 +234,7 @@ pub fn get_gravity_chain_id() -> String {
 
 /// Returns the chain-id of the gaiad instance running, see IBC CHAIN CONSTANTS above
 pub fn get_ibc_chain_id() -> String {
-    "ibc-test-1".to_string()
+    IBC_CHAIN_ID.to_string()
 }
 
 pub fn one_eth() -> Uint256 {
@@ -211,12 +264,28 @@ pub async fn main() {
         COSMOS_NODE_GRPC.as_str(),
         OPERATION_TIMEOUT,
         ADDRESS_PREFIX.as_str(),
+        None,
+        None,
     )
     .unwrap();
     let ibc_contact = Contact::new(
         IBC_NODE_GRPC.as_str(),
         OPERATION_TIMEOUT,
         IBC_ADDRESS_PREFIX.as_str(),
+        match *IBC_ADDRESS_TYPE {
+            IBCChainAddressType::Cosmos => Some(ChainVersionType::Default),
+            IBCChainAddressType::Ethermint => Some(ChainVersionType::Titan),
+        },
+        match *IBC_GAS_PRICE {
+            Some(gas_price) => Some(Coin {
+                amount: gas_price,
+                denom: (*IBC_STAKING_TOKEN).to_string(),
+            }),
+            None => Some(Coin {
+                amount: Uint256::from_u8(0u8).unwrap(),
+                denom: (*IBC_STAKING_TOKEN).to_string(),
+            }),
+        },
     )
     .unwrap();
 
@@ -294,6 +363,7 @@ pub async fn main() {
     // UPGRADE_PART_2 upgrades the chain binaries and starts the upgraded chain after being halted in part 1
     // UPGRADE_ONLY performs an upgrade without making any testing assertions
     // IBC_AUTO_FORWARD tests ibc auto forwarding functionality.
+    // IBC_AUTO_SEND_ETH tests ibc auto forwarding to eth functionality.
     // ETHERMINT_KEYS runs a gamut of transactions using a Ethermint key to test no loss of functionality
     // BATCH_TIMEOUT is a stress test for batch timeouts, setting an extremely agressive timeout value
     // VESTING checks that the vesting module delivers partially and fully vested accounts
@@ -323,6 +393,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             transaction_stress_test(
@@ -342,7 +414,15 @@ pub async fn main() {
             return;
         } else if test_type == "VALSET_REWARDS" {
             info!("Starting Valset rewards test");
-            valset_rewards_test(&web30, grpc_client, &gravity_contact, keys, gravity_address).await;
+            valset_rewards_test(
+                &web30,
+                grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
+                &gravity_contact,
+                keys,
+                gravity_address,
+            )
+            .await;
             return;
         } else if test_type == "V2_HAPPY_PATH" || test_type == "HAPPY_PATH_V2" {
             info!("Starting happy path for Gravity v2");
@@ -371,7 +451,15 @@ pub async fn main() {
             return;
         } else if test_type == "RELAY_MARKET" {
             info!("Starting relay market tests!");
-            relay_market_test(&web30, grpc_client, &gravity_contact, keys, gravity_address).await;
+            relay_market_test(
+                &web30,
+                grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
+                &gravity_contact,
+                keys,
+                gravity_address,
+            )
+            .await;
             return;
         } else if test_type == "ORCHESTRATOR_KEYS" {
             info!("Starting orchestrator key update tests!");
@@ -423,6 +511,7 @@ pub async fn main() {
             pause_bridge_test(
                 &web30,
                 grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
                 &gravity_contact,
                 keys,
                 gravity_address,
@@ -437,7 +526,13 @@ pub async fn main() {
             return;
         } else if test_type == "ETHEREUM_BLACKLIST" {
             info!("Starting ethereum blacklist test");
-            ethereum_blacklist_test(grpc_client, &gravity_contact, keys).await;
+            ethereum_blacklist_test(
+                grpc_client,
+                EVM_CHAIN_PREFIX.as_str(),
+                &gravity_contact,
+                keys,
+            )
+            .await;
             return;
         } else if test_type == "AIRDROP_PROPOSAL" {
             info!("Starting airdrop governance proposal test");
@@ -484,6 +579,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             upgrade_part_1(
@@ -505,6 +602,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             upgrade_part_2(
@@ -525,6 +624,8 @@ pub async fn main() {
                 COSMOS_NODE_GRPC.as_str(),
                 TOTAL_TIMEOUT,
                 ADDRESS_PREFIX.as_str(),
+                None,
+                None,
             )
             .unwrap();
             let plan_name = env::var("UPGRADE_NAME").unwrap_or_else(|_| UPGRADE_NAME.to_string());
@@ -538,6 +639,21 @@ pub async fn main() {
                 &web30,
                 grpc_client,
                 &gravity_contact,
+                keys,
+                ibc_keys,
+                gravity_address,
+                erc20_addresses[0],
+            )
+            .await;
+            return;
+        } else if test_type == "IBC_AUTO_SEND_ETH" {
+            info!("Starting IBC Auto-Send-Eth test");
+            start_ibc_relayer(&gravity_contact, &ibc_contact, &keys, &ibc_keys).await;
+            ibc_auto_send_eth_test(
+                &web30,
+                grpc_client,
+                &gravity_contact,
+                &ibc_contact,
                 keys,
                 ibc_keys,
                 gravity_address,
@@ -589,20 +705,20 @@ pub async fn main() {
             )
             .await;
             return;
-        } else if test_type == "ICA_HOST_HAPPY_PATH" {
-            info!("Starting Interchain Accounts Host Module Happy Path Test");
-            start_ibc_relayer(&gravity_contact, &ibc_contact, &keys, &ibc_keys).await;
-            ica_host_happy_path(
-                &web30,
-                grpc_client,
-                &gravity_contact,
-                &ibc_contact,
-                keys,
-                ibc_keys,
-                gravity_address,
-            )
-            .await;
-            return;
+        // } else if test_type == "ICA_HOST_HAPPY_PATH" {
+        //     info!("Starting Interchain Accounts Host Module Happy Path Test");
+        //     start_ibc_relayer(&gravity_contact, &ibc_contact, &keys, &ibc_keys).await;
+        //     ica_host_happy_path(
+        //         &web30,
+        //         grpc_client,
+        //         &gravity_contact,
+        //         &ibc_contact,
+        //         keys,
+        //         ibc_keys,
+        //         gravity_address,
+        //     )
+        //     .await;
+        //     return;
         } else if test_type == "INFLATION_KNOCKDOWN" {
             info!("Starting Inflation knockdown test!");
             inflation_knockdown_test(&gravity_contact, keys).await;

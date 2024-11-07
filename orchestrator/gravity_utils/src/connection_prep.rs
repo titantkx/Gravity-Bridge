@@ -49,7 +49,9 @@ pub async fn create_rpc_connections(
             // it worked, lets go!
             Ok(val) => {
                 grpc = Some(val);
-                contact = Some(Contact::new(&cosmos_grpc_url, timeout, &address_prefix).unwrap());
+                contact = Some(
+                    Contact::new(&cosmos_grpc_url, timeout, &address_prefix, None, None).unwrap(),
+                );
             }
             // did not work, now we check if it's localhost
             Err(e) => {
@@ -69,12 +71,12 @@ pub async fn create_rpc_connections(
                     match (ipv4, ipv6) {
                         (Ok(v), Err(_)) => {
                             info!("Url fallback succeeded, your cosmos gRPC url {} has been corrected to {}", grpc_url, ipv4_url);
-                            contact = Some(Contact::new(&ipv4_url, timeout, &address_prefix).unwrap());
+                            contact = Some(Contact::new(&ipv4_url, timeout, &address_prefix,None,None).unwrap());
                             grpc = Some(v)
                         },
                         (Err(_), Ok(v)) => {
                             info!("Url fallback succeeded, your cosmos gRPC url {} has been corrected to {}", grpc_url, ipv6_url);
-                            contact = Some(Contact::new(&ipv6_url, timeout, &address_prefix).unwrap());
+                            contact = Some(Contact::new(&ipv6_url, timeout, &address_prefix,None,None).unwrap());
                             grpc = Some(v)
                         },
                         (Ok(_), Ok(_)) => panic!("This should never happen? Why didn't things work the first time?"),
@@ -96,12 +98,12 @@ pub async fn create_rpc_connections(
                     match (https_on_80, https_on_443) {
                         (Ok(v), Err(_)) => {
                             info!("Https upgrade succeeded, your cosmos gRPC url {} has been corrected to {}", grpc_url, https_on_80_url);
-                            contact = Some(Contact::new(&https_on_80_url, timeout, &address_prefix).unwrap());
+                            contact = Some(Contact::new(&https_on_80_url, timeout, &address_prefix,None,None).unwrap());
                             grpc = Some(v)
                         },
                         (Err(_), Ok(v)) => {
                             info!("Https upgrade succeeded, your cosmos gRPC url {} has been corrected to {}", grpc_url, https_on_443_url);
-                            contact = Some(Contact::new(&https_on_443_url, timeout, &address_prefix).unwrap());
+                            contact = Some(Contact::new(&https_on_443_url, timeout, &address_prefix,None,None).unwrap());
                             grpc = Some(v)
                         },
                         (Ok(_), Ok(_)) => panic!("This should never happen? Why didn't things work the first time?"),

@@ -61,6 +61,9 @@ pub async fn airdrop_proposal_test(contact: &Contact, keys: Vec<ValidatorKeys>) 
 
     // submit an airdrop that contains more tokens than are in the community pool
     submit_and_fail_airdrop_proposal(STAKING_TOKEN.clone(), &keys, contact, false, true).await;
+
+    // re-enable inflation
+    enable_inflation(contact, &keys).await;
 }
 
 // Submits the custom airdrop governance proposal, votes yes for each validator, waits for votes to be submitted
@@ -87,7 +90,7 @@ async fn submit_and_pass_airdrop_proposal(
 
     let res = submit_airdrop_proposal(
         proposal_content,
-        get_deposit(None),
+        get_deposit(None, None),
         get_fee(None),
         contact,
         keys[0].validator_key,
@@ -219,7 +222,7 @@ async fn submit_and_fail_airdrop_proposal(
     let res = contact
         .create_gov_proposal(
             any,
-            get_deposit(None),
+            get_deposit(None, None),
             get_fee(None),
             keys[0].validator_key,
             Some(TOTAL_TIMEOUT),
@@ -340,6 +343,39 @@ pub async fn disable_inflation(contact: &Contact, keys: &[ValidatorKeys]) {
         subspace: "mint".to_string(),
         key: "InflationMax".to_string(),
         value: r#""0""#.to_string(),
+    };
+    params_to_change.push(change);
+    create_parameter_change_proposal(
+        contact,
+        keys[0].validator_key,
+        params_to_change,
+        get_fee(None),
+    )
+    .await;
+    vote_yes_on_proposals(contact, keys, None).await;
+    wait_for_proposals_to_execute(contact).await;
+}
+
+/// submits and passes a proposal to enable inflation on the chain
+pub async fn enable_inflation(contact: &Contact, keys: &[ValidatorKeys]) {
+    info!("Submitting and passing a proposal to zero out inflation");
+    let mut params_to_change = Vec::new();
+    let change = ParamChange {
+        subspace: "mint".to_string(),
+        key: "InflationRateChange".to_string(),
+        value: r#""0.13""#.to_string(),
+    };
+    params_to_change.push(change);
+    let change = ParamChange {
+        subspace: "mint".to_string(),
+        key: "InflationMin".to_string(),
+        value: r#""0.07""#.to_string(),
+    };
+    params_to_change.push(change);
+    let change = ParamChange {
+        subspace: "mint".to_string(),
+        key: "InflationMax".to_string(),
+        value: r#""0.2""#.to_string(),
     };
     params_to_change.push(change);
     create_parameter_change_proposal(

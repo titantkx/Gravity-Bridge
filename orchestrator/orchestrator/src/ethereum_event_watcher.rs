@@ -34,6 +34,7 @@ pub struct CheckedNonces {
 #[allow(clippy::too_many_arguments)]
 pub async fn check_for_events(
     web3: &Web3,
+    evm_chain_prefix: &str,
     contact: &Contact,
     grpc_client: &mut GravityQueryClient<Channel>,
     gravity_contract_address: EthAddress,
@@ -136,6 +137,7 @@ pub async fn check_for_events(
             grpc_client,
             our_cosmos_address,
             contact.get_prefix(),
+            evm_chain_prefix.to_string(),
         )
         .await?;
         let valsets = ValsetUpdatedEvent::filter_by_event_nonce(last_event_nonce, &valsets);
@@ -195,6 +197,7 @@ pub async fn check_for_events(
             || !valsets.is_empty()
         {
             let res = send_ethereum_claims(
+                evm_chain_prefix,
                 contact,
                 our_private_key,
                 deposits.clone(),
@@ -209,6 +212,7 @@ pub async fn check_for_events(
                 grpc_client,
                 our_cosmos_address,
                 contact.get_prefix(),
+                evm_chain_prefix.to_string(),
             )
             .await?;
 

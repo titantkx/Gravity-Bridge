@@ -1,6 +1,8 @@
 use crate::get_fee;
 use crate::utils::check_erc20_balance;
 use crate::utils::*;
+use crate::EVM_CHAIN_PREFIX;
+use crate::GRAVITY_DENOM_SEPARATOR;
 use crate::MINER_ADDRESS;
 use crate::MINER_PRIVATE_KEY;
 use crate::OPERATION_TIMEOUT;
@@ -135,7 +137,7 @@ pub async fn iterate_attestations<F: FnMut(T), T: Message + Default>(
     grpc_client: &mut GravityQueryClient<Channel>,
     f: &mut F,
 ) {
-    let attestations = get_attestations(grpc_client, Some(1000))
+    let attestations = get_attestations(grpc_client, EVM_CHAIN_PREFIX.as_str(), Some(1000))
         .await
         .expect("Something happened while getting attestations after delegating to validator");
     for (i, att) in attestations.into_iter().enumerate() {
@@ -214,7 +216,7 @@ pub async fn test_valset_update(
             delegate_address,
             amount,
             get_fee(None),
-            keys[1].validator_key,
+            keys[0].validator_key,
             Some(TOTAL_TIMEOUT),
         )
         .await
@@ -328,7 +330,15 @@ pub async fn test_erc20_deposit_result(
     expected_change: Option<Uint256>, // provide an expected change when multiple transactions will take place at once
 ) -> Result<(), GravityError> {
     let start_coin = contact
-        .get_balance(dest, format!("gravity{}", erc20_address))
+        .get_balance(
+            dest,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
+        )
         .await
         .unwrap();
 
@@ -339,6 +349,7 @@ pub async fn test_erc20_deposit_result(
         gravity_address,
         erc20_address,
         amount,
+        "",
     )
     .await?;
 
@@ -351,7 +362,15 @@ pub async fn test_erc20_deposit_result(
         match (
             start_coin.clone(),
             contact
-                .get_balance(dest, format!("gravity{}", erc20_address))
+                .get_balance(
+                    dest,
+                    format!(
+                        "{}{}{}",
+                        EVM_CHAIN_PREFIX.as_str(),
+                        GRAVITY_DENOM_SEPARATOR.as_str(),
+                        erc20_address
+                    ),
+                )
                 .await
                 .unwrap(),
         ) {
@@ -425,6 +444,7 @@ pub async fn send_erc20_deposit(
     gravity_address: EthAddress,
     erc20_address: EthAddress,
     amount: Uint256,
+    memo: &str,
 ) -> Result<(), GravityError> {
     get_valset_nonce(gravity_address, *MINER_ADDRESS, web30)
         .await
@@ -446,6 +466,7 @@ pub async fn send_erc20_deposit(
         gravity_address,
         amount,
         dest,
+        memo,
         *MINER_PRIVATE_KEY,
         None,
         web30,
@@ -517,7 +538,15 @@ async fn test_batch(
         .to_address(&contact.get_prefix())
         .unwrap();
     let coin = contact
-        .get_balance(dest_cosmos_address, format!("gravity{}", erc20_contract))
+        .get_balance(
+            dest_cosmos_address,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_contract
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -535,6 +564,7 @@ async fn test_batch(
     );
 
     let res = send_to_eth(
+        EVM_CHAIN_PREFIX.as_str(),
         dest_cosmos_private_key,
         dest_eth_address,
         Coin {
@@ -556,6 +586,7 @@ async fn test_batch(
         .unwrap();
     get_oldest_unsigned_transaction_batches(
         &mut grpc_client,
+        EVM_CHAIN_PREFIX.as_str(),
         requester_address,
         contact.get_prefix(),
     )
@@ -608,7 +639,15 @@ async fn submit_duplicate_erc20_send(
     keys: &[ValidatorKeys],
 ) {
     let start_coin = contact
-        .get_balance(receiver, format!("gravity{}", erc20_address))
+        .get_balance(
+            receiver,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
+        )
         .await
         .unwrap()
         .unwrap();
@@ -625,12 +664,14 @@ async fn submit_duplicate_erc20_send(
         destination: receiver.to_string(),
         validated_destination: Some(receiver),
         amount,
+        memo: "".to_string(),
     };
 
     // iterate through all validators and try to send an event with duplicate nonce
     for k in keys.iter() {
         let c_key = k.orch_key;
         let res = send_ethereum_claims(
+            EVM_CHAIN_PREFIX.as_str(),
             contact,
             c_key,
             vec![event.clone()],
@@ -647,7 +688,15 @@ async fn submit_duplicate_erc20_send(
     contact.wait_for_next_block(TOTAL_TIMEOUT).await.unwrap();
 
     let end_coin = contact
-        .get_balance(receiver, format!("gravity{}", erc20_address))
+        .get_balance(
+            receiver,
+            format!(
+                "{}{}{}",
+                EVM_CHAIN_PREFIX.as_str(),
+                GRAVITY_DENOM_SEPARATOR.as_str(),
+                erc20_address
+            ),
+        )
         .await
         .unwrap()
         .unwrap();

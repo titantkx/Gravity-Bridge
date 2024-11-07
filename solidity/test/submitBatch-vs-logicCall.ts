@@ -1,20 +1,19 @@
 import chai from "chai";
-import { ethers } from "hardhat";
 import { solidity } from "ethereum-waffle";
+import { ethers } from "hardhat";
 import { TestTokenBatchMiddleware } from "../typechain/TestTokenBatchMiddleware";
 
+import { Signer } from "ethers";
 import { deployContracts } from "../test-utils";
 import {
-  getSignerAddresses,
-  makeCheckpoint,
-  signHash,
   examplePowers,
-  ZeroAddress,
+  getSignerAddresses,
+  signHash,
+  ZeroAddress
 } from "../test-utils/pure";
-import { Signer } from "ethers";
 import { Gravity } from "../typechain/Gravity";
-import { TestERC20A } from "../typechain/TestERC20A";
 import { ReentrantERC20 } from "../typechain/ReentrantERC20";
+import { TestERC20A } from "../typechain/TestERC20A";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -34,7 +33,7 @@ async function prepareTxBatch(batchSize: number, signers: Signer[]) {
     numTxs,
     destinations,
     fees,
-    amounts,
+    amounts
   };
 }
 
@@ -49,7 +48,8 @@ async function sendToCosmos(
   await gravity.functions.sendToCosmos(
     testERC20.address,
     ethers.utils.formatBytes32String("myCosmosAddress"),
-    numCoins
+    numCoins,
+    ""
   );
 }
 
@@ -62,7 +62,6 @@ async function prep() {
 
   let powers = examplePowers();
   let validators = signers.slice(0, powers.length);
-
 
   const { gravity, testERC20 } = await deployContracts(
     gravityId,
@@ -84,19 +83,13 @@ async function prep() {
     validators,
     gravity,
     testERC20,
-    reentrantERC20,
+    reentrantERC20
   };
 }
 
 async function runSubmitBatchTest(opts: { batchSize: number }) {
-  const {
-    signers,
-    gravityId,
-    powers,
-    validators,
-    gravity,
-    testERC20,
-  } = await prep();
+  const { signers, gravityId, powers, validators, gravity, testERC20 } =
+    await prep();
 
   // Lock tokens in gravity
   // ====================
@@ -134,7 +127,7 @@ async function runSubmitBatchTest(opts: { batchSize: number }) {
         "uint256[]",
         "uint256",
         "address",
-        "uint256",
+        "uint256"
       ],
       [
         gravityId,
@@ -144,7 +137,7 @@ async function runSubmitBatchTest(opts: { batchSize: number }) {
         txBatch.fees,
         batchNonce,
         testERC20.address,
-        batchTimeout,
+        batchTimeout
       ]
     )
   );
@@ -157,7 +150,7 @@ async function runSubmitBatchTest(opts: { batchSize: number }) {
     valsetNonce: 0,
     rewardAmount: 0,
     rewardToken: ZeroAddress
-  }
+  };
 
   await gravity.submitBatch(
     valset,
@@ -214,13 +207,14 @@ async function runLogicCallTest(opts: {
     validators,
     gravity,
     testERC20,
-    reentrantERC20,
+    reentrantERC20
   } = await prep();
 
   const TestTokenBatchMiddleware = await ethers.getContractFactory(
     "TestTokenBatchMiddleware"
   );
-  const tokenBatchMiddleware = (await TestTokenBatchMiddleware.deploy()) as TestTokenBatchMiddleware;
+  const tokenBatchMiddleware =
+    (await TestTokenBatchMiddleware.deploy()) as TestTokenBatchMiddleware;
   await tokenBatchMiddleware.transferOwnership(gravity.address);
 
   // Lock tokens in gravity
@@ -257,11 +251,11 @@ async function runLogicCallTest(opts: {
     payload: tokenBatchMiddleware.interface.encodeFunctionData("submitBatch", [
       txBatch.amounts,
       txBatch.destinations,
-      opts.reentrant ? reentrantERC20.address : testERC20.address,
+      opts.reentrant ? reentrantERC20.address : testERC20.address
     ]), // payload
     timeOut: 4766922941000, // timeOut, Far in the future
     invalidationId: ethers.utils.hexZeroPad(testERC20.address, 32), // invalidationId
-    invalidationNonce: 1, // invalidationNonce
+    invalidationNonce: 1 // invalidationNonce
   };
 
   const digest = ethers.utils.keccak256(
@@ -277,7 +271,7 @@ async function runLogicCallTest(opts: {
         "bytes", // payload
         "uint256", // timeOut
         "bytes32", // invalidationId
-        "uint256", // invalidationNonce
+        "uint256" // invalidationNonce
       ],
       [
         gravityId,
@@ -290,7 +284,7 @@ async function runLogicCallTest(opts: {
         logicCallArgs.payload,
         logicCallArgs.timeOut,
         logicCallArgs.invalidationId,
-        logicCallArgs.invalidationNonce,
+        logicCallArgs.invalidationNonce
       ]
     )
   );
@@ -303,7 +297,7 @@ async function runLogicCallTest(opts: {
     valsetNonce: 0,
     rewardAmount: 0,
     rewardToken: ZeroAddress
-  }
+  };
 
   await gravity.submitLogicCall(
     valset,

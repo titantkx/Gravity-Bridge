@@ -8,14 +8,12 @@ set -eux
 
 # Stop any currently running gravity and eth processes
 pkill gravityd || true # allowed to fail
-pkill geth || true # allowed to fail
+pkill geth || true     # allowed to fail
 
 # Wipe filesystem changes
-for i in $(seq 1 $NODES);
-do
+for i in $(seq 1 $NODES); do
     rm -rf "/validator$i"
 done
-
 
 pushd /gravity/module/
 export PATH=$PATH:/usr/local/go/bin
@@ -36,7 +34,7 @@ set -e
 
 # deploy the ethereum contracts
 pushd /gravity/orchestrator/test_runner
-DEPLOY_CONTRACTS=1 RUST_BACKTRACE=full TEST_TYPE=$TEST_TYPE NO_GAS_OPT=1 RUST_LOG="INFO,relayer=DEBUG,orchestrator=DEBUG" PATH=$PATH:$HOME/.cargo/bin cargo run --release --bin test-runner
+DEPLOY_CONTRACTS=1 RUST_BACKTRACE=full TEST_TYPE=$TEST_TYPE NO_GAS_OPT=1 RUST_LOG="INFO,relayer=INFO,orchestrator=DEBUG,cosmos_gravity=DEBUG,deep_space=TRACE" PATH=$PATH:$HOME/.cargo/bin cargo run --release --bin test-runner
 popd
 
 # This keeps the script open to prevent Docker from stopping the container

@@ -14,8 +14,7 @@ fi
 set -u
 # Setup the gravity test chain (chain id gravity-test-1) using gravity as the binary
 # Creates $NODES number of validators, with their home directories at /validator#
-for i in $(seq 1 $NODES);
-do
+for i in $(seq 1 $NODES); do
     # add this ip for loopback dialing
     ip addr add 7.7.7.$i/32 dev eth0 || true # allowed to fail
 
@@ -47,14 +46,13 @@ do
     LOG_LEVEL="--log_level info"
     INVARIANTS_CHECK="--inv-check-period 1"
     ARGS="$GAIA_HOME $LISTEN_ADDRESS $RPC_ADDRESS $GRPC_ADDRESS $GRPC_WEB_ADDRESS $LOG_LEVEL $INVARIANTS_CHECK $P2P_ADDRESS"
-    $BIN $ARGS start &> /validator$i/logs &
+    $BIN $ARGS start &>/validator$i/logs &
 done
 
 # Setup the IBC test chain (chain id ibc-test-1) using gaiad as the binary
 # Creates the same number of validators as the gravity chain above, with their home directories at /ibc-validator#
 BIN=gaiad
-for i in $(seq 1 $NODES);
-do
+for i in $(seq 1 $NODES); do
     ip addr add 7.7.8.$i/32 dev eth0 || true # allowed to fail
 
     GAIA_HOME="--home /ibc-validator$i"
@@ -75,7 +73,7 @@ do
     P2P_ADDRESS="--p2p.laddr tcp://7.7.8.$i:26656"
     LOG_LEVEL="--log_level info"
     ARGS="$GAIA_HOME $LISTEN_ADDRESS $RPC_ADDRESS $GRPC_ADDRESS $GRPC_WEB_ADDRESS $LOG_LEVEL $P2P_ADDRESS"
-    $BIN $ARGS start &> /ibc-validator$i/logs &
+    $BIN $ARGS start &>/ibc-validator$i/logs &
 done
 
 # let the cosmos chain settle before starting eth as it
@@ -112,7 +110,7 @@ elif [[ ! -z "$HARDHAT" ]]; then
 # hardhat doesn't work for some tests that depend on transactions waiting for blocks, so Geth is the default
 else
     if [[ -z "$(ps -e | grep geth)" ]]; then # Only run-eth if it's not running, which it would be with upgrade tests
-      bash /gravity/tests/container-scripts/run-eth.sh &
+        bash /gravity/tests/container-scripts/run-eth.sh &
     fi
 fi
 sleep 10
