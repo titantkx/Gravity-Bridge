@@ -178,8 +178,9 @@ message EvmChainParam {
 
 // GenesisState struct, containing all persistant data required by the Gravity module
 message GenesisState {
-  Params                params     = 1;
-  repeated EvmChainData evm_chains = 2 [(gogoproto.nullable) = false];
+  Params                         params                    = 1;
+  repeated EvmChainData          evm_chains                = 2 [(gogoproto.nullable) = false];
+  repeated SendingIbcAutoForward sending_ibc_auto_forwards = 3 [(gogoproto.nullable) = false];
 }
 
 message EvmChainData {
@@ -196,6 +197,7 @@ message EvmChainData {
   repeated ERC20ToDenom              erc20_to_denoms           = 11 [(gogoproto.nullable) = false];
   repeated OutgoingTransferTx        unbatched_transfers       = 12 [(gogoproto.nullable) = false];
   repeated PendingIbcAutoForward     pending_ibc_auto_forwards = 13 [(gogoproto.nullable) = false];
+  repeated FailedIbcAutoForward      failed_ibc_auto_forwards  = 14 [(gogoproto.nullable) = false];
 }
 
 message EvmChain {

@@ -172,11 +172,15 @@ func initBridgeDataFromGenesis(ctx sdk.Context, k Keeper, data types.EvmChainDat
 			panic(fmt.Errorf("unable to restore pending ibc auto forward (%v) to store: %v", forward, err))
 		}
 	}
+
+	// @todo init `failed_ibc_auto_forwards` from genesis
 }
 
 // InitGenesis starts a chain from a genesis state
 func InitGenesis(ctx sdk.Context, k Keeper, data types.GenesisState) {
 	k.SetParams(ctx, *data.Params)
+
+	// @todo init `sending_ibc_auto_forwards` from genesis
 
 	for _, evmChain := range data.EvmChains {
 		// restore various nonces, this MUST match GravityNonces in genesis
@@ -215,6 +219,8 @@ func ExportGenesis(ctx sdk.Context, k Keeper) types.GenesisState {
 	chains := k.GetEvmChains(ctx)
 	evmChains := make([]types.EvmChainData, len(chains))
 
+	// @todo export `sending_ibc_auto_forwards` to genesis
+
 	for ci, evmChain := range chains {
 		calls := k.GetOutgoingLogicCalls(ctx, evmChain.EvmChainPrefix)
 		batches := k.GetOutgoingTxBatches(ctx, evmChain.EvmChainPrefix)
@@ -229,10 +235,13 @@ func ExportGenesis(ctx sdk.Context, k Keeper) types.GenesisState {
 		unbatchedTransfers := k.GetUnbatchedTransactions(ctx, evmChain.EvmChainPrefix)
 		pendingForwards := k.PendingIbcAutoForwards(ctx, evmChain.EvmChainPrefix, 0)
 
+		// export pending ibc auto forwards from state
 		var forwards []types.PendingIbcAutoForward
 		for _, forward := range pendingForwards {
 			forwards = append(forwards, *forward)
 		}
+
+		// @todo export `failed_ibc_auto_forwards` from state
 
 		// export valset confirmations from state
 		for _, vs := range valsets {
