@@ -193,7 +193,7 @@ func (k Keeper) SendingIbcAutoForwards(ctx sdk.Context, limit uint64) []*types.S
 
 // ValidateSendingIbcAutoForward performs basic validation
 func (k Keeper) ValidateSendingIbcAutoForward(ctx sdk.Context, forward types.SendingIbcAutoForward) error {
-	if err := k.ValidatePendingIbcAutoForward(ctx, forward.EvmChainPrefix, *forward.IbcPacket); err != nil {
+	if err := forward.ValidateBasic(); err != nil {
 		return err
 	}
 
@@ -294,7 +294,7 @@ func (k Keeper) FailedIbcAutoForward(ctx sdk.Context, evmChainPrefix string, eve
 
 // ValidateFailedIbcAutoForward performs basic validation
 func (k Keeper) ValidateFailedIbcAutoForward(ctx sdk.Context, forward types.FailedIbcAutoForward) error {
-	if err := k.ValidatePendingIbcAutoForward(ctx, forward.EvmChainPrefix, *forward.IbcPacket); err != nil {
+	if err := forward.ValidateBasic(); err != nil {
 		return err
 	}
 
@@ -371,8 +371,7 @@ func (k Keeper) completeSendingIbcAutoForward(ctx sdk.Context, channel string, s
 	return nil
 }
 
-// move `failed_ibc_auto_forwards` to `pending_ibc_auto_forwards`. allow retry failed IBC Auto-Forward
-// @todo need to add msg allow everyone to retry failed IBC Auto-Forward
+// retryFailedIbcAutoForward will re create a ibc transfer
 func (k Keeper) retryFailedIbcAutoForward(ctx sdk.Context, evmChainPrefix string, eventNonce uint64) error {
 	store := ctx.KVStore(k.storeKey)
 	failedKey := types.GetFailedIbcAutoForwardKey(evmChainPrefix, eventNonce)
@@ -384,14 +383,59 @@ func (k Keeper) retryFailedIbcAutoForward(ctx sdk.Context, evmChainPrefix string
 	failedForward := new(types.FailedIbcAutoForward)
 	k.cdc.MustUnmarshal(store.Get(failedKey), failedForward)
 
-	// move the forward to the pending queue
-	pendingKey := types.GetPendingIbcAutoForwardKey(evmChainPrefix, eventNonce)
-	if store.Has(pendingKey) {
-		return sdkerrors.Wrapf(types.ErrDuplicate, "Pending IBC Auto-Forward Queue already has an entry with nonce %v", eventNonce)
+	if err := failedForward.ValidateBasic(); err != nil { // double-check the forward before sending it
+		// Fail this tx
+		return sdkerrors.Wrapf(types.ErrInvalid, "Invalid forward found in Failed IBC Auto-Forward queue: %s", err.Error())
 	}
 
-	store.Set(pendingKey, k.cdc.MustMarshal(failedForward.IbcPacket))
-	store.Delete(failedKey)
+	portId := k.ibcTransferKeeper.GetPort(ctx)
+
+	// This local gravity user receives the coins if the ibc transaction fails
+	var fallback sdk.AccAddress
+	fallback, err := types.IBCAddressFromBech32(failedForward.IbcPacket.ForeignReceiver)
+	if err != nil {
+		return sdkerrors.Wrapf(types.ErrInvalid, "Invalid ForeignReceiver found in Failed IBC Auto-Forward queue: %s [[%+v]]", err.Error(), failedForward)
+	}
+
+	coin := *failedForward.IbcPacket.Token
+
+	// check current balance of fallback account
+	fallbackBal := k.bankKeeper.GetBalance(ctx, fallback, failedForward.IbcPacket.Token.Denom)
+	if fallbackBal.IsZero() {
+		// Fail this tx
+		return sdkerrors.Wrapf(types.ErrInvalid, "Fallback account have empty balance: %s", fallback.String())
+	}
+
+	if fallbackBal.IsLT(*failedForward.IbcPacket.Token) {
+		// if fallback account does not have enough balance, use all left balance
+		coin = fallbackBal
+	}
+
+	timeoutTime := thirtyDaysInFuture(ctx) // Set the ibc transfer to expire ~one month from now
+	msgTransfer := createIbcMsgTransfer(portId, *failedForward.IbcPacket, fallback.String(), uint64(timeoutTime.UnixNano()))
+
+	// override token with `coin`
+	msgTransfer.Token = coin
+
+	// Make the ibc-transfer attempt
+	wCtx := sdk.WrapSDKContext(ctx)
+	msgTransferResponse, recoverableErr := k.ibcTransferKeeper.Transfer(wCtx, &msgTransfer)
+	ctx = sdk.UnwrapSDKContext(wCtx)
+
+	if recoverableErr == nil {
+		// move the failed forward to the sending queue
+		err := k.addSendingIbcAutoForward(ctx, types.SendingIbcAutoForward{
+			IbcPacket:      failedForward.IbcPacket,
+			EvmChainPrefix: evmChainPrefix,
+			Sequence:       msgTransferResponse.Sequence,
+		})
+		if err != nil {
+			return err
+		}
+		store.Delete(failedKey)
+	} else {
+		return sdkerrors.Wrapf(types.ErrInvalid, "Failed to retry Failed IBC Auto-Forward: %s", recoverableErr.Error())
+	}
 
 	return nil
 }
@@ -455,14 +499,15 @@ func (k Keeper) ProcessNextPendingIbcAutoForward(ctx sdk.Context, evmChainPrefix
 	msgTransferResponse, recoverableErr := k.ibcTransferKeeper.Transfer(wCtx, &msgTransfer)
 	ctx = sdk.UnwrapSDKContext(wCtx)
 
-	err = k.movePendingIbcAutoForward(ctx, evmChainPrefix, forward.EventNonce, msgTransferResponse.Sequence)
-	if err != nil {
-		// Fail this tx
-		panic(fmt.Sprintf("Failed to move Pending IBC Auto-Forward to Sending: %s", err.Error()))
-	}
-
 	// Log + emit event
 	if recoverableErr == nil {
+
+		err = k.movePendingIbcAutoForward(ctx, evmChainPrefix, forward.EventNonce, msgTransferResponse.Sequence)
+		if err != nil {
+			// Fail this tx
+			panic(fmt.Sprintf("Failed to move Pending IBC Auto-Forward to Sending: %s", err.Error()))
+		}
+
 		k.logEmitIbcForwardExecutedEvent(ctx, *forward, msgTransfer, evmChainPrefix, msgTransferResponse.Sequence)
 	} else {
 		// Funds have already been sent to the fallback user, emit a failure log
