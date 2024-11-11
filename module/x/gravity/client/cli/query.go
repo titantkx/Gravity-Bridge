@@ -501,9 +501,9 @@ func GetCmdQueryParams() *cobra.Command {
 func GetCmdSendingIbcAutoForwards() *cobra.Command {
 	// nolint: exhaustruct
 	cmd := &cobra.Command{
-		Use:   "sending-ibc-auto-forwards [ibc channel] [optional limit] ",
+		Use:   "sending-ibc-auto-forwards [optional limit] ",
 		Short: "Query SendToCosmos transactions are forwarding over IBC",
-		Args:  cobra.MaximumNArgs(2),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
