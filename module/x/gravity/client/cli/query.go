@@ -250,7 +250,7 @@ func GetCmdPendingIbcAutoForwards() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "pending-ibc-auto-forwards [evm chain prefix] [optional limit]",
 		Short: "Query SendToCosmos transactions waiting to be forwarded over IBC",
-		Args:  cobra.MaximumNArgs(2),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
@@ -541,7 +541,7 @@ func GetCmdFailedIbcAutoForwards() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "failed-ibc-auto-forwards [evm chain prefix] [optional limit] ",
 		Short: "Query SendToCosmos transactions were failed over IBC",
-		Args:  cobra.MaximumNArgs(2),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
