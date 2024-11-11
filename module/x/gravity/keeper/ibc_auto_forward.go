@@ -277,6 +277,21 @@ func (k Keeper) FailedIbcAutoForwards(ctx sdk.Context, evmChainPrefix string, li
 	return forwards
 }
 
+// FailedIbcAutoForward returns an failed IBC Auto-Forward sends to IBC-enabled chains
+func (k Keeper) FailedIbcAutoForward(ctx sdk.Context, evmChainPrefix string, eventNonce uint64) (*types.FailedIbcAutoForward, error) {
+	store := ctx.KVStore(k.storeKey)
+	key := types.AppendBytes(types.FailedIbcAutoForwards, []byte(evmChainPrefix), types.UInt64Bytes(eventNonce))
+
+	if !store.Has(key) {
+		return nil, sdkerrors.Wrapf(sdkerrors.ErrKeyNotFound, "the failed IBC Auto-Forward with chain %s nonce %v not found", evmChainPrefix, eventNonce)
+	}
+
+	forward := new(types.FailedIbcAutoForward)
+	k.cdc.MustUnmarshal(store.Get(key), forward)
+
+	return forward, nil
+}
+
 // ValidateFailedIbcAutoForward performs basic validation
 func (k Keeper) ValidateFailedIbcAutoForward(ctx sdk.Context, forward types.FailedIbcAutoForward) error {
 	if err := k.ValidatePendingIbcAutoForward(ctx, forward.EvmChainPrefix, *forward.IbcPacket); err != nil {
