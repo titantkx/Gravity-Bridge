@@ -23,6 +23,7 @@ var (
 	_ sdk.Msg = &MsgLogicCallExecutedClaim{}
 	_ sdk.Msg = &MsgSendToCosmosClaim{}
 	_ sdk.Msg = &MsgExecuteIbcAutoForwards{}
+	_ sdk.Msg = &MsgRetryIbcAutoForwards{}
 	_ sdk.Msg = &MsgBatchSendToEthClaim{}
 	_ sdk.Msg = &MsgValsetUpdatedClaim{}
 	_ sdk.Msg = &MsgSubmitBadSignatureEvidence{}
@@ -42,6 +43,7 @@ var (
 	_ authlegacy.LegacyMsg = &MsgLogicCallExecutedClaim{}
 	_ authlegacy.LegacyMsg = &MsgSendToCosmosClaim{}
 	_ authlegacy.LegacyMsg = &MsgExecuteIbcAutoForwards{}
+	_ authlegacy.LegacyMsg = &MsgRetryIbcAutoForwards{}
 	_ authlegacy.LegacyMsg = &MsgBatchSendToEthClaim{}
 	_ authlegacy.LegacyMsg = &MsgValsetUpdatedClaim{}
 	_ authlegacy.LegacyMsg = &MsgSubmitBadSignatureEvidence{}
@@ -57,6 +59,7 @@ const (
 	AMINO_TYPE_CONFIRM_LOGIC                 = "confirm_logic"
 	AMINO_TYPE_SEND_TO_COSMOS                = "send_to_cosmos_claim"
 	AMINO_TYPE_EXECUTE_IBC_AUTO_FORWARDS     = "execute_ibc_auto_forwards"
+	AMINO_TYPE_RETRY_IBC_AUTO_FORWARDS       = "retry_ibc_auto_forwards"
 	AMINO_TYPE_BATCH_SEND_TO_ETH             = "batch_send_to_eth_claim"
 	AMINO_TYPE_SUBMIT_BAD_SIGNATURE_EVIDENCE = "Submit_Bad_Signature_Evidence"
 	AMINO_TYPE_CANCEL_SEND_TO_ETH            = "cancel_send_to_eth"
@@ -515,6 +518,55 @@ func (msg MsgExecuteIbcAutoForwards) Route() string { return RouterKey }
 
 // Type should return the action
 func (msg MsgExecuteIbcAutoForwards) Type() string { return AMINO_TYPE_EXECUTE_IBC_AUTO_FORWARDS }
+
+func (msg *MsgRetryIbcAutoForwards) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Sender); err != nil {
+		return sdkerrors.Wrap(err, "Unable to parse executor as a valid bech32 address")
+	}
+
+	if msg.EvmChainPrefix == "" {
+		return fmt.Errorf("evm_chain_prefix is empty")
+	}
+
+	// must non empty `msg.EventNonces`
+	if len(msg.EventNonces) == 0 {
+		return fmt.Errorf("empty event_nonces")
+	}
+
+	// all `msg.EventNonces` must be unique and greater than 0
+	seen := make(map[uint64]bool)
+	for _, eventNonce := range msg.EventNonces {
+		if eventNonce == 0 {
+			return fmt.Errorf("event_nonce == 0")
+		}
+		if seen[eventNonce] {
+			return fmt.Errorf("duplicate event_nonce: %d", eventNonce)
+		}
+		seen[eventNonce] = true
+	}
+
+	return nil
+}
+
+func (msg *MsgRetryIbcAutoForwards) GetSigners() []sdk.AccAddress {
+	msg.ProtoMessage()
+	acc, err := sdk.AccAddressFromBech32(msg.Sender)
+	if err != nil {
+		panic(err)
+	}
+	return []sdk.AccAddress{acc}
+}
+
+// GetSignBytes encodes the message for signing
+func (msg MsgRetryIbcAutoForwards) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(msg))
+}
+
+// Route should return the name of the module
+func (msg MsgRetryIbcAutoForwards) Route() string { return RouterKey }
+
+// Type should return the action
+func (msg MsgRetryIbcAutoForwards) Type() string { return AMINO_TYPE_RETRY_IBC_AUTO_FORWARDS }
 
 func (msg *MsgBatchSendToEthClaim) SetOrchestrator(orchestrator sdk.AccAddress) {
 	msg.Orchestrator = orchestrator.String()
