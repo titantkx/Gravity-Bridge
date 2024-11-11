@@ -43,6 +43,8 @@ func GetQueryCmd() *cobra.Command {
 		CmdGetLastObservedEthBlock(),
 		CmdGetLastObservedEthNonce(),
 		GetCmdQueryParams(),
+		GetCmdSendingIbcAutoForwards(),
+		GetCmdFailedIbcAutoForwards(),
 	}...)
 
 	return gravityQueryCmd
