@@ -704,17 +704,17 @@ pub async fn get_event_nonce_safe(
     let start = Instant::now();
     // overly complicated retry logic allows us to handle the possibility that gas prices change between blocks
     // and cause any individual request to fail.
-    let mut new_balance = Err(Web3Error::BadInput("Intentional Error".to_string()));
-    while new_balance.is_err() && Instant::now() - start < TOTAL_TIMEOUT {
-        new_balance = get_event_nonce(gravity_contract_address, caller_address, web3).await;
+    let mut new_event_nonce = Err(Web3Error::BadInput("Intentional Error".to_string()));
+    while new_event_nonce.is_err() && Instant::now() - start < TOTAL_TIMEOUT {
+        new_event_nonce = get_event_nonce(gravity_contract_address, caller_address, web3).await;
         // only keep trying if our error is gas related
-        if let Err(ref e) = new_balance {
+        if let Err(ref e) = new_event_nonce {
             if !e.to_string().contains("maxFeePerGas") {
                 break;
             }
         }
     }
-    Ok(new_balance.unwrap())
+    Ok(new_event_nonce.unwrap())
 }
 
 /// waits for the cosmos chain to start producing blocks, used to prevent race conditions
