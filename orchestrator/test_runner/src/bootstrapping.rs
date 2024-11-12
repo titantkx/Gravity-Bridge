@@ -423,8 +423,7 @@ pub fn run_ibc_relayer(hermes_base: &mut Command, full_scan: bool) {
     }
 }
 
-// starts up the IBC relayer (hermes) in a background thread
-pub async fn start_ibc_relayer(
+pub async fn prepare_ibc_relayer(
     gravity_contact: &Contact,
     ibc_contact: &Contact,
     keys: &[ValidatorKeys],
@@ -489,6 +488,17 @@ pub async fn start_ibc_relayer(
         );
         create_ibc_channel(hermes_base);
     }
+}
+
+// starts up the IBC relayer (hermes) in a background thread
+pub async fn start_ibc_relayer(
+    gravity_contact: &Contact,
+    ibc_contact: &Contact,
+    keys: &[ValidatorKeys],
+    ibc_keys: &[IBCPrivateKey],
+) {
+    prepare_ibc_relayer(gravity_contact, ibc_contact, keys, ibc_keys).await;
+    info!("test-runner starting IBC relayer mode: start hermes");
     thread::spawn(|| {
         let mut hermes_base = Command::new("hermes");
         let hermes_base = hermes_base
