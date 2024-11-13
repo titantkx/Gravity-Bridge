@@ -65,10 +65,12 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // Specifies what fraction of the SendToEth `chain_fee` amount should go to the auction pool.
 // e.g. "0.5" gives a 50% auction pool / staker split while "0.9" would cause 90% of the fee to go to the pool
 type Params struct {
-	SignedValsetsWindow          uint64                                 `protobuf:"varint,1,opt,name=signed_valsets_window,json=signedValsetsWindow,proto3" json:"signed_valsets_window,omitempty"`
-	SignedBatchesWindow          uint64                                 `protobuf:"varint,2,opt,name=signed_batches_window,json=signedBatchesWindow,proto3" json:"signed_batches_window,omitempty"`
-	SignedLogicCallsWindow       uint64                                 `protobuf:"varint,3,opt,name=signed_logic_calls_window,json=signedLogicCallsWindow,proto3" json:"signed_logic_calls_window,omitempty"`
-	TargetBatchTimeout           uint64                                 `protobuf:"varint,4,opt,name=target_batch_timeout,json=targetBatchTimeout,proto3" json:"target_batch_timeout,omitempty"`
+	SignedValsetsWindow    uint64 `protobuf:"varint,1,opt,name=signed_valsets_window,json=signedValsetsWindow,proto3" json:"signed_valsets_window,omitempty"`
+	SignedBatchesWindow    uint64 `protobuf:"varint,2,opt,name=signed_batches_window,json=signedBatchesWindow,proto3" json:"signed_batches_window,omitempty"`
+	SignedLogicCallsWindow uint64 `protobuf:"varint,3,opt,name=signed_logic_calls_window,json=signedLogicCallsWindow,proto3" json:"signed_logic_calls_window,omitempty"`
+	// batch timeout in miliseconds
+	TargetBatchTimeout uint64 `protobuf:"varint,4,opt,name=target_batch_timeout,json=targetBatchTimeout,proto3" json:"target_batch_timeout,omitempty"`
+	// average block time in miliseconds of Gravity chain
 	AverageBlockTime             uint64                                 `protobuf:"varint,5,opt,name=average_block_time,json=averageBlockTime,proto3" json:"average_block_time,omitempty"`
 	SlashFractionValset          github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,6,opt,name=slash_fraction_valset,json=slashFractionValset,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"slash_fraction_valset"`
 	SlashFractionBatch           github_com_cosmos_cosmos_sdk_types.Dec `protobuf:"bytes,7,opt,name=slash_fraction_batch,json=slashFractionBatch,proto3,customtype=github.com/cosmos/cosmos-sdk/types.Dec" json:"slash_fraction_batch"`

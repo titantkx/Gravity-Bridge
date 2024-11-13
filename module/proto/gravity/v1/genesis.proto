@@ -113,9 +113,11 @@ message Params {
   uint64 signed_valsets_window     = 1;
   uint64 signed_batches_window     = 2;
   uint64 signed_logic_calls_window = 3;
-  uint64 target_batch_timeout      = 4;
-  uint64 average_block_time        = 5;
-  bytes  slash_fraction_valset     = 6
+  // batch timeout in miliseconds
+  uint64 target_batch_timeout = 4;
+  // average block time in miliseconds of Gravity chain
+  uint64 average_block_time    = 5;
+  bytes  slash_fraction_valset = 6
       [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
   bytes slash_fraction_batch = 7
       [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];

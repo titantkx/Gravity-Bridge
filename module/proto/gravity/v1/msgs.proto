@@ -221,7 +221,7 @@ message MsgExecuteIbcAutoForwardsResponse {}
 message MsgRetryIbcAutoForwards {
   string          sender           = 1;  // This message's sender
   string          evm_chain_prefix = 2;  // auto forward for a specific chain
-  repeated uint64 event_nonces     = 3 [(gogoproto.nullable) = false];
+  repeated uint64 event_nonces     = 3;
 }
 
 message MsgRetryIbcAutoForwardsResponse {}
