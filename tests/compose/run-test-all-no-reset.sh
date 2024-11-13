@@ -18,6 +18,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # this test is disabled because it only can run once (hardcode tokenId)
 # "$DIR"/run-test.sh ERC721_HAPPY_PATH
 "$DIR"/run-test.sh IBC_AUTO_FORWARD
+"$DIR"/run-test.sh IBC_AUTO_FORWARD_RETRY
 "$DIR"/run-test.sh IBC_AUTO_SEND_ETH
 "$DIR"/run-test.sh ETHEREUM_KEYS
 "$DIR"/run-test.sh ORCHESTRATOR_KEYS

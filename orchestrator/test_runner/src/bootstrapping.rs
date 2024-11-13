@@ -42,6 +42,7 @@ use std::{
     io::{BufRead, BufReader, Read, Write},
     process::ExitStatus,
 };
+use sysinfo::System;
 
 /// Ethereum private keys for the validators are generated using the gravity eth_keys add command
 /// and dumped into a file /validator-eth-keys in the container, from there they are then used by
@@ -423,6 +424,33 @@ pub fn run_ibc_relayer(hermes_base: &mut Command, full_scan: bool) {
     }
 }
 
+pub fn stop_ibc_relayer_process() {
+    info!("test-runner stoping IBC relayer mode: kill hermes");
+    let mut system = System::new_all();
+    system.refresh_all();
+
+    for (pid, process) in system.processes() {
+        if process.name() == "hermes" {
+            println!("Killing process: {:?} with PID: {}", process.name(), pid);
+            if process.kill() {
+                eprintln!("Failed to kill process {}", pid);
+            }
+        }
+    }
+}
+
+pub fn start_ibc_relayer_process() {
+    info!("test-runner starting IBC relayer mode: start hermes");
+    thread::spawn(|| {
+        let mut hermes_base = Command::new("hermes");
+        let hermes_base = hermes_base
+            .arg("--config")
+            .arg((*HERMES_CONFIG).to_string());
+        run_ibc_relayer(hermes_base, true); // likely will not return from here, just keep running
+    });
+    info!("Running ibc relayer in the background, directing output to /ibc-relayer-logs");
+}
+
 pub async fn prepare_ibc_relayer(
     gravity_contact: &Contact,
     ibc_contact: &Contact,
@@ -462,7 +490,7 @@ pub async fn prepare_ibc_relayer(
         )
         .await
         .unwrap();
-    info!("test-runner starting IBC relayer mode: init hermes, create ibc channel, start hermes");
+    info!("test-runner starting IBC relayer mode: init hermes, create ibc channel");
     let mut hermes_base = Command::new("hermes");
     let hermes_base = hermes_base
         .arg("--config")
@@ -498,13 +526,5 @@ pub async fn start_ibc_relayer(
     ibc_keys: &[IBCPrivateKey],
 ) {
     prepare_ibc_relayer(gravity_contact, ibc_contact, keys, ibc_keys).await;
-    info!("test-runner starting IBC relayer mode: start hermes");
-    thread::spawn(|| {
-        let mut hermes_base = Command::new("hermes");
-        let hermes_base = hermes_base
-            .arg("--config")
-            .arg((*HERMES_CONFIG).to_string());
-        run_ibc_relayer(hermes_base, true); // likely will not return from here, just keep running
-    });
-    info!("Running ibc relayer in the background, directing output to /ibc-relayer-logs");
+    start_ibc_relayer_process();
 }
