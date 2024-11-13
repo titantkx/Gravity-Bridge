@@ -142,6 +142,7 @@ func TestMsgBatchSendToEthClaimHash(t *testing.T) {
 		BatchNonce:     0,
 		TokenContract:  "",
 		Orchestrator:   "",
+		EvmChainPrefix: "",
 	}
 
 	orchestrator := NonemptySdkAccAddress()
@@ -218,6 +219,7 @@ func TestMsgLogicCallExecutedClaimHash(t *testing.T) {
 		InvalidationId:    []byte{},
 		InvalidationNonce: 0,
 		Orchestrator:      "",
+		EvmChainPrefix:    "",
 	}
 
 	orchestrator := NonemptySdkAccAddress()

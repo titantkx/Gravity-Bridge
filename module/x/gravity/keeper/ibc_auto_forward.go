@@ -411,7 +411,7 @@ func (k Keeper) retryFailedIbcAutoForward(ctx sdk.Context, evmChainPrefix string
 		coin = fallbackBal
 	}
 
-	timeoutTime := thirtyDaysInFuture(ctx) // Set the ibc transfer to expire ~one month from now
+	timeoutTime := k.getIbcTimeout(ctx) // Set the ibc transfer to expire
 	msgTransfer := createIbcMsgTransfer(portId, *failedForward.IbcPacket, fallback.String(), uint64(timeoutTime.UnixNano()))
 
 	// override token with `coin`
@@ -490,8 +490,7 @@ func (k Keeper) ProcessNextPendingIbcAutoForward(ctx sdk.Context, evmChainPrefix
 		return false, k.SendToCommunityPool(ctx, coins)
 	}
 
-	timeoutTime := thirtyDaysInFuture(ctx) // Set the ibc transfer to expire ~one month from now
-
+	timeoutTime := k.getIbcTimeout(ctx) // Set the ibc transfer to expire
 	msgTransfer := createIbcMsgTransfer(portId, *forward, fallback.String(), uint64(timeoutTime.UnixNano()))
 
 	// Make the ibc-transfer attempt
@@ -552,11 +551,15 @@ func createIbcMsgTransfer(portId string, forward types.PendingIbcAutoForward, se
 	return msgTransfer
 }
 
-// thirtyDaysInFuture creates a time.Time exactly 30 days from the last BlockTime for use in createIbcMsgTransfer
-func thirtyDaysInFuture(ctx sdk.Context) time.Time {
+func (k Keeper) getIbcTimeout(ctx sdk.Context) time.Time {
 	approxNow := ctx.BlockTime()
-	// Get the offset from zero of 30 days in the future
-	return approxNow.Add(time.Hour * 24 * 30)
+	timeout := time.Hour * 24 * 30
+	params, err := k.GetParamsIfSet(ctx)
+	if err == nil {
+		// The params have been set, get the ibc auto forward timeout from the params
+		timeout = time.Millisecond * time.Duration(params.IbcAutoForwardTimeout)
+	}
+	return approxNow.Add(timeout)
 }
 
 // logEmitIbcForwardExecutedEvent logs for successful IBC Auto-Forwarding and emits a

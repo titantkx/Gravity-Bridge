@@ -1,6 +1,7 @@
 package types
 
 import (
+	"math"
 	"testing"
 
 	types "github.com/cosmos/cosmos-sdk/types"
@@ -40,6 +41,7 @@ func TestGenesisStateValidate(t *testing.T) {
 						AverageEthereumBlockTime: 0,
 					},
 				},
+				IbcAutoForwardTimeout: 0,
 			},
 			EvmChains: []EvmChainData{},
 		}, expErr: true},
@@ -69,6 +71,36 @@ func TestGenesisStateValidate(t *testing.T) {
 						AverageEthereumBlockTime: 0,
 					},
 				},
+			},
+			EvmChains: []EvmChainData{},
+		}, expErr: true},
+		"invalid ibc auto forward timeout params": {src: &GenesisState{
+			Params: &Params{
+				SignedValsetsWindow:    0,
+				SignedBatchesWindow:    0,
+				SignedLogicCallsWindow: 0,
+				TargetBatchTimeout:     0,
+				AverageBlockTime:       0,
+
+				SlashFractionValset:          types.Dec{},
+				SlashFractionBatch:           types.Dec{},
+				SlashFractionLogicCall:       types.Dec{},
+				UnbondSlashingValsetsWindow:  0,
+				SlashFractionBadEthSignature: types.Dec{},
+				ValsetReward: types.Coin{
+					Denom:  "",
+					Amount: types.Int{},
+				},
+				EvmChainParams: []*EvmChainParam{
+					{
+						GravityId:                "",
+						ContractSourceHash:       "",
+						BridgeEthereumAddress:    "",
+						BridgeChainId:            0,
+						AverageEthereumBlockTime: 0,
+					},
+				},
+				IbcAutoForwardTimeout: math.MaxInt64 + 1,
 			},
 			EvmChains: []EvmChainData{},
 		}, expErr: true},

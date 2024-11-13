@@ -132,6 +132,9 @@ message Params {
       [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Dec", (gogoproto.nullable) = false];
 
   repeated EvmChainParam evm_chain_params = 14;
+
+  // timeout in miliseconds for auto forwarding IBC transfers
+  uint64 ibc_auto_forward_timeout = 15;
 }
 
 // EvmChain Params
