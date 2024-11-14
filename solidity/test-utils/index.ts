@@ -1,5 +1,5 @@
 import { Signer } from "ethers";
-import hre, { ethers } from "hardhat";
+import hre, { ethers, upgrades } from "hardhat";
 
 import { Gravity } from "../typechain/Gravity";
 import { TestERC20A } from "../typechain/TestERC20A";
@@ -46,4 +46,23 @@ export async function deployContracts(
   await gravity.deployed();
 
   return { gravity, testERC20, checkpoint };
+}
+
+export async function upgradeProxy(
+  proxyAddress: string,
+  contractName: string,
+  caller?: Signer
+): Promise<Gravity> {
+  let Contract = await ethers.getContractFactory(contractName);
+  if (caller) {
+    Contract = Contract.connect(caller);
+  }
+  // upgrades.silenceWarnings();
+  const contract = await upgrades.upgradeProxy(proxyAddress, Contract, {
+    kind: "uups",
+    unsafeAllow: []
+  });
+
+  await contract.deployed();
+  return contract as Gravity;
 }

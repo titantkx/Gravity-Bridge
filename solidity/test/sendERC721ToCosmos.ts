@@ -128,19 +128,19 @@ describe("sendERC721ToCosmos tests", function () {
 
   it("throws on Wrong NFT owner", async function () {
     await expect(runTest({ wrongERC721Owner: true })).to.be.revertedWith(
-      "ERC721: transfer caller is not owner nor approved"
+      "ERC721: caller is not token owner or approved"
     );
   });
 
   it("throws on NFT not in contract", async function () {
     await expect(runTest({ ERC721NotInContract: true })).to.be.revertedWith(
-      "ERC721: transfer of token that is not own"
+      "ERC721: transfer from incorrect owner"
     );
   });
 
   it("throws on nonexistent token", async function () {
     await expect(runTest({ ERC721NotExist: true })).to.be.revertedWith(
-      "ERC721: operator query for nonexistent token"
+      "ERC721: invalid token ID"
     );
   });
 });
