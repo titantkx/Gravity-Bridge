@@ -1,8 +1,7 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { ethers } from "hardhat";
-import { SimpleLogicBatchMiddleware } from "../typechain/SimpleLogicBatchMiddleware";
-import { TestLogicContract } from "../typechain/TestLogicContract";
+import { SimpleLogicBatchMiddleware, TestLogicContract } from "../typechain";
 
 import { deployContracts } from "../test-utils";
 import {

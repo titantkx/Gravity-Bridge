@@ -5,12 +5,15 @@ import fs from "fs";
 import hre, { ethers } from "hardhat";
 import { exit } from "process";
 
-import { Gravity } from "./typechain/Gravity";
-import { GravityERC721 } from "./typechain/GravityERC721";
-import { TestERC20A } from "./typechain/TestERC20A";
-import { TestERC20B } from "./typechain/TestERC20B";
-import { TestERC20C } from "./typechain/TestERC20C";
-import { TestERC721A } from "./typechain/TestERC721A";
+import "./hardhat.config";
+import {
+  Gravity,
+  GravityERC721,
+  TestERC20A,
+  TestERC20B,
+  TestERC20C,
+  TestERC721A
+} from "./typechain";
 
 const args = commandLineArgs([
   // the ethernum node used to deploy the contract
@@ -141,6 +144,24 @@ async function deploy() {
     const main_location_721_a =
       "/gravity/solidity/artifacts/contracts/TestERC721A.sol/TestERC721A.json";
 
+    const main_location_2_a =
+      "solidity/artifacts/contracts/TestERC20A.sol/TestERC20A.json";
+    const main_location_2_b =
+      "solidity/artifacts/contracts/TestERC20B.sol/TestERC20B.json";
+    const main_location_2_c =
+      "solidity/artifacts/contracts/TestERC20C.sol/TestERC20C.json";
+    const main_location_2_721_a =
+      "solidity/artifacts/contracts/TestERC721A.sol/TestERC721A.json";
+
+    const main_location_3_a =
+      "artifacts/contracts/TestERC20A.sol/TestERC20A.json";
+    const main_location_3_b =
+      "artifacts/contracts/TestERC20B.sol/TestERC20B.json";
+    const main_location_3_c =
+      "artifacts/contracts/TestERC20C.sol/TestERC20C.json";
+    const main_location_3_721_a =
+      "artifacts/contracts/TestERC721A.sol/TestERC721A.json";
+
     const alt_location_1_a = "/solidity/TestERC20A.json";
     const alt_location_1_b = "/solidity/TestERC20B.json";
     const alt_location_1_c = "/solidity/TestERC20C.json";
@@ -156,6 +177,16 @@ async function deploy() {
       erc20_b_path = main_location_b;
       erc20_c_path = main_location_c;
       erc721_a_path = main_location_721_a;
+    } else if (fs.existsSync(main_location_2_a)) {
+      erc20_a_path = main_location_2_a;
+      erc20_b_path = main_location_2_b;
+      erc20_c_path = main_location_2_c;
+      erc721_a_path = main_location_2_721_a;
+    } else if (fs.existsSync(main_location_3_a)) {
+      erc20_a_path = main_location_3_a;
+      erc20_b_path = main_location_3_b;
+      erc20_c_path = main_location_3_c;
+      erc721_a_path = main_location_3_721_a;
     } else if (fs.existsSync(alt_location_1_a)) {
       erc20_a_path = alt_location_1_a;
       erc20_b_path = alt_location_1_b;

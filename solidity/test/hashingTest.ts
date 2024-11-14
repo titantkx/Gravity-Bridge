@@ -2,7 +2,7 @@ import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
-import { HashingTest } from "../typechain/HashingTest";
+import { HashingTest } from "../typechain";
 
 import { getSignerAddresses } from "../test-utils/pure";
 

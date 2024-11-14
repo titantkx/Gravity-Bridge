@@ -1,8 +1,7 @@
 import { Signer } from "ethers";
 import hre, { ethers, upgrades } from "hardhat";
 
-import { Gravity } from "../typechain/Gravity";
-import { TestERC20A } from "../typechain/TestERC20A";
+import { Gravity, TestERC20A } from "../typechain";
 import { getSignerAddresses, makeCheckpoint, ZeroAddress } from "./pure";
 
 type DeployContractsOptions = {

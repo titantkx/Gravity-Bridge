@@ -1,9 +1,7 @@
 import { Signer } from "ethers";
 import { ethers } from "hardhat";
 
-import { GravityERC721 } from "../typechain/GravityERC721";
-import { TestERC721A } from "../typechain/TestERC721A";
-import { TestFakeGravity } from "../typechain/TestFakeGravity";
+import { GravityERC721, TestERC721A, TestFakeGravity } from "../typechain";
 import { deployContracts } from "./index";
 import { getSignerAddresses } from "./pure";
 

@@ -8,7 +8,7 @@ import {
   signHash,
   ZeroAddress
 } from "../test-utils/pure";
-import { GravityERC721 } from "../typechain/GravityERC721";
+import { GravityERC721 } from "../typechain";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -61,9 +61,7 @@ async function runTest(opts: {
   for (let i = 0; i < numTxs; i++) {
     await testERC721.functions.approve(gravityERC721.address, 1 + i);
     if (!opts.ERC721NotInContract) {
-      await gravityERC721.functions[
-        "sendERC721ToCosmos(address,string,uint256)"
-      ](
+      await gravityERC721.sendERC721ToCosmos(
         testERC721.address,
         ethers.utils.formatBytes32String("myCosmosAddress"),
         1 + i
