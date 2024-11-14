@@ -14,7 +14,6 @@ import (
 var _ types.QueryServer = Keeper{}
 
 const (
-	MERCURY_UPGRADE_HEIGHT   uint64 = 1282013
 	QUERY_ATTESTATIONS_LIMIT uint64 = 1000
 )
 
@@ -522,4 +521,36 @@ func (k Keeper) GetListEvmChains(
 	ctx := sdk.UnwrapSDKContext(c)
 	evmChains := k.GetEvmChainsWithLimit(ctx, req.Limit)
 	return &types.QueryListEvmChainsResponse{EvmChains: evmChains}, nil
+}
+
+func (k Keeper) GetSendingIbcAutoForwards(
+	c context.Context,
+	req *types.QuerySendingIbcAutoForwards,
+) (*types.QuerySendingIbcAutoForwardsResponse, error) {
+	ctx := sdk.UnwrapSDKContext(c)
+	pendingForwards := k.SendingIbcAutoForwards(ctx, req.Limit)
+	return &types.QuerySendingIbcAutoForwardsResponse{SendingIbcAutoForwards: pendingForwards}, nil
+}
+
+func (k Keeper) GetFailedIbcAutoForwards(
+	c context.Context,
+	req *types.QueryFailedIbcAutoForwards,
+) (*types.QueryFailedIbcAutoForwardsResponse, error) {
+	ctx := sdk.UnwrapSDKContext(c)
+
+	findExact := req.EventNonce > 0
+
+	if findExact {
+		failedForward, err := k.FailedIbcAutoForward(ctx, req.EvmChainPrefix, req.EventNonce)
+		// check if err is NotFound
+		if err != nil && sdkerrors.IsOf(err, sdkerrors.ErrKeyNotFound) {
+			return &types.QueryFailedIbcAutoForwardsResponse{FailedIbcAutoForwards: []*types.FailedIbcAutoForward{}}, nil
+		} else if err != nil {
+			return nil, err
+		}
+		return &types.QueryFailedIbcAutoForwardsResponse{FailedIbcAutoForwards: []*types.FailedIbcAutoForward{failedForward}}, nil
+	}
+
+	failedForwards := k.FailedIbcAutoForwards(ctx, req.EvmChainPrefix, req.Limit)
+	return &types.QueryFailedIbcAutoForwardsResponse{FailedIbcAutoForwards: failedForwards}, nil
 }

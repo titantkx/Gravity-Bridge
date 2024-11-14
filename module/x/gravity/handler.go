@@ -41,6 +41,9 @@ func NewHandler(k keeper.Keeper) sdk.Handler {
 		case *types.MsgExecuteIbcAutoForwards:
 			res, err := msgServer.ExecuteIbcAutoForwards(sdk.WrapSDKContext(ctx), msg)
 			return sdk.WrapServiceResult(ctx, res, err)
+		case *types.MsgRetryIbcAutoForwards:
+			res, err := msgServer.RetryIbcAutoForwards(sdk.WrapSDKContext(ctx), msg)
+			return sdk.WrapServiceResult(ctx, res, err)
 		case *types.MsgBatchSendToEthClaim:
 			res, err := msgServer.BatchSendToEthClaim(sdk.WrapSDKContext(ctx), msg)
 			return sdk.WrapServiceResult(ctx, res, err)

@@ -21,10 +21,6 @@ func TestQueryGetAttestations(t *testing.T) {
 	ctx := input.Context
 	evmChain := input.GravityKeeper.GetEvmChainData(ctx, keeper.EthChainPrefix)
 
-	// Some query functions use additional logic to determine if they should look up values using the v1 key, or the new
-	// hashed bytes keys used post-Mercury, so we must set the block height high enough here for the correct data to be found
-	ctx = ctx.WithBlockHeight(int64(keeper.MERCURY_UPGRADE_HEIGHT) + ctx.BlockHeight())
-
 	queryHelper := baseapp.NewQueryServerTestHelper(ctx, encCfg.InterfaceRegistry)
 	types.RegisterQueryServer(queryHelper, k)
 	queryClient := types.NewQueryClient(queryHelper)
@@ -149,6 +145,7 @@ func createAttestations(t *testing.T, k keeper.Keeper, ctx sdk.Context, evmChain
 			CosmosReceiver: "0x00000000000000000003",
 			Orchestrator:   "0x00000000000000000004",
 			EvmChainPrefix: evmChainPrefix,
+			Memo:           "foo",
 		}
 
 		any, err := codectypes.NewAnyWithValue(&msg)
@@ -165,5 +162,59 @@ func createAttestations(t *testing.T, k keeper.Keeper, ctx sdk.Context, evmChain
 		require.NoError(t, err)
 
 		k.SetAttestation(ctx, evmChainPrefix, nonce, hash, att)
+	}
+}
+
+func TestQueryFailedIbcAutoForwards(t *testing.T) {
+	input := keeper.CreateTestEnv(t)
+	encCfg := app.MakeEncodingConfig()
+	k := input.GravityKeeper
+	ctx := input.Context
+	evmChain := input.GravityKeeper.GetEvmChainData(ctx, keeper.EthChainPrefix)
+
+	queryHelper := baseapp.NewQueryServerTestHelper(ctx, encCfg.InterfaceRegistry)
+	types.RegisterQueryServer(queryHelper, k)
+	queryClient := types.NewQueryClient(queryHelper)
+
+	testCases := []struct {
+		name      string
+		req       *types.QueryFailedIbcAutoForwards
+		numResult int
+		expectErr bool
+	}{
+		{
+			name: "query by evm chain prefix only",
+			req: &types.QueryFailedIbcAutoForwards{
+				EvmChainPrefix: evmChain.EvmChainPrefix,
+				EventNonce:     0,
+				Limit:          0,
+			},
+			numResult: 0,
+			expectErr: false,
+		}, {
+			name: "query by evm chain prefix and event nonce",
+			req: &types.QueryFailedIbcAutoForwards{
+				EvmChainPrefix: evmChain.EvmChainPrefix,
+				EventNonce:     1,
+				Limit:          0,
+			},
+			numResult: 0,
+			expectErr: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := queryClient.GetFailedIbcAutoForwards(gocontext.Background(), tc.req)
+
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Len(t, result.FailedIbcAutoForwards, tc.numResult)
+			}
+		})
 	}
 }

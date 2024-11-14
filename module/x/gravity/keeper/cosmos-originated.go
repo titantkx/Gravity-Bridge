@@ -98,9 +98,6 @@ func (k Keeper) RewardToERC20Lookup(ctx sdk.Context, evmChainPrefix string, coin
 			// We'll classify that as operator error and just panic
 			panic("Invalid Valset reward! Correct or remove the paramater value")
 		}
-		if err != nil {
-			panic("Invalid Valset reward! Correct or remove the paramater value")
-		}
 		return address, coin.Amount
 	}
 }

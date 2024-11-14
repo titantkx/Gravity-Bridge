@@ -156,6 +156,14 @@ var (
 	// [0x5b89a7c5dc9abd2a7abc2560d6eb42ea]
 	PendingIbcAutoForwards = HashString("IbcAutoForwardQueue")
 
+	// sending_ibc_auto_forwards indexes sending auto forward packets
+	// [0x93cac8c5d9bcb9b02ed9bb2483d142b0]
+	SendingIbcAutoForwards = HashString("IbcAutoForwardSending")
+
+	// failed_ibc_auto_forwards indexes failed auto forward packets
+	// [0x7dff96525eb513de819230a806c0317f]
+	FailedIbcAutoForwards = HashString("IbcAutoForwardFailed")
+
 	// EvmChainKey indexes EVM chains supported on cosmos
 	// [0x0a4fce7411f743f9198f56c8f706cd0d]
 	EvmChainKey = HashString("EvmChainKey")
@@ -328,6 +336,21 @@ func GetPastEthSignatureCheckpointKey(evmChainPrefix string, checkpoint []byte) 
 // [0x0][chain][0 0 0 0 0 0 0 1]
 func GetPendingIbcAutoForwardKey(evmChainPrefix string, eventNonce uint64) []byte {
 	return AppendBytes(PendingIbcAutoForwards, []byte(evmChainPrefix), UInt64Bytes(eventNonce))
+}
+
+// GetSendingIbcAutoForwardKey returns the following key format
+// prefix    ibc_channel		ibc_sequence
+// [0x0][channel][0 0 0 0 0 0 0 1]
+// key index by channel and sequence allow ibc_middleware error callback can find correct IbcAutoForward packet data
+func GetSendingIbcAutoForwardKey(channel string, sequence uint64) []byte {
+	return AppendBytes(SendingIbcAutoForwards, []byte(channel), UInt64Bytes(sequence))
+}
+
+// SetFailedIbcAutoForwardKey returns the following key format
+// prefix    chain		EventNonce
+// [0x0][chain][0 0 0 0 0 0 0 1]
+func GetFailedIbcAutoForwardKey(evmChainPrefix string, eventNonce uint64) []byte {
+	return AppendBytes(FailedIbcAutoForwards, []byte(evmChainPrefix), UInt64Bytes(eventNonce))
 }
 
 // GetEvmChainKey returns the following key format

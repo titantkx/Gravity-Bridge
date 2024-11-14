@@ -31,6 +31,9 @@ service Msg {
   rpc ExecuteIbcAutoForwards(MsgExecuteIbcAutoForwards) returns (MsgExecuteIbcAutoForwardsResponse) {
     option (google.api.http).post = "/gravity/v1/execute_ibc_auto_forwards";
   }
+  rpc RetryIbcAutoForwards(MsgRetryIbcAutoForwards) returns (MsgRetryIbcAutoForwardsResponse) {
+    option (google.api.http).post = "/gravity/v1/retry_ibc_auto_forward";
+  }
   rpc BatchSendToEthClaim(MsgBatchSendToEthClaim) returns (MsgBatchSendToEthClaimResponse) {
     option (google.api.http).post = "/gravity/v1/batch_send_to_eth_claim";
   }
@@ -212,6 +215,16 @@ message MsgExecuteIbcAutoForwards {
 }
 
 message MsgExecuteIbcAutoForwardsResponse {}
+
+// MsgRetryIbcAutoForwards
+// The Retrying forwards will be move forward request from failed list to pending list
+message MsgRetryIbcAutoForwards {
+  string          sender           = 1;  // This message's sender
+  string          evm_chain_prefix = 2;  // auto forward for a specific chain
+  repeated uint64 event_nonces     = 3;
+}
+
+message MsgRetryIbcAutoForwardsResponse {}
 
 // BatchSendToEthClaim claims that a batch of send to eth
 // operations on the bridge contract was executed.

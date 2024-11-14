@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+set -exo pipefail
 
 # if [ -z $GOPATH ]; then
 # 	echo "GOPATH not set!"
@@ -13,6 +13,10 @@ set -eo pipefail
 # fi
 
 COSMOS_SDK_DIR=${COSMOS_SDK_DIR:-$(go list -f "{{ .Dir }}" -m github.com/cosmos/cosmos-sdk)}
+
+# reinstall plugin to ensure we are using the correct version
+go install github.com/regen-network/cosmos-proto/protoc-gen-gocosmos
+go install github.com/grpc-ecosystem/grpc-gateway/protoc-gen-grpc-gateway@v1.16.0
 
 proto_dirs=$(find ./proto -path -prune -o -name '*.proto' -print0 | xargs -0 -n1 dirname | sort | uniq)
 for dir in $proto_dirs; do

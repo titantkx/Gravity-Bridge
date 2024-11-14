@@ -44,6 +44,7 @@ use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
 use happy_path::happy_path_test;
 use happy_path_v2::happy_path_test_v2;
 use happy_path_v2::happy_path_test_v2_native;
+use ibc_auto_forward_retry::ibc_auto_forward_retry_test;
 use lazy_static::lazy_static;
 use num::FromPrimitive;
 use orch_keys::orch_keys;
@@ -69,6 +70,7 @@ mod evidence_based_slashing;
 mod happy_path;
 mod happy_path_v2;
 mod ibc_auto_forward;
+mod ibc_auto_forward_retry;
 mod ibc_auto_send_eth;
 mod ibc_metadata;
 mod types;
@@ -295,6 +297,7 @@ pub async fn main() {
     let grpc_client = GravityQueryClient::connect(COSMOS_NODE_GRPC.as_str())
         .await
         .unwrap();
+
     let web30 = web30::client::Web3::new(ETH_NODE.as_str(), OPERATION_TIMEOUT);
     // keys for the primary test chain
     let keys = get_keys();
@@ -363,6 +366,7 @@ pub async fn main() {
     // UPGRADE_PART_2 upgrades the chain binaries and starts the upgraded chain after being halted in part 1
     // UPGRADE_ONLY performs an upgrade without making any testing assertions
     // IBC_AUTO_FORWARD tests ibc auto forwarding functionality.
+    // IBC_AUTO_FORWARD_RETRY tests ibc auto forwarding retry functionality.
     // IBC_AUTO_SEND_ETH tests ibc auto forwarding to eth functionality.
     // ETHERMINT_KEYS runs a gamut of transactions using a Ethermint key to test no loss of functionality
     // BATCH_TIMEOUT is a stress test for batch timeouts, setting an extremely agressive timeout value
@@ -639,6 +643,20 @@ pub async fn main() {
                 &web30,
                 grpc_client,
                 &gravity_contact,
+                keys,
+                ibc_keys,
+                gravity_address,
+                erc20_addresses[0],
+            )
+            .await;
+            return;
+        } else if test_type == "IBC_AUTO_FORWARD_RETRY" {
+            info!("Starting IBC Auto-Forward retry test");
+            ibc_auto_forward_retry_test(
+                &web30,
+                grpc_client,
+                &gravity_contact,
+                &ibc_contact,
                 keys,
                 ibc_keys,
                 gravity_address,

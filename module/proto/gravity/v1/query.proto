@@ -103,6 +103,14 @@ service Query {
   rpc GetListEvmChains(QueryListEvmChains) returns (QueryListEvmChainsResponse) {
     option (google.api.http).get = "/gravity/v1beta/query_list_evm_chains";
   }
+
+  rpc GetSendingIbcAutoForwards(QuerySendingIbcAutoForwards) returns (QuerySendingIbcAutoForwardsResponse) {
+    option (google.api.http).get = "/gravity/v1beta/query_sending_ibc_auto_forwards";
+  }
+
+  rpc GetFailedIbcAutoForwards(QueryFailedIbcAutoForwards) returns (QueryFailedIbcAutoForwardsResponse) {
+    option (google.api.http).get = "/gravity/v1beta/query_failed_ibc_auto_forwards";
+  }
 }
 
 message QueryParamsRequest {}
@@ -349,4 +357,24 @@ message QueryListEvmChains {
 
 message QueryListEvmChainsResponse {
   repeated EvmChain evm_chains = 1 [(gogoproto.nullable) = false];
+}
+
+message QuerySendingIbcAutoForwards {
+  // limit defines the number of sending forwards to return
+  uint64 limit = 1;
+}
+
+message QuerySendingIbcAutoForwardsResponse {
+  repeated SendingIbcAutoForward sending_ibc_auto_forwards = 1;
+}
+
+message QueryFailedIbcAutoForwards {
+  // limit defines the number of failed forwards to return
+  uint64 limit            = 1;
+  string evm_chain_prefix = 2;
+  uint64 event_nonce      = 3;
+}
+
+message QueryFailedIbcAutoForwardsResponse {
+  repeated FailedIbcAutoForward failed_ibc_auto_forwards = 1;
 }

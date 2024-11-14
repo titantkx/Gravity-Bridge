@@ -117,6 +117,48 @@ pub struct EventSendToCosmosExecutedIbcAutoForward {
     pub timeout_time: ::prost::alloc::string::String,
     #[prost(string, tag = "7")]
     pub timeout_height: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(string, tag = "9")]
+    pub ibc_sequence: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EventSendToCosmosFailedIbcAutoForward {
+    #[prost(string, tag = "1")]
+    pub nonce: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub receiver: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub token: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub channel: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub ibc_sequence: ::prost::alloc::string::String,
+    #[prost(string, tag = "8")]
+    pub reason: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EventSendToCosmosSucceededIbcAutoForward {
+    #[prost(string, tag = "1")]
+    pub nonce: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub receiver: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub token: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub channel: ::prost::alloc::string::String,
+    #[prost(string, tag = "6")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(string, tag = "7")]
+    pub ibc_sequence: ::prost::alloc::string::String,
 }
 /// ClaimType is the cosmos type of an event from the counterpart chain that can
 /// be handled
@@ -443,6 +485,28 @@ pub struct PendingIbcAutoForward {
     #[prost(string, tag = "5")]
     pub memo: ::prost::alloc::string::String,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SendingIbcAutoForward {
+    #[prost(message, optional, tag = "1")]
+    pub ibc_packet: ::core::option::Option<PendingIbcAutoForward>,
+    #[prost(string, tag = "2")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub sequence: u64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FailedIbcAutoForward {
+    #[prost(message, optional, tag = "1")]
+    pub ibc_packet: ::core::option::Option<PendingIbcAutoForward>,
+    #[prost(string, tag = "2")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub sequence: u64,
+    #[prost(string, tag = "4")]
+    pub reason: ::prost::alloc::string::String,
+}
 /// MsgSetOrchestratorAddress
 /// this message allows validators to delegate their voting responsibilities
 /// to a given key. This key is then used as an optional authentication method
@@ -662,6 +726,23 @@ pub struct MsgExecuteIbcAutoForwards {
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct MsgExecuteIbcAutoForwardsResponse {}
+/// MsgRetryIbcAutoForwards
+/// The Retrying forwards will be move forward request from failed list to pending list
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MsgRetryIbcAutoForwards {
+    /// This message's sender
+    #[prost(string, tag = "1")]
+    pub sender: ::prost::alloc::string::String,
+    /// auto forward for a specific chain
+    #[prost(string, tag = "2")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(uint64, repeated, packed = "false", tag = "3")]
+    pub event_nonces: ::prost::alloc::vec::Vec<u64>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MsgRetryIbcAutoForwardsResponse {}
 /// BatchSendToEthClaim claims that a batch of send to eth
 /// operations on the bridge contract was executed.
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1117,6 +1198,28 @@ pub mod msg_client {
             );
             self.inner.unary(request.into_request(), path, codec).await
         }
+        pub async fn retry_ibc_auto_forwards(
+            &mut self,
+            request: impl tonic::IntoRequest<super::MsgRetryIbcAutoForwards>,
+        ) -> Result<
+            tonic::Response<super::MsgRetryIbcAutoForwardsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/gravity.v1.Msg/RetryIbcAutoForwards",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
         pub async fn batch_send_to_eth_claim(
             &mut self,
             request: impl tonic::IntoRequest<super::MsgBatchSendToEthClaim>,
@@ -1376,6 +1479,8 @@ pub struct GenesisState {
     pub params: ::core::option::Option<Params>,
     #[prost(message, repeated, tag = "2")]
     pub evm_chains: ::prost::alloc::vec::Vec<EvmChainData>,
+    #[prost(message, repeated, tag = "3")]
+    pub sending_ibc_auto_forwards: ::prost::alloc::vec::Vec<SendingIbcAutoForward>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1406,6 +1511,8 @@ pub struct EvmChainData {
     pub unbatched_transfers: ::prost::alloc::vec::Vec<OutgoingTransferTx>,
     #[prost(message, repeated, tag = "13")]
     pub pending_ibc_auto_forwards: ::prost::alloc::vec::Vec<PendingIbcAutoForward>,
+    #[prost(message, repeated, tag = "14")]
+    pub failed_ibc_auto_forwards: ::prost::alloc::vec::Vec<FailedIbcAutoForward>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -1860,6 +1967,36 @@ pub struct QueryListEvmChains {
 pub struct QueryListEvmChainsResponse {
     #[prost(message, repeated, tag = "1")]
     pub evm_chains: ::prost::alloc::vec::Vec<EvmChain>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QuerySendingIbcAutoForwards {
+    /// limit defines the number of sending forwards to return
+    #[prost(uint64, tag = "1")]
+    pub limit: u64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QuerySendingIbcAutoForwardsResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub sending_ibc_auto_forwards: ::prost::alloc::vec::Vec<SendingIbcAutoForward>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryFailedIbcAutoForwards {
+    /// limit defines the number of failed forwards to return
+    #[prost(uint64, tag = "1")]
+    pub limit: u64,
+    #[prost(string, tag = "2")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(uint64, tag = "3")]
+    pub event_nonce: u64,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryFailedIbcAutoForwardsResponse {
+    #[prost(message, repeated, tag = "1")]
+    pub failed_ibc_auto_forwards: ::prost::alloc::vec::Vec<FailedIbcAutoForward>,
 }
 /// Generated client implementations.
 pub mod query_client {
@@ -2496,6 +2633,50 @@ pub mod query_client {
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
                 "/gravity.v1.Query/GetListEvmChains",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn get_sending_ibc_auto_forwards(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QuerySendingIbcAutoForwards>,
+        ) -> Result<
+            tonic::Response<super::QuerySendingIbcAutoForwardsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/gravity.v1.Query/GetSendingIbcAutoForwards",
+            );
+            self.inner.unary(request.into_request(), path, codec).await
+        }
+        pub async fn get_failed_ibc_auto_forwards(
+            &mut self,
+            request: impl tonic::IntoRequest<super::QueryFailedIbcAutoForwards>,
+        ) -> Result<
+            tonic::Response<super::QueryFailedIbcAutoForwardsResponse>,
+            tonic::Status,
+        > {
+            self.inner
+                .ready()
+                .await
+                .map_err(|e| {
+                    tonic::Status::new(
+                        tonic::Code::Unknown,
+                        format!("Service was not ready: {}", e.into()),
+                    )
+                })?;
+            let codec = tonic::codec::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/gravity.v1.Query/GetFailedIbcAutoForwards",
             );
             self.inner.unary(request.into_request(), path, codec).await
         }

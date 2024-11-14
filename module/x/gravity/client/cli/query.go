@@ -13,10 +13,11 @@ import (
 )
 
 const (
-	FlagOrder     = "order"
-	FlagClaimType = "claim-type"
-	FlagNonce     = "nonce"
-	FlagEthHeight = "eth-height"
+	FlagOrder       = "order"
+	FlagClaimType   = "claim-type"
+	FlagNonce       = "nonce"
+	FlagEthHeight   = "eth-height"
+	FlagIBCSequence = "sequence"
 )
 
 // GetQueryCmd bundles all the query subcmds together so they appear under `gravity query` or `gravity q`
@@ -42,6 +43,8 @@ func GetQueryCmd() *cobra.Command {
 		CmdGetLastObservedEthBlock(),
 		CmdGetLastObservedEthNonce(),
 		GetCmdQueryParams(),
+		GetCmdSendingIbcAutoForwards(),
+		GetCmdFailedIbcAutoForwards(),
 	}...)
 
 	return gravityQueryCmd
@@ -245,9 +248,9 @@ func CmdGetPendingSendToEth() *cobra.Command {
 func GetCmdPendingIbcAutoForwards() *cobra.Command {
 	// nolint: exhaustruct
 	cmd := &cobra.Command{
-		Use:   "pending-ibc-auto-forwards [optional limit]",
+		Use:   "pending-ibc-auto-forwards [evm chain prefix] [optional limit]",
 		Short: "Query SendToCosmos transactions waiting to be forwarded over IBC",
-		Args:  cobra.MaximumNArgs(1),
+		Args:  cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			clientCtx, err := client.GetClientQueryContext(cmd)
 			if err != nil {
@@ -255,16 +258,21 @@ func GetCmdPendingIbcAutoForwards() *cobra.Command {
 			}
 			queryClient := types.NewQueryClient(clientCtx)
 
+			evmChainPrefix := args[0]
+
 			var limit uint64 = 0
-			if args[0] != "" {
+			if args[1] != "" {
 				var err error
-				limit, err = strconv.ParseUint(args[0], 10, 0)
+				limit, err = strconv.ParseUint(args[1], 10, 0)
 				if err != nil {
-					return sdkerrors.Wrapf(err, "Unable to parse limit from %v", args[0])
+					return sdkerrors.Wrapf(err, "Unable to parse limit from %v", args[1])
 				}
 			}
 
-			req := &types.QueryPendingIbcAutoForwards{Limit: limit}
+			req := &types.QueryPendingIbcAutoForwards{
+				EvmChainPrefix: evmChainPrefix,
+				Limit:          limit,
+			}
 			res, err := queryClient.GetPendingIbcAutoForwards(cmd.Context(), req)
 			if err != nil {
 				return err
@@ -486,5 +494,91 @@ func GetCmdQueryParams() *cobra.Command {
 	}
 
 	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+// GetCmdSendingIbcAutoForwards fetches the next IBC auto forwards to be executed, up to an optional limit
+func GetCmdSendingIbcAutoForwards() *cobra.Command {
+	// nolint: exhaustruct
+	cmd := &cobra.Command{
+		Use:   "sending-ibc-auto-forwards [optional limit] ",
+		Short: "Query SendToCosmos transactions are forwarding over IBC",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			var limit uint64 = 0
+			if args[0] != "" {
+				var err error
+				limit, err = strconv.ParseUint(args[0], 10, 0)
+				if err != nil {
+					return sdkerrors.Wrapf(err, "Unable to parse limit from %v", args[0])
+				}
+			}
+
+			req := &types.QuerySendingIbcAutoForwards{
+				Limit: limit,
+			}
+			res, err := queryClient.GetSendingIbcAutoForwards(cmd.Context(), req)
+			if err != nil {
+				return err
+			}
+
+			return clientCtx.PrintProto(res)
+		},
+	}
+	flags.AddQueryFlagsToCmd(cmd)
+	return cmd
+}
+
+// GetCmdFailedIbcAutoForwards fetches the next IBC auto forwards to be executed, up to an optional limit
+func GetCmdFailedIbcAutoForwards() *cobra.Command {
+	// nolint: exhaustruct
+	cmd := &cobra.Command{
+		Use:   "failed-ibc-auto-forwards [evm chain prefix] [optional limit] ",
+		Short: "Query SendToCosmos transactions were failed over IBC",
+		Args:  cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			evmChainPrefix := args[0]
+
+			var limit uint64 = 0
+			if args[1] != "" {
+				var err error
+				limit, err = strconv.ParseUint(args[1], 10, 0)
+				if err != nil {
+					return sdkerrors.Wrapf(err, "Unable to parse limit from %v", args[1])
+				}
+			}
+
+			nonce, err := cmd.Flags().GetUint64(FlagNonce)
+			if err != nil {
+				return err
+			}
+
+			req := &types.QueryFailedIbcAutoForwards{
+				EvmChainPrefix: evmChainPrefix,
+				EventNonce:     nonce,
+				Limit:          limit,
+			}
+			res, err := queryClient.GetFailedIbcAutoForwards(cmd.Context(), req)
+			if err != nil {
+				return err
+			}
+
+			return clientCtx.PrintProto(res)
+		},
+	}
+	flags.AddQueryFlagsToCmd(cmd)
+	cmd.Flags().Uint64(FlagNonce, 0, "the exact nonce to find, 0 for any")
 	return cmd
 }

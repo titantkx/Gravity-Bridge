@@ -69,7 +69,6 @@ func TestValidateMsgSetOrchestratorAddress(t *testing.T) {
 			assert.NoError(t, err)
 		})
 	}
-
 }
 
 // Gets the ClaimHash() output from every claims member and casts it to a string, panicing on any errors
@@ -103,6 +102,8 @@ func TestMsgSendToCosmosClaimHash(t *testing.T) {
 		EthereumSender: "",
 		CosmosReceiver: "",
 		Orchestrator:   "",
+		EvmChainPrefix: "",
+		Memo:           "",
 	}
 
 	// Copy and populate base with values, saving orchestrator for a special check
@@ -141,6 +142,7 @@ func TestMsgBatchSendToEthClaimHash(t *testing.T) {
 		BatchNonce:     0,
 		TokenContract:  "",
 		Orchestrator:   "",
+		EvmChainPrefix: "",
 	}
 
 	orchestrator := NonemptySdkAccAddress()
@@ -177,6 +179,7 @@ func TestMsgERC20DeployedClaimHash(t *testing.T) {
 		Symbol:         "",
 		Decimals:       0,
 		Orchestrator:   "",
+		EvmChainPrefix: "",
 	}
 
 	orchestrator := NonemptySdkAccAddress()
@@ -216,6 +219,7 @@ func TestMsgLogicCallExecutedClaimHash(t *testing.T) {
 		InvalidationId:    []byte{},
 		InvalidationNonce: 0,
 		Orchestrator:      "",
+		EvmChainPrefix:    "",
 	}
 
 	orchestrator := NonemptySdkAccAddress()
@@ -238,4 +242,70 @@ func TestMsgLogicCallExecutedClaimHash(t *testing.T) {
 	newHashes := getClaimHashStrings(t, newClaims...)
 	// Assert that the claims with orchestrator set do not change the hashes
 	require.Equal(t, hashes, newHashes)
+}
+
+func TestMsgRetryIbcAutoForwards(t *testing.T) {
+	testCases := []struct {
+		name      string
+		req       *MsgRetryIbcAutoForwards
+		expectErr bool
+	}{
+		{
+			name: "all good",
+			req: &MsgRetryIbcAutoForwards{
+				Sender:         NonemptySdkAccAddress().String(),
+				EvmChainPrefix: "evm",
+				EventNonces:    []uint64{1, 3, 5},
+			},
+			expectErr: false,
+		},
+		{
+			name: "empty sender",
+			req: &MsgRetryIbcAutoForwards{
+				Sender:         "",
+				EvmChainPrefix: "evm",
+				EventNonces:    []uint64{1},
+			},
+			expectErr: true,
+		},
+		{
+			name: "empty evm chain prefix",
+			req: &MsgRetryIbcAutoForwards{
+				Sender:         NonemptySdkAccAddress().String(),
+				EvmChainPrefix: "",
+				EventNonces:    []uint64{1},
+			},
+			expectErr: true,
+		},
+		{
+			name: "empty event nonces",
+			req: &MsgRetryIbcAutoForwards{
+				Sender:         NonemptySdkAccAddress().String(),
+				EvmChainPrefix: "evm",
+				EventNonces:    []uint64{},
+			},
+			expectErr: true,
+		},
+		{
+			name: "duplicate event nonces",
+			req: &MsgRetryIbcAutoForwards{
+				Sender:         NonemptySdkAccAddress().String(),
+				EvmChainPrefix: "evm",
+				EventNonces:    []uint64{1, 1},
+			},
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.req.ValidateBasic()
+			if tc.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }

@@ -4,7 +4,6 @@ package gravity.v1;
 import "gogoproto/gogo.proto";
 import "google/protobuf/any.proto";
 
-
 option go_package = "github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity/types";
 
 // ClaimType is the cosmos type of an event from the counterpart chain that can
@@ -13,17 +12,17 @@ enum ClaimType {
   option (gogoproto.goproto_enum_prefix) = false;
 
   // An unspecified claim type
-  CLAIM_TYPE_UNSPECIFIED         = 0;
+  CLAIM_TYPE_UNSPECIFIED = 0;
   // A claim for a SendToCosmos transaction
-  CLAIM_TYPE_SEND_TO_COSMOS      = 1;
+  CLAIM_TYPE_SEND_TO_COSMOS = 1;
   // A claim for when batches are relayed
-  CLAIM_TYPE_BATCH_SEND_TO_ETH   = 2;
+  CLAIM_TYPE_BATCH_SEND_TO_ETH = 2;
   // A claim for when an erc20 contract has been deployed
-  CLAIM_TYPE_ERC20_DEPLOYED      = 3;
+  CLAIM_TYPE_ERC20_DEPLOYED = 3;
   // A claim for when a logic call has been executed
   CLAIM_TYPE_LOGIC_CALL_EXECUTED = 4;
   // A claim for when a valset update has happened
-  CLAIM_TYPE_VALSET_UPDATED      = 5;
+  CLAIM_TYPE_VALSET_UPDATED = 5;
 }
 
 // Attestation is an aggregate of `claims` that eventually becomes `observed` by
@@ -55,10 +54,7 @@ message Attestation {
 // (note: developers should look up the token symbol using the address on ETH to display for UI)
 message ERC20Token {
   string contract = 1;
-  string amount   = 2 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
-    (gogoproto.nullable)   = false
-  ];
+  string amount   = 2 [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int", (gogoproto.nullable) = false];
 }
 
 message EventObservation {
@@ -83,26 +79,49 @@ message EventSendToCosmos {
 }
 
 message EventSendToCosmosLocal {
-  string nonce = 1;
+  string nonce    = 1;
   string receiver = 2;
-  string token = 3;
-  string amount = 4;
+  string token    = 3;
+  string amount   = 4;
 }
 
 message EventSendToCosmosPendingIbcAutoForward {
-  string nonce = 1;
+  string nonce    = 1;
   string receiver = 2;
-  string token = 3;
-  string amount = 4;
-  string channel = 5;
+  string token    = 3;
+  string amount   = 4;
+  string channel  = 5;
 }
 
 message EventSendToCosmosExecutedIbcAutoForward {
-  string nonce = 1;
-  string receiver = 2;
-  string token = 3;
-  string amount = 4;
-  string channel = 5;
-  string timeout_time = 6;
-  string timeout_height = 7;
+  string nonce            = 1;
+  string receiver         = 2;
+  string token            = 3;
+  string amount           = 4;
+  string channel          = 5;
+  string timeout_time     = 6;
+  string timeout_height   = 7;
+  string evm_chain_prefix = 8;
+  string ibc_sequence     = 9;
+}
+
+message EventSendToCosmosFailedIbcAutoForward {
+  string nonce            = 1;
+  string receiver         = 2;
+  string token            = 3;
+  string amount           = 4;
+  string channel          = 5;
+  string evm_chain_prefix = 6;
+  string ibc_sequence     = 7;
+  string reason           = 8;
+}
+
+message EventSendToCosmosSucceededIbcAutoForward {
+  string nonce            = 1;
+  string receiver         = 2;
+  string token            = 3;
+  string amount           = 4;
+  string channel          = 5;
+  string evm_chain_prefix = 6;
+  string ibc_sequence     = 7;
 }

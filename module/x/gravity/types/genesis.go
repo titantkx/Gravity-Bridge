@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -72,6 +73,8 @@ var (
 
 	ParamStoreEvmChainParams = []byte("EvmChainParams")
 
+	ParamStoreIbcAutoForwardTimeout = []byte("IbcAutoForwardTimeout")
+
 	// Ensure that params implements the proper interface
 	_ paramtypes.ParamSet = &Params{
 		SignedValsetsWindow:    0,
@@ -105,6 +108,8 @@ var (
 				EthereumBlacklist:        []string{},
 			},
 		},
+
+		IbcAutoForwardTimeout: 0,
 	}
 )
 
@@ -176,6 +181,7 @@ func DefaultParams() *Params {
 				EthereumBlacklist:        []string{},
 			},
 		},
+		IbcAutoForwardTimeout: 2592000000,
 	}
 }
 
@@ -224,6 +230,10 @@ func (p Params) ValidateBasic() error {
 		}
 	}
 
+	if err := validateIbcAutoForwardTimeout(p.IbcAutoForwardTimeout); err != nil {
+		return sdkerrors.Wrap(err, "IbcAutoForwardTimeout")
+	}
+
 	if err := validateTargetBatchTimeout(p.TargetBatchTimeout); err != nil {
 		return sdkerrors.Wrap(err, "Batch timeout")
 	}
@@ -265,6 +275,7 @@ func (p Params) ValidateBasic() error {
 	if err := validateChainFeeAuctionPoolFraction(p.ChainFeeAuctionPoolFraction); err != nil {
 		return sdkerrors.Wrap(err, "chain fee auction pool fraction parameter")
 	}
+
 	return nil
 }
 
@@ -285,6 +296,7 @@ func ParamKeyTable() paramtypes.KeyTable {
 		MinChainFeeBasisPoints:       0,
 		ChainFeeAuctionPoolFraction:  sdk.Dec{},
 		EvmChainParams:               []*EvmChainParam{},
+		IbcAutoForwardTimeout:        0,
 	})
 }
 
@@ -306,6 +318,7 @@ func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 		paramtypes.NewParamSetPair(ParamStoreMinChainFeeBasisPoints, &p.MinChainFeeBasisPoints, validateMinChainFeeBasisPoints),
 		paramtypes.NewParamSetPair(ParamStoreChainFeeAuctionPoolFraction, &p.ChainFeeAuctionPoolFraction, validateChainFeeAuctionPoolFraction),
 		paramtypes.NewParamSetPair(ParamStoreEvmChainParams, &p.EvmChainParams, validateEvmChainParams),
+		paramtypes.NewParamSetPair(ParamStoreIbcAutoForwardTimeout, &p.IbcAutoForwardTimeout, validateIbcAutoForwardTimeout),
 	}
 }
 
@@ -314,6 +327,18 @@ func (p Params) Equal(p2 Params) bool {
 	bz1 := ModuleCdc.MustMarshalLengthPrefixed(&p)
 	bz2 := ModuleCdc.MustMarshalLengthPrefixed(&p2)
 	return bytes.Equal(bz1, bz2)
+}
+
+func validateIbcAutoForwardTimeout(i interface{}) error {
+	if _, ok := i.(uint64); !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+	// IbcAutoForwardTimeout must be less than the max of int64
+	if i.(uint64) > math.MaxInt64 {
+		return fmt.Errorf("IbcAutoForwardTimeout %d is greater than the max of int64", i)
+	}
+
+	return nil
 }
 
 func validateEvmChainParams(i interface{}) error {

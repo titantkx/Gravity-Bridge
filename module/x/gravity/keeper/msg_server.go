@@ -459,6 +459,21 @@ func (k msgServer) ExecuteIbcAutoForwards(c context.Context, msg *types.MsgExecu
 	return &types.MsgExecuteIbcAutoForwardsResponse{}, nil
 }
 
+// RetryIbcAutoForwards
+func (k msgServer) RetryIbcAutoForwards(c context.Context, msg *types.MsgRetryIbcAutoForwards) (*types.MsgRetryIbcAutoForwardsResponse, error) {
+	ctx := sdk.UnwrapSDKContext(c)
+
+	// for each `msg.EventNonces`
+	for _, eventNonce := range msg.EventNonces {
+		err := k.retryFailedIbcAutoForward(ctx, msg.EvmChainPrefix, eventNonce)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &types.MsgRetryIbcAutoForwardsResponse{}, nil
+}
+
 // WithdrawClaim handles MsgBatchSendToEthClaim
 // TODO it is possible to submit an old msgWithdrawClaim (old defined as covering an event nonce that has already been
 // executed aka 'observed' and had it's slashing window expire) that will never be cleaned up in the endblocker. This

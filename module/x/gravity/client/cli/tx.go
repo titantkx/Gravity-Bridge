@@ -46,6 +46,7 @@ func GetTxCmd(storeKey string) *cobra.Command {
 		CmdGovAirdropProposal(),
 		CmdGovUnhaltBridgeProposal(),
 		CmdExecutePendingIbcAutoForwards(),
+		CmdRetryFailedIbcAutoForwards(),
 		CmdAddEvmChainProposal(),
 		CmdRemoveEvmChainProposal(),
 	}...)
@@ -600,6 +601,54 @@ func CmdExecutePendingIbcAutoForwards() *cobra.Command {
 				ForwardsToClear: forwardsToClear,
 				Executor:        cliCtx.GetFromAddress().String(),
 				EvmChainPrefix:  args[1],
+			}
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+			// Send it
+			return tx.GenerateOrBroadcastTxCLI(cliCtx, cmd.Flags(), &msg)
+		},
+	}
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+// CmdRetryFailedIbcAutoForwards Executes a number of queued IBC Auto Forwards. When users perform a Send to Cosmos
+// with a registered foreign address prefix (e.g. canto1... cre1...), their funds will be locked in the Gravity module
+// until their pending forward is executed. This will send the funds to the equivalent gravity-prefixed account and then
+// immediately create an IBC transfer to the destination chain to the original foreign account. If there is an IBC
+// failure, the funds will be deposited on the gravity-prefixed account.
+func CmdRetryFailedIbcAutoForwards() *cobra.Command {
+	// nolint: exhaustruct
+	cmd := &cobra.Command{
+		Use:   "retry-failed-ibc-auto-forwards [evm chain prefix] [event nonces, comma separated]",
+		Short: "Executes a given number of IBC Auto-Forwards",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cliCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+			sender := cliCtx.GetFromAddress()
+			if sender.String() == "" {
+				return fmt.Errorf("from address must be specified")
+			}
+			eventNoncesStr := args[1]
+			// parser `eventNoncesStr` is comma separated string of uint64 value
+			eventNonces := strings.Split(eventNoncesStr, ",")
+			nonces := make([]uint64, len(eventNonces))
+			for i, nonceStr := range eventNonces {
+				nonce, err := strconv.ParseUint(nonceStr, 10, 64)
+				if err != nil {
+					return sdkerrors.Wrap(err, "Unable to parse event nonces as an non-negative integer")
+				}
+				nonces[i] = nonce
+			}
+
+			msg := types.MsgRetryIbcAutoForwards{
+				Sender:         cliCtx.GetFromAddress().String(),
+				EvmChainPrefix: args[0],
+				EventNonces:    nonces,
 			}
 			if err := msg.ValidateBasic(); err != nil {
 				return err

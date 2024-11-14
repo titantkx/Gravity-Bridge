@@ -595,49 +595,9 @@ pub async fn test_ibc_auto_forward_happy_path(
     .await;
     // Potential race condition: Slow gravity relayers and/or ibc relayer
     info!("Found a post-forward-balance of {:?}", post_forward_balance);
-    match (pre_forward_balance, post_forward_balance) {
-        (None, None) => {
-            panic!("Never found an ibc auto-forward balance for user {}", dest);
-        }
-        (None, Some(post)) => {
-            if Uint256::from_str(&post.amount).unwrap() != amount {
-                panic!(
-                    "Incorrect ibc auto-forward balance for user {}: actual {} != expected {}",
-                    dest, post.amount, amount,
-                );
-            }
-            info!(
-                "Successful IBC auto-forward of amount {} to {}",
-                amount, dest,
-            );
-            Ok(())
-        }
-        (Some(pre), Some(post)) => {
-            let pre_amt = Uint256::from_str(&pre.amount).unwrap();
-            let post_amt = Uint256::from_str(&post.amount).unwrap();
+    validate_ibc_balance_change(dest, pre_forward_balance, post_forward_balance, amount)?;
 
-            if post_amt < pre_amt || (pre_amt + amount) != post_amt {
-                info!("post_amt < pre_amt: {}", post_amt < pre_amt);
-                info!(
-                    "(pre_amt + amount) != post_amt: {}",
-                    (pre_amt + amount) != post_amt
-                );
-                panic!(
-                    "Incorrect ibc auto-forward balance for user {}: actual {} != expected {}",
-                    dest,
-                    post.amount,
-                    (pre_amt + amount)
-                );
-            }
-            Ok(())
-        }
-        (Some(_), None) => {
-            panic!(
-                "User wound up with no balance after ibc auto-forward? {}",
-                dest,
-            );
-        }
-    }
+    Ok(())
 }
 
 // Waits for Pending IBC Auto Forwards to enter the queue by repeatedly querying via GRPC
@@ -1135,4 +1095,59 @@ pub async fn test_ibc_auto_forward_unregistered_chain(
         },
     )
     .await
+}
+
+pub fn validate_ibc_balance_change(
+    dest: CosmosAddress,
+    pre_balance: Option<Coin>,
+    post_balance: Option<Coin>,
+    amount: Uint256,
+) -> Result<(), GravityError> {
+    match (pre_balance, post_balance) {
+        (None, None) => {
+            panic!("Never found an ibc auto-forward balance for user {}", dest);
+        }
+        (None, Some(post)) => {
+            if Uint256::from_str(&post.amount).unwrap() != amount {
+                panic!(
+                    "Incorrect ibc auto-forward balance for user {}: actual {} != expected {}",
+                    dest, post.amount, amount,
+                );
+            }
+            info!(
+                "Successful IBC auto-forward of amount {} to {}",
+                amount, dest,
+            );
+            Ok(())
+        }
+        (Some(pre), Some(post)) => {
+            let pre_amt = Uint256::from_str(&pre.amount).unwrap();
+            let post_amt = Uint256::from_str(&post.amount).unwrap();
+
+            if post_amt < pre_amt || (pre_amt + amount) != post_amt {
+                info!("post_amt < pre_amt: {}", post_amt < pre_amt);
+                info!(
+                    "(pre_amt + amount) != post_amt: {}",
+                    (pre_amt + amount) != post_amt
+                );
+                panic!(
+                    "Incorrect ibc auto-forward balance for user {}: actual {} != expected {}",
+                    dest,
+                    post.amount,
+                    (pre_amt + amount)
+                );
+            }
+            info!(
+                "Successful validate IBC auto-forward of amount {} to {}",
+                amount, dest,
+            );
+            Ok(())
+        }
+        (Some(_), None) => {
+            panic!(
+                "User wound up with no balance after ibc auto-forward? {}",
+                dest,
+            );
+        }
+    }
 }

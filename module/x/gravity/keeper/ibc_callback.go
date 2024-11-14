@@ -228,15 +228,15 @@ func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthA
 
 	sendToEthRaw := metadata["send_to_eth"]
 
-	// Make sure the wasm key is a map. If it isn't, ignore this packet
-	wasm, ok := sendToEthRaw.(map[string]interface{})
+	// Make sure the sendToEth key is a map. If it isn't, ignore this packet
+	sendToEth, ok := sendToEthRaw.(map[string]interface{})
 	if !ok {
 		return isSendToEthRouted, nil, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "send_to_eth metadata not properly formatted for: '%v'. %s", memo, "wasm metadata is not a valid JSON map object")
+			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "send_to_eth metadata not properly formatted for: '%v'. %s", memo, "sendToEth metadata is not a valid JSON map object")
 	}
 
 	// Get the eth_dest
-	ethDest, ok := wasm["eth_dest"].(string)
+	ethDest, ok := sendToEth["eth_dest"].(string)
 	if !ok {
 		// The tokens will be returned
 		return isSendToEthRouted, nil, sdk.Int{}, "",
@@ -248,7 +248,7 @@ func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthA
 		return isSendToEthRouted, nil, sdk.Int{}, "", sdkerrors.Wrapf(types.ErrBadMetadataFormat, `invalid eth dest`)
 	}
 
-	amountToSend, ok := wasm["amount"].(string)
+	amountToSend, ok := sendToEth["amount"].(string)
 	if !ok {
 		// The tokens will be returned
 		return isSendToEthRouted, nil, sdk.Int{}, "",
@@ -265,7 +265,7 @@ func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthA
 			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "amount must be positive")
 	}
 
-	evmChainPrefix, ok = wasm["evm_chain_prefix"].(string)
+	evmChainPrefix, ok = sendToEth["evm_chain_prefix"].(string)
 	if !ok {
 		// The tokens will be returned
 		return isSendToEthRouted, nil, sdk.Int{}, "",
