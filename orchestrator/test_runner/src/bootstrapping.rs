@@ -199,6 +199,7 @@ pub async fn deploy_contracts(contact: &Contact) {
     ];
     let output = if all_paths_exist(&A) || all_paths_exist(&B) {
         let paths = return_existing(A, B);
+        info!("Deploying contracts with paths {:?}", paths);
         Command::new(paths[0])
             .args([
                 &format!("--cosmos-node={}", COSMOS_NODE_ABCI.as_str()),
@@ -212,6 +213,7 @@ pub async fn deploy_contracts(contact: &Contact) {
             .output()
             .expect("Failed to deploy contracts!")
     } else if all_paths_exist(&C) {
+        info!("Deploying contracts with paths {:?}", C);
         Command::new("npx")
             .args([
                 "ts-node",
