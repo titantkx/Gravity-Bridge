@@ -27,7 +27,7 @@ use crate::ibc_auto_forward::{
     get_ibc_balance, validate_ibc_balance_change, wait_for_pending_ibc_auto_forwards,
 };
 use crate::{
-    create_default_test_config, get_ibc_chain_id, get_user_key,
+    create_default_test_config, get_ibc_chain_id,
     ibc_auto_forward::{get_channel_id, setup_gravity_auto_forwards},
     prepare_ibc_relayer, start_orchestrators,
     types::IBCPrivateKey,
