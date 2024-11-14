@@ -1,5 +1,5 @@
 import { Signer } from "ethers";
-import { ethers } from "hardhat";
+import hre, { ethers } from "hardhat";
 
 import { Gravity } from "../typechain/Gravity";
 import { TestERC20A } from "../typechain/TestERC20A";
@@ -34,10 +34,13 @@ export async function deployContracts(
     gravityId
   );
 
-  const gravity = (await Gravity.deploy(
-    gravityId,
-    await getSignerAddresses(validators),
-    powers
+  const gravity = (await hre.upgrades.deployProxy(
+    Gravity,
+    [gravityId, await getSignerAddresses(validators), powers],
+    {
+      kind: "uups",
+      unsafeAllow: []
+    }
   )) as Gravity;
 
   await gravity.deployed();

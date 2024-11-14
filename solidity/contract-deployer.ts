@@ -1,7 +1,8 @@
 import axios from "axios";
 import commandLineArgs from "command-line-args";
-import { ethers } from "ethers";
+// import { ethers } from "ethers";
 import fs from "fs";
+import hre, { ethers } from "hardhat";
 import { exit } from "process";
 
 import { Gravity } from "./typechain/Gravity";
@@ -243,17 +244,30 @@ async function deploy() {
     exit(1);
   }
 
-  const gravity = (await factory.deploy(
-    // todo generate this randomly at deployment time that way we can avoid
-    // anything but intentional conflicts
-    gravityId,
-    eth_addresses,
-    powers,
-    overrides
+  const gravity = (await hre.upgrades.deployProxy(
+    factory,
+    [
+      // todo generate this randomly at deployment time that way we can avoid
+      // anything but intentional conflicts
+      gravityId,
+      eth_addresses,
+      powers
+    ],
+    {
+      kind: "uups",
+      unsafeAllow: []
+    }
   )) as Gravity;
 
   await gravity.deployed();
-  console.log("Gravity deployed at Address - ", gravity.address);
+  console.log("Gravity proxy deployed at Address - ", gravity.address);
+  const gravityImplementationAddress =
+    await hre.upgrades.erc1967.getImplementationAddress(gravity.address);
+  console.log(
+    "Gravity Implementation Address - ",
+    gravityImplementationAddress
+  );
+
   await submitGravityAddress(gravity.address);
 
   console.log("Starting Gravity ERC721 contract deploy");

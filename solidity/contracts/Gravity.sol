@@ -1,11 +1,15 @@
 //SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.10;
 
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 import "./CosmosToken.sol";
 
 error InvalidSignature();
@@ -63,8 +67,10 @@ struct Signature {
 	bytes32 s;
 }
 
-contract Gravity is ReentrancyGuard {
+contract Gravity is Initializable, UUPSUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
 	using SafeERC20 for IERC20;
+
+	string public constant VERSION = "1.0.0";
 
 	// The number of 'votes' required to execute a valset
 	// update or batch execution, set to 2/3 of 2^32
@@ -74,13 +80,13 @@ contract Gravity is ReentrancyGuard {
 	bytes32 public state_lastValsetCheckpoint;
 	mapping(address => uint256) public state_lastBatchNonces;
 	mapping(bytes32 => uint256) public state_invalidationMapping;
-	uint256 public state_lastValsetNonce = 0;
+	uint256 public state_lastValsetNonce;
 	// event nonce zero is reserved by the Cosmos module as a special
 	// value indicating that no events have yet been submitted
-	uint256 public state_lastEventNonce = 1;
+	uint256 public state_lastEventNonce;
 
 	// This is set once at initialization
-	bytes32 public immutable state_gravityId;
+	bytes32 public state_gravityId;
 
 	// TransactionBatchExecutedEvent and SendToCosmosEvent both include the field _eventNonce.
 	// This is incremented every time one of these events is emitted. It is checked by the
@@ -610,14 +616,25 @@ contract Gravity is ReentrancyGuard {
 		);
 	}
 
-	constructor(
+	constructor() {}
+
+	function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+
+	function initialize(
 		// A unique identifier for this gravity instance to use in signatures
 		bytes32 _gravityId,
 		// The validator set, not in valset args format since many of it's
 		// arguments would never be used in this case
 		address[] memory _validators,
 		uint256[] memory _powers
-	) {
+	) public initializer {
+		__Ownable_init();
+
+		state_lastValsetNonce = 0;
+		// event nonce zero is reserved by the Cosmos module as a special
+		// value indicating that no events have yet been submitted
+		state_lastEventNonce = 1;
+
 		// CHECKS
 
 		// Check that validators, powers, and signatures (v,r,s) set is well-formed
