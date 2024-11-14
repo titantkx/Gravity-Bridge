@@ -13,8 +13,8 @@ use gravity_proto::cosmos_sdk_proto::cosmos::base::abci::v1beta1::TxResponse;
 
 use gravity_proto::gravity::{
     MsgCancelSendToEth, MsgConfirmBatch, MsgConfirmLogicCall, MsgExecuteIbcAutoForwards,
-    MsgRequestBatch, MsgSendToEth, MsgSetOrchestratorAddress, MsgSubmitBadSignatureEvidence,
-    MsgValsetConfirm,
+    MsgRequestBatch, MsgRetryIbcAutoForwards, MsgSendToEth, MsgSetOrchestratorAddress,
+    MsgSubmitBadSignatureEvidence, MsgValsetConfirm,
 };
 
 use gravity_utils::types::*;
@@ -37,6 +37,7 @@ pub const MSG_SUBMIT_BAD_SIGNATURE_EVIDENCE_TYPE_URL: &str =
     "/gravity.v1.MsgSubmitBadSignatureEvidence";
 pub const MSG_CANCEL_SEND_TO_ETH_TYPE_URL: &str = "/gravity.v1.MsgCancelSendToEth";
 pub const MSG_EXECUTE_IBC_AUTO_FORWARDS_TYPE_URL: &str = "/gravity.v1.MsgExecuteIbcAutoForwards";
+pub const MSG_RETRY_IBC_AUTO_FORWARDS_TYPE_URL: &str = "/gravity.v1.MsgRetryIbcAutoForwards";
 
 // auction msg type url
 pub const MSG_BID_TYPE_URL: &str = "/auction.v1.MsgBid";
@@ -510,6 +511,36 @@ pub async fn execute_pending_ibc_auto_forwards(
             evm_chain_prefix: evm_chain_prefix.to_string(),
             forwards_to_clear,
             executor: cosmos_addr.to_string(),
+        },
+    );
+    let timeout = Duration::from_secs(60);
+    let res = contact
+        .send_message(&[msg], None, &[fee], Some(timeout), cosmos_key)
+        .await;
+
+    if res.is_err() {
+        return Err(res.err().unwrap());
+    }
+
+    Ok(())
+}
+
+// Executes a MsgRetryIbcAutoForwards on the gravity chain, which will retry failed ibc auto forwards
+pub async fn retry_failed_ibc_auto_forwards(
+    evm_chain_prefix: &str,
+    contact: &Contact,
+    cosmos_key: impl PrivateKey,
+    fee: Coin,
+    event_nonces: Vec<u64>,
+) -> Result<(), CosmosGrpcError> {
+    let prefix = contact.get_prefix();
+    let cosmos_addr = cosmos_key.to_address(&prefix).unwrap();
+    let msg = Msg::new(
+        MSG_RETRY_IBC_AUTO_FORWARDS_TYPE_URL,
+        MsgRetryIbcAutoForwards {
+            evm_chain_prefix: evm_chain_prefix.to_string(),
+            sender: cosmos_addr.to_string(),
+            event_nonces,
         },
     );
     let timeout = Duration::from_secs(60);

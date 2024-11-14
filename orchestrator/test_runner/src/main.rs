@@ -297,6 +297,7 @@ pub async fn main() {
     let grpc_client = GravityQueryClient::connect(COSMOS_NODE_GRPC.as_str())
         .await
         .unwrap();
+
     let web30 = web30::client::Web3::new(ETH_NODE.as_str(), OPERATION_TIMEOUT);
     // keys for the primary test chain
     let keys = get_keys();

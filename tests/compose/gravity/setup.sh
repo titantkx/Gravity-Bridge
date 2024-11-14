@@ -44,7 +44,8 @@ config='
 .app_state.auth.accounts += [{"@type": "/cosmos.auth.v1beta1.ModuleAccount", "base_account": { "account_number": "0", "address": "gravity1jv65s3grqf6v6jl3dp4t6c9t9rk99cd8r0kyvh","pub_key": null,"sequence": "0"},"name": "distribution","permissions": ["basic"]}] |
 .app_state.bank.balances += [{"address": "gravity1jv65s3grqf6v6jl3dp4t6c9t9rk99cd8r0kyvh", "coins": [{"denom": "footoken", "amount": "1000000000000000000000000"},{"amount": "1000000000000000000000000", "denom": "ugraviton"}]}] |
 .app_state.gravity.evm_chains = [{"evm_chain": {"evm_chain_prefix": "ethereum","evm_chain_name": "ethereum"},"gravity_nonces": {"latest_valset_nonce": "0","last_observed_nonce": "0","last_slashed_valset_nonce": "0","last_slashed_batch_block": "0","last_slashed_logic_call_block": "0","last_tx_pool_id": "0","last_batch_id": "0"},"valsets": [],"valset_confirms": [],"batches": [],"batch_confirms": [],"logic_calls": [],"logic_call_confirms": [],"attestations": [],"delegate_keys": [],"erc20_to_denoms": [],"unbatched_transfers": []}] |
-.app_state.gravity.params.evm_chain_params = [{"evm_chain_prefix":"ethereum","average_ethereum_block_time":"15000","bridge_active":true,"bridge_chain_id":"15","bridge_ethereum_address":"0x0000000000000000000000000000000000000000","contract_source_hash":"","ethereum_blacklist":[],"gravity_id":"ethereum"}]
+.app_state.gravity.params.evm_chain_params = [{"evm_chain_prefix":"ethereum","average_ethereum_block_time":"15000","bridge_active":true,"bridge_chain_id":"15","bridge_ethereum_address":"0x0000000000000000000000000000000000000000","contract_source_hash":"","ethereum_blacklist":[],"gravity_id":"ethereum"}] |
+.app_state.gravity.params.ibc_auto_forward_timeout = 60000
 '
 
 jq "$config" "$STARTING_VALIDATOR_HOME"/config/genesis.json >/edited-genesis.json
