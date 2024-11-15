@@ -33,7 +33,9 @@ COPY --from=planner /recipe.json /gravity/orchestrator/recipe.json
 RUN pushd /gravity/orchestrator && cargo chef cook --release --recipe-path recipe.json --bin test-runner
 
 COPY --from=repo solidity /gravity/solidity
-RUN pushd /gravity/solidity/ && HUSKY_SKIP_INSTALL=1 npm install && npm run typechain
+RUN rm -rf /gravity/solidity/.openzeppelin
+RUN pushd /gravity/solidity/ && HUSKY_SKIP_INSTALL=1 npm install
+RUN pushd /gravity/solidity/ && npm run compile
 
 ADD set-env.sh /set-env.sh
 ADD setup.sh /setup.sh

@@ -18,7 +18,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1"
+          cpus: "3"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8545"]
       interval: 10s

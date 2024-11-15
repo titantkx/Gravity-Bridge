@@ -3,7 +3,7 @@ import "@nomiclabs/hardhat-waffle";
 import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
-import { task } from "hardhat/config";
+import { HardhatUserConfig, task } from "hardhat/config";
 
 task("accounts", "Prints the list of accounts", async (args, hre) => {
   const accounts = await hre.ethers.getSigners();
@@ -27,7 +27,7 @@ task("accounts", "Prints the list of accounts", async (args, hre) => {
 // This object can have the following optional entries:
 // defaultNetwork, networks, solc, and paths.
 // Go to https://buidler.dev/config/ to learn more
-module.exports = {
+const config: HardhatUserConfig = {
   // This is a sample solc configuration that specifies which version of solc to use
   solidity: {
     version: "0.8.10",
@@ -45,7 +45,6 @@ module.exports = {
         auto: false,
         interval: [3000, 6000]
       },
-      timeout: 2000000,
       accounts: [
         {
           privateKey:
@@ -833,12 +832,25 @@ module.exports = {
           balance: "4951760157141521099596496895"
         }
       ]
+    },
+    ["http://localhost:8545"]: {
+      url: "http://localhost:8545",
+      accounts: [
+        "0xb1bab011e03a9862664706fc3bbaa1b16651528e5f0e7fbfcbfdd8be302a13e7"
+      ],
+      gasMultiplier: 1.1
+    },
+    ["http://evm:8545"]: {
+      url: "http://evm:8545",
+      accounts: [
+        "0xb1bab011e03a9862664706fc3bbaa1b16651528e5f0e7fbfcbfdd8be302a13e7"
+      ],
+      gasMultiplier: 1.1
     }
   },
   typechain: {
     outDir: "typechain",
-    target: "ethers-v5",
-    runOnCompile: true
+    target: "ethers-v5"
   },
   gasReporter: {
     enabled: true,
@@ -849,3 +861,5 @@ module.exports = {
     timeout: 2000000
   }
 };
+
+module.exports = config;

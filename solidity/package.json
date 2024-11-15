@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "evm": "npx hardhat node",
-    "compile": "npx hardhat compile",
-    "test": "npx hardhat test --network localhost",
+    "compile": "npx hardhat compile; npx hardhat typechain",
+    "test": "npx hardhat compile; npx hardhat test --network localhost",
     "typechain": "npx hardhat typechain",
     "compile-deployer": "npx tsc -p . ; pkg dist/contract-deployer.js --targets node10-linux-x64",
     "evm_fork": "npx hardhat node --fork https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_ID} --fork-block-number 12782071"
@@ -42,7 +42,7 @@
     "eslint": "^7.11.0",
     "eslint-config-prettier": "^6.12.0",
     "ethereum-waffle": "^3.2.0",
-    "ethers": "^5.4.6",
+    "ethers": "5.7.2",
     "fs-extra": "^9.0.1",
     "hardhat": "^2.22.11",
     "hardhat-gas-reporter": "^2.2.1",

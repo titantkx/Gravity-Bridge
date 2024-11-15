@@ -5,7 +5,6 @@ import fs from "fs";
 import hre, { ethers } from "hardhat";
 import { exit } from "process";
 
-import "./hardhat.config";
 import {
   Gravity,
   GravityERC721,
@@ -16,12 +15,14 @@ import {
 } from "./typechain";
 
 const args = commandLineArgs([
-  // the ethernum node used to deploy the contract
-  { name: "eth-node", type: String },
+  // note: comment this because we use provider and signer from hardhat config
+  // // the ethernum node used to deploy the contract
+  // { name: "eth-node", type: String },
+  // // the Ethereum private key that will contain the gas required to pay for the contact deployment
+  // { name: "eth-privkey", type: String },
+
   // the cosmos node that will be used to grab the validator set via RPC (TODO),
   { name: "cosmos-node", type: String },
-  // the Ethereum private key that will contain the gas required to pay for the contact deployment
-  { name: "eth-privkey", type: String },
   // the gravity contract .json file
   { name: "contract", type: String },
   // the gravityERC721 contract .json file
@@ -103,8 +104,25 @@ const overrides = {
 
 async function deploy() {
   let startTime = new Date();
-  const provider = await new ethers.providers.JsonRpcProvider(args["eth-node"]);
-  let wallet = new ethers.Wallet(args["eth-privkey"], provider);
+
+  // note: comment this because we select provider/network in hardhat config so can not manually set provider here
+  // we config it through `hardhat.config.ts` and select it by env `HARDHAT_NETWORK` when run command
+  // e.g.
+  // HARDHAT_NETWORK="http://localhost:8545"  npx ts-node \
+  //                             --files contract-deployer.ts \
+  //                             --cosmos-node="http://localhost:26657" \
+  //                             --contract="artifacts/contracts/Gravity.sol/Gravity.json" \
+  //                             --contractERC721="artifacts/contracts/GravityERC721.sol/GravityERC721.json" \
+  //                             --evm-prefix=ethereum \
+  //                             --test-mode=true
+  // const provider = await new ethers.providers.JsonRpcProvider(args["eth-node"]);
+  // let wallet = new ethers.Wallet(args["eth-privkey"], provider);
+
+  const provider = ethers.provider;
+  const [wallet] = await ethers.getSigners();
+
+  console.log("Deploying contracts to network:", hre.network.name);
+  console.log("Deploying contracts with the account:", wallet.address);
 
   if (args["test-mode"] == "True" || args["test-mode"] == "true") {
     let success = false;
@@ -275,6 +293,7 @@ async function deploy() {
     exit(1);
   }
 
+  console.log("About to deploy Gravity contract");
   const gravity = (await hre.upgrades.deployProxy(
     factory,
     [
@@ -286,13 +305,14 @@ async function deploy() {
     ],
     {
       kind: "uups",
-      unsafeAllow: [],
-      timeout: 1000 * 60 * 5
+      unsafeAllow: []
+      // timeout: 1000 * 60 * 5
     }
   )) as Gravity;
 
+  console.log("Gravity proxy about deploy to Address - ", gravity.address);
   await gravity.deployed();
-  console.log("Gravity proxy deployed at Address - ", gravity.address);
+  console.log("Gravity deployed at Address - ", gravity.address);
   const gravityImplementationAddress =
     await hre.upgrades.erc1967.getImplementationAddress(gravity.address);
   console.log(
