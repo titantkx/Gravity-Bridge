@@ -13,6 +13,7 @@ geth --identity "EthereumTestnet" \
 geth --identity "EthereumTestnet" --nodiscover \
   --networkid 15 \
   --mine \
+  --gcmode=archive \
   --http \
   --http.addr="0.0.0.0" \
   --http.vhosts="*" \
