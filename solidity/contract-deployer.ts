@@ -286,7 +286,8 @@ async function deploy() {
     ],
     {
       kind: "uups",
-      unsafeAllow: []
+      unsafeAllow: [],
+      timeout: 1000 * 60 * 5
     }
   )) as Gravity;
 
