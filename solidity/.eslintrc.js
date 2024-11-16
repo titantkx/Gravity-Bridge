@@ -23,5 +23,13 @@ module.exports = {
     "@typescript-eslint/return-await": "error",
     "prefer-const": "off",
     "no-console": "off",
+    quotes: "off",
+    camelcase: "off",
+    "no-sync": "off",
+    "no-use-before-define": "off",
+    "no-eq-null": "off",
+    "prefer-arrow-callback": "off",
+    "newline-per-chained-call": "off",
+    "new-cap": "off",
   },
 };

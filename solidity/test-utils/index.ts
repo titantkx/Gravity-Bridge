@@ -20,7 +20,7 @@ export async function deployContracts(
   const TestERC20 = await ethers.getContractFactory("TestERC20A");
   const testERC20 = (await TestERC20.deploy()) as TestERC20A;
 
-  const Gravity = await ethers.getContractFactory("Gravity");
+  const GravityFactory = await ethers.getContractFactory("Gravity");
 
   const valAddresses = await getSignerAddresses(validators);
 
@@ -34,7 +34,7 @@ export async function deployContracts(
   );
 
   const gravity = (await hre.upgrades.deployProxy(
-    Gravity,
+    GravityFactory,
     [gravityId, await getSignerAddresses(validators), powers],
     {
       kind: "uups",

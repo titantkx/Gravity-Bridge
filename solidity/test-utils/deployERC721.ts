@@ -19,8 +19,8 @@ export async function deployContractsERC721(
   const TestERC721 = await ethers.getContractFactory("TestERC721A");
   const testERC721 = (await TestERC721.deploy()) as TestERC721A;
 
-  const GravityERC721 = await ethers.getContractFactory("GravityERC721");
-  const gravityERC721 = (await GravityERC721.deploy(
+  const GravityERC721Factory = await ethers.getContractFactory("GravityERC721");
+  const gravityERC721 = (await GravityERC721Factory.deploy(
     gravity.address
   )) as GravityERC721;
 

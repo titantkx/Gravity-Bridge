@@ -129,7 +129,7 @@ async function deploy() {
     while (!success) {
       let present = new Date();
       let timeDiff: number = present.getTime() - startTime.getTime();
-      timeDiff = timeDiff / 1000;
+      timeDiff /= 1000;
       provider
         .getBlockNumber()
         .then((_) => (success = true))
@@ -361,7 +361,7 @@ async function getLatestValset(): Promise<Valset> {
   let request_string = args["cosmos-node"] + "/abci_query";
   let params = {
     params: {
-      path: `\"/custom/gravity/currentValset/${args["evm-prefix"]}\"`,
+      path: `"/custom/gravity/currentValset/${args["evm-prefix"]}"`,
       height: block_height,
       prove: "false"
     }
@@ -377,7 +377,7 @@ async function getLatestValset(): Promise<Valset> {
     while (valsets.result.response.value == null) {
       let present = new Date();
       let timeDiff: number = present.getTime() - startTime.getTime();
-      timeDiff = timeDiff / 1000;
+      timeDiff /= 1000;
 
       response = await axios.get(request_string, params);
       valsets = await response.data;
@@ -429,7 +429,7 @@ async function getGravityId(): Promise<string> {
     while (gravityIDABCIResponse.result.response.value == null) {
       let present = new Date();
       let timeDiff: number = present.getTime() - startTime.getTime();
-      timeDiff = timeDiff / 1000;
+      timeDiff /= 1000;
 
       response = await axios.get(request_string, params);
       gravityIDABCIResponse = await response.data;

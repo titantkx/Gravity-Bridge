@@ -67,7 +67,7 @@ async function firstCall(
   gravity: Gravity
 ) {
   await expect(
-    gravityERC721.functions["sendERC721ToCosmos(address,string,uint256)"](
+    gravityERC721.sendERC721ToCosmos(
       testERC721.address,
       ethers.utils.formatBytes32String("myCosmosAddress"),
       190
@@ -81,9 +81,7 @@ async function firstCall(
       190,
       2
     );
-  expect((await testERC721.functions["ownerOf(uint256)"](190))[0]).to.equal(
-    gravityERC721.address
-  );
+  expect((await testERC721.ownerOf(190))[0]).to.equal(gravityERC721.address);
   expect((await gravity.functions.state_lastEventNonce())[0]).to.equal(1);
   expect(
     (await gravityERC721.functions.state_lastERC721EventNonce())[0]
@@ -98,7 +96,7 @@ async function secondCall(
   secondERC721: number
 ) {
   await expect(
-    gravityERC721.functions["sendERC721ToCosmos(address,string,uint256)"](
+    gravityERC721.sendERC721ToCosmos(
       testERC721.address,
       ethers.utils.formatBytes32String("myCosmosAddress"),
       secondERC721
@@ -112,9 +110,9 @@ async function secondCall(
       secondERC721,
       3
     );
-  expect(
-    (await testERC721.functions["ownerOf(uint256)"](secondERC721))[0]
-  ).to.equal(gravityERC721.address);
+  expect((await testERC721.ownerOf(secondERC721))[0]).to.equal(
+    gravityERC721.address
+  );
   expect((await gravity.functions.state_lastEventNonce())[0]).to.equal(1);
   expect(
     (await gravityERC721.functions.state_lastERC721EventNonce())[0]
