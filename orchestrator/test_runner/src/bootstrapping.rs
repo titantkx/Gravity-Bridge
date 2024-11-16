@@ -227,7 +227,6 @@ pub async fn deploy_contracts(contact: &Contact) {
             ])
             .current_dir(C[3])
             .env("HARDHAT_NETWORK", ETH_NODE.as_str())
-            .env("DEBUG", "@openzeppelin:*")
             .output()
             .expect("Failed to deploy contracts!")
     } else {
