@@ -9,6 +9,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	sdkante "github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authkeeper "github.com/cosmos/cosmos-sdk/x/auth/keeper"
 	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	distrkeeper "github.com/cosmos/cosmos-sdk/x/distribution/keeper"
@@ -24,6 +25,7 @@ import (
 	bech32ibckeeper "github.com/althea-net/bech32-ibc/x/bech32ibc/keeper"
 
 	auctionkeeper "github.com/Gravity-Bridge/Gravity-Bridge/module/x/auction/keeper"
+	auctiontypes "github.com/Gravity-Bridge/Gravity-Bridge/module/x/auction/types"
 	"github.com/Gravity-Bridge/Gravity-Bridge/module/x/gravity/types"
 	"github.com/cosmos/cosmos-sdk/store/prefix"
 )
@@ -512,4 +514,79 @@ func (k Keeper) IsOnBlacklist(ctx sdk.Context, evmChainPrefix string, addr types
 // becomes impossible to execute.
 func (k Keeper) InvalidSendToEthAddress(ctx sdk.Context, evmChainPrefix string, addr types.EthAddress, _erc20Addr types.EthAddress) bool {
 	return k.IsOnBlacklist(ctx, evmChainPrefix, addr) || addr == types.ZeroAddress()
+}
+
+// CheckAndDeductSendToEthFees asserts that the minimum chainFee has been met for the given sendAmount,
+// then deducts the chain fee from sender, giving a portion of the fee to the auction pool and the remainder to stakers
+func (k Keeper) checkAndDeductSendToEthFees(ctx sdk.Context, sender sdk.AccAddress, sendAmount sdk.Coin, chainFee sdk.Coin) error {
+	// Compute the minimum fee which must be paid
+	minFeeBasisPoints := int64(0)
+	params, err := k.GetParamsIfSet(ctx)
+	if err == nil {
+		// The params have been set, get the min send to eth fee
+		minFeeBasisPoints = int64(params.MinChainFeeBasisPoints)
+	}
+	minFee := sdk.NewDecFromInt(sendAmount.Amount).
+		QuoInt64(int64(BasisPointDivisor)).
+		MulInt64(minFeeBasisPoints).
+		TruncateInt()
+
+	// Require that the minimum has been met
+	if minFee.GT(sdk.ZeroInt()) { // Ignore fees too low to collect
+		minFeeCoin := sdk.NewCoin(sendAmount.GetDenom(), minFee)
+		if chainFee.IsLT(minFeeCoin) {
+			err := sdkerrors.Wrapf(
+				sdkerrors.ErrInsufficientFee,
+				"chain fee provided [%s] is insufficient, need at least [%s]",
+				chainFee,
+				minFeeCoin,
+			)
+			return err
+		}
+	}
+
+	// First, check if we will split the ChainFee between the Auction pool and
+	chainFeeAuctionable := k.auctionKeeper.IsDenomAuctionable(ctx, chainFee.Denom)
+
+	// Finally, collect any provided fees
+	// nolint: exhaustruct
+	if !(chainFee == sdk.Coin{}) && chainFee.Amount.IsPositive() {
+		senderAcc := k.accountKeeper.GetAccount(ctx, sender)
+
+		var stakerFee sdk.Int
+		if chainFeeAuctionable {
+			// Determine the pool's share by first multiplying the total with the [0,1] fraction param, ignoring any dust
+			poolFee := params.ChainFeeAuctionPoolFraction.Mul(sdk.NewDecFromInt(chainFee.Amount)).TruncateInt()
+			// Then the stakers will receive the remainder
+			stakerFee = chainFee.Amount.Sub(poolFee)
+
+			// Send fee to pool
+			err = k.bankKeeper.SendCoinsFromAccountToModule(ctx, sender, auctiontypes.AuctionPoolAccountName, sdk.NewCoins(sdk.NewCoin(chainFee.Denom, poolFee)))
+			if err != nil {
+				ctx.Logger().Error("Could not deduct MsgSendToEth auction pool fee!", "error", err, "account", senderAcc, "chainFee", chainFee, "auctionPoolFee", poolFee)
+				return err
+			}
+		} else {
+			// Non Auctionable Token, stakers receive the full amount
+			stakerFee = chainFee.Amount
+		}
+
+		// Send fee to stakers
+		err = sdkante.DeductFees(k.bankKeeper, ctx, senderAcc, sdk.NewCoins(sdk.NewCoin(chainFee.Denom, stakerFee)))
+		if err != nil {
+			ctx.Logger().Error("Could not deduct MsgSendToEth staker fee!", "error", err, "account", senderAcc, "chainFee", chainFee, "stakerFee", stakerFee)
+			return err
+		}
+
+		// Report the fee collection to the event log
+		return ctx.EventManager().EmitTypedEvent(
+			&types.EventSendToEthFeeCollected{
+				Sender:     sender.String(),
+				SendAmount: sendAmount.String(),
+				FeeAmount:  chainFee.String(),
+			},
+		)
+	}
+
+	return nil
 }

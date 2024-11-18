@@ -11,7 +11,6 @@ import (
 	capabilitytypes "github.com/cosmos/cosmos-sdk/x/capability/types"
 	transfertypes "github.com/cosmos/ibc-go/v4/modules/apps/transfer/types"
 	channeltypes "github.com/cosmos/ibc-go/v4/modules/core/04-channel/types"
-
 	ibcexported "github.com/cosmos/ibc-go/v4/modules/core/exported"
 )
 
@@ -114,7 +113,7 @@ func (k Keeper) OnRecvPacket(
 	}
 
 	// Validate the memo
-	isSendToEthRouted, dest, amount, evmChainPrefix, err := ValidateAndParseMemo(data.Memo)
+	isSendToEthRouted, dest, amount, bridgeFee, evmChainPrefix, err := ValidateAndParseMemo(data.Memo)
 	if !isSendToEthRouted {
 		return ack
 	}
@@ -149,15 +148,21 @@ func (k Keeper) OnRecvPacket(
 
 	amountToSendCoin := sdk.NewCoin(coin.Denom, amount)
 
-	// verify coin is larger than amountToSendCoin
-	if coin.Amount.LT(amountToSendCoin.Amount) {
-		return channeltypes.NewErrorAcknowledgement(sdkerrors.Wrap(types.ErrInvalid, "total amount is less than amount to send"))
+	// verify coin is not less than amountToSendCoin + bridgeFee
+	if coin.Amount.LT(amountToSendCoin.Amount.Add(bridgeFee)) {
+		return channeltypes.NewErrorAcknowledgement(sdkerrors.Wrap(types.ErrInvalid, "total amount is less than amount to send plus bridge fee"))
 	}
-
-	bridgeFeeCoin := coin.Sub(amountToSendCoin)
 
 	if k.InvalidSendToEthAddress(ctx, evmChainPrefix, *dest, *erc20) {
 		return channeltypes.NewErrorAcknowledgement(sdkerrors.Wrap(types.ErrInvalid, "destination address is invalid or blacklisted"))
+	}
+
+	bridgeFeeCoin := sdk.NewCoin(coin.Denom, bridgeFee)
+	chainFeeCoin := coin.Sub(amountToSendCoin).Sub(bridgeFeeCoin)
+
+	// Collect the ChainFee and give to stakers, ensuring it meets MinChainFeeBasisPoints
+	if err := k.checkAndDeductSendToEthFees(ctx, sender, amountToSendCoin, chainFeeCoin); err != nil {
+		return channeltypes.NewErrorAcknowledgement(sdkerrors.Wrapf(err, "Could not deduct chainFee %v from account %v", chainFeeCoin.String(), sender.String()))
 	}
 
 	// finally add to outgoing pool and waiting for gbt to submit it via MsgRequestBatch
@@ -194,83 +199,39 @@ func (k Keeper) WriteAcknowledgement(ctx sdk.Context,
 	return k.ics4Wrapper.WriteAcknowledgement(ctx, chanCap, packet, ack)
 }
 
-// jsonStringHasKey parses the memo as a json object and checks if it contains the key.
-func jsonStringHasKey(memo, key string) (found bool, jsonObject map[string]interface{}) {
-	jsonObject = make(map[string]interface{})
+func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthAddress, amount sdk.Int, bridgeFee sdk.Int, evmChainPrefix string, err error) {
+	var ibcAutoSendEthMemo types.IbcAutoSendEthMemo
 
-	// If there is no memo, the packet was either sent with an earlier version of IBC, or the memo was
-	// intentionally left blank. Nothing to do here. Ignore the packet and pass it down the stack.
-	if len(memo) == 0 {
-		return false, jsonObject
+	if err := json.Unmarshal([]byte(memo), &ibcAutoSendEthMemo); err != nil {
+		return false, nil, sdk.Int{}, sdk.Int{}, "", nil
 	}
 
-	// the jsonObject must be a valid JSON object
-	err := json.Unmarshal([]byte(memo), &jsonObject)
+	if ibcAutoSendEthMemo.SendToEth == nil {
+		return false, nil, sdk.Int{}, sdk.Int{}, "", nil
+	}
+
+	if err := ibcAutoSendEthMemo.ValidateBasic(); err != nil {
+		return true, nil, sdk.Int{}, sdk.Int{}, "", err
+	}
+
+	dest, err = types.NewEthAddress(ibcAutoSendEthMemo.SendToEth.EthDest)
 	if err != nil {
-		return false, jsonObject
+		return true, nil, sdk.Int{}, sdk.Int{}, "", sdkerrors.Wrapf(types.ErrBadMetadataFormat, `invalid eth dest`)
 	}
 
-	// If the key doesn't exist, there's nothing to do on this hook. Continue by passing the packet
-	// down the stack
-	_, ok := jsonObject[key]
+	amount, ok := sdk.NewIntFromString(ibcAutoSendEthMemo.SendToEth.Amount)
 	if !ok {
-		return false, jsonObject
+		return true, nil, sdk.Int{}, sdk.Int{}, "",
+			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "error parsing amount : %s", ibcAutoSendEthMemo.SendToEth.Amount)
 	}
 
-	return true, jsonObject
-}
-
-func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthAddress, amount sdk.Int, evmChainPrefix string, err error) {
-	isSendToEthRouted, metadata := jsonStringHasKey(memo, "send_to_eth")
-	if !isSendToEthRouted {
-		return isSendToEthRouted, nil, sdk.Int{}, "", nil
-	}
-
-	sendToEthRaw := metadata["send_to_eth"]
-
-	// Make sure the sendToEth key is a map. If it isn't, ignore this packet
-	sendToEth, ok := sendToEthRaw.(map[string]interface{})
+	bridgeFee, ok = sdk.NewIntFromString(ibcAutoSendEthMemo.SendToEth.BridgeFee)
 	if !ok {
-		return isSendToEthRouted, nil, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "send_to_eth metadata not properly formatted for: '%v'. %s", memo, "sendToEth metadata is not a valid JSON map object")
+		return true, nil, sdk.Int{}, sdk.Int{}, "",
+			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "error parsing bridge fee : %s", ibcAutoSendEthMemo.SendToEth.BridgeFee)
 	}
 
-	// Get the eth_dest
-	ethDest, ok := sendToEth["eth_dest"].(string)
-	if !ok {
-		// The tokens will be returned
-		return isSendToEthRouted, nil, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, `Could not find key send_to_eth["eth_dest"]`)
-	}
+	evmChainPrefix = ibcAutoSendEthMemo.SendToEth.EvmChainPrefix
 
-	dest, err = types.NewEthAddress(ethDest)
-	if err != nil {
-		return isSendToEthRouted, nil, sdk.Int{}, "", sdkerrors.Wrapf(types.ErrBadMetadataFormat, `invalid eth dest`)
-	}
-
-	amountToSend, ok := sendToEth["amount"].(string)
-	if !ok {
-		// The tokens will be returned
-		return isSendToEthRouted, nil, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, `Could not find key send_to_eth["amount"]`)
-	}
-	amountToSendInt, ok := sdk.NewIntFromString(amountToSend)
-	if !ok {
-		return isSendToEthRouted, nil, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "error parsing amount : %s", amountToSend)
-	}
-	// amountToSendInt must be positive
-	if amountToSendInt.IsNegative() {
-		return isSendToEthRouted, nil, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "amount must be positive")
-	}
-
-	evmChainPrefix, ok = sendToEth["evm_chain_prefix"].(string)
-	if !ok {
-		// The tokens will be returned
-		return isSendToEthRouted, nil, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, `Could not find key send_to_eth["evm_chain_prefix"]`)
-	}
-
-	return isSendToEthRouted, dest, amountToSendInt, evmChainPrefix, nil
+	return true, dest, amount, bridgeFee, evmChainPrefix, nil
 }

@@ -270,6 +270,7 @@ var (
 				EthereumBlacklist:        []string{},
 			},
 		},
+		IbcAutoForwardTimeout: 60000,
 	}
 
 	EvmChains = []types.EvmChain{
