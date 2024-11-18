@@ -172,6 +172,7 @@ func TestBatchAndTxImportExport(t *testing.T) {
 			Token:           &coins[0],
 			IbcChannel:      sourceChannel,
 			EventNonce:      uint64(i + 1),
+			Memo:            "",
 		}
 		input.GravityKeeper.setLastObservedEventNonce(ctx, evmChain.EvmChainPrefix, fwd.EventNonce)
 		input.GravityKeeper.SetLastObservedEthereumBlockHeight(ctx, evmChain.EvmChainPrefix, 100)
