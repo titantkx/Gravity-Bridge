@@ -45,25 +45,6 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 // handling of cases where for example an Ethereum hardfork has occured and more than 1/3 of the vlaidtor set
 // disagrees with the rest. Normally this would require a chain halt, manual genesis editing and restar to resolve
 // with this feature a governance proposal can be used instead
-//
-// bridge_active
-//
-// This boolean flag can be used by governance to temporarily halt the bridge due to a vulnerability or other issue
-// In this context halting the bridge means prevent the execution of any oracle events from Ethereum and preventing
-// the creation of new batches that may be relayed to Ethereum.
-// This does not prevent the creation of validator sets
-// or slashing for not submitting validator set signatures as either of these might allow key signers to leave the
-// validator set and steal funds on Ethereum without consequence. The practical outcome of this flag being set to
-// 'false' is that deposits from Ethereum will not show up and withdraws from Cosmos will not execute on Ethereum.
-//
-// min_chain_fee_basis_points
-//
-// The minimum SendToEth `chain_fee` amount, in terms of basis points. e.g. 10% fee = 1000, and 0.02% fee = 2
-//
-// chain_fee_auction_pool_fraction
-//
-// Specifies what fraction of the SendToEth `chain_fee` amount should go to the auction pool.
-// e.g. "0.5" gives a 50% auction pool / staker split while "0.9" would cause 90% of the fee to go to the pool
 type Params struct {
 	SignedValsetsWindow    uint64 `protobuf:"varint,1,opt,name=signed_valsets_window,json=signedValsetsWindow,proto3" json:"signed_valsets_window,omitempty"`
 	SignedBatchesWindow    uint64 `protobuf:"varint,2,opt,name=signed_batches_window,json=signedBatchesWindow,proto3" json:"signed_batches_window,omitempty"`
@@ -188,9 +169,19 @@ func (m *Params) GetIbcAutoForwardTimeout() uint64 {
 	return 0
 }
 
-// bridge_chain_id:
-// the unique identifier of the Ethereum chain, this is a reference value
-// only and is not actually used by any Gravity code
+// These values are the average Ethereum block time repsectively
+// and they are used to compute what the target batch timeout is. It is important that
+// governance updates these in case of any major, prolonged change in the time it takes
+// to produce a block
+//
+// min_chain_fee_basis_points
+//
+// The minimum SendToEth `chain_fee` amount, in terms of basis points. e.g. 10% fee = 1000, and 0.02% fee = 2
+//
+// chain_fee_auction_pool_fraction
+//
+// Specifies what fraction of the SendToEth `chain_fee` amount should go to the auction pool.
+// e.g. "0.5" gives a 50% auction pool / staker split while "0.9" would cause 90% of the fee to go to the pool
 type EvmChainParam struct {
 	GravityId          string `protobuf:"bytes,1,opt,name=gravity_id,json=gravityId,proto3" json:"gravity_id,omitempty"`
 	BridgeActive       bool   `protobuf:"varint,2,opt,name=bridge_active,json=bridgeActive,proto3" json:"bridge_active,omitempty"`
