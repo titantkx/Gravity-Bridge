@@ -148,12 +148,13 @@ message FailedIbcAutoForward {
 }
 
 message IbcAutoSendEthMemo {
-  IbcAutoSendEth send_to_eth = 1 [(gogoproto.nullable) = true];
+  IbcAutoSendEth send_to_eth = 1 [(gogoproto.nullable) = false];
 }
 
 message IbcAutoSendEth {
-  string eth_dest         = 1;
-  string amount           = 2;
-  string bridge_fee       = 3;
+  string eth_dest = 1;
+  string amount   = 2 [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int", (gogoproto.nullable) = false];
+  string bridge_fee = 3
+      [(gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int", (gogoproto.nullable) = true];
   string evm_chain_prefix = 4;
 }

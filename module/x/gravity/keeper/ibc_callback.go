@@ -199,15 +199,42 @@ func (k Keeper) WriteAcknowledgement(ctx sdk.Context,
 	return k.ics4Wrapper.WriteAcknowledgement(ctx, chanCap, packet, ack)
 }
 
-func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthAddress, amount sdk.Int, bridgeFee sdk.Int, evmChainPrefix string, err error) {
-	var ibcAutoSendEthMemo types.IbcAutoSendEthMemo
+// jsonStringHasKey parses the memo as a json object and checks if it contains the key.
+func jsonStringHasKey(memo, key string) (found bool, jsonObject map[string]interface{}) {
+	jsonObject = make(map[string]interface{})
 
-	if err := json.Unmarshal([]byte(memo), &ibcAutoSendEthMemo); err != nil {
+	// If there is no memo, the packet was either sent with an earlier version of IBC, or the memo was
+	// intentionally left blank. Nothing to do here. Ignore the packet and pass it down the stack.
+	if len(memo) == 0 {
+		return false, jsonObject
+	}
+
+	// the jsonObject must be a valid JSON object
+	err := json.Unmarshal([]byte(memo), &jsonObject)
+	if err != nil {
+		return false, jsonObject
+	}
+
+	// If the key doesn't exist, there's nothing to do on this hook. Continue by passing the packet
+	// down the stack
+	_, ok := jsonObject[key]
+	if !ok {
+		return false, jsonObject
+	}
+
+	return true, jsonObject
+}
+
+func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthAddress, amount sdk.Int, bridgeFee sdk.Int, evmChainPrefix string, err error) {
+	isSendToEthRouted, _ = jsonStringHasKey(memo, "send_to_eth")
+	if !isSendToEthRouted {
 		return false, nil, sdk.Int{}, sdk.Int{}, "", nil
 	}
 
-	if ibcAutoSendEthMemo.SendToEth == nil {
-		return false, nil, sdk.Int{}, sdk.Int{}, "", nil
+	var ibcAutoSendEthMemo types.IbcAutoSendEthMemo
+
+	if err := json.Unmarshal([]byte(memo), &ibcAutoSendEthMemo); err != nil {
+		return true, nil, sdk.Int{}, sdk.Int{}, "", sdkerrors.Wrap(types.ErrBadMetadataFormat, err.Error())
 	}
 
 	if err := ibcAutoSendEthMemo.ValidateBasic(); err != nil {
@@ -219,16 +246,12 @@ func ValidateAndParseMemo(memo string) (isSendToEthRouted bool, dest *types.EthA
 		return true, nil, sdk.Int{}, sdk.Int{}, "", sdkerrors.Wrapf(types.ErrBadMetadataFormat, `invalid eth dest`)
 	}
 
-	amount, ok := sdk.NewIntFromString(ibcAutoSendEthMemo.SendToEth.Amount)
-	if !ok {
-		return true, nil, sdk.Int{}, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "error parsing amount : %s", ibcAutoSendEthMemo.SendToEth.Amount)
-	}
+	amount = ibcAutoSendEthMemo.SendToEth.Amount
 
-	bridgeFee, ok = sdk.NewIntFromString(ibcAutoSendEthMemo.SendToEth.BridgeFee)
-	if !ok {
-		return true, nil, sdk.Int{}, sdk.Int{}, "",
-			sdkerrors.Wrapf(types.ErrBadMetadataFormat, "error parsing bridge fee : %s", ibcAutoSendEthMemo.SendToEth.BridgeFee)
+	if ibcAutoSendEthMemo.SendToEth.BridgeFee == nil || ibcAutoSendEthMemo.SendToEth.BridgeFee.IsNil() {
+		bridgeFee = sdk.NewIntFromUint64(0)
+	} else {
+		bridgeFee = *ibcAutoSendEthMemo.SendToEth.BridgeFee
 	}
 
 	evmChainPrefix = ibcAutoSendEthMemo.SendToEth.EvmChainPrefix

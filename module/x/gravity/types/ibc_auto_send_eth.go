@@ -1,7 +1,6 @@
 package types
 
 import (
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 )
 
@@ -18,17 +17,14 @@ func (msg IbcAutoSendEth) ValidateBasic() error {
 		return sdkerrors.Wrap(ErrBadMetadataFormat, "EvmChainPrefix must not be an empty string")
 	}
 
-	amountInt, err := ValidateAmountString(msg.Amount)
-	if err != nil {
-		return sdkerrors.Wrap(ErrBadMetadataFormat, "amount")
-	}
-	if amountInt.IsZero() {
+	if msg.Amount.IsNil() || !msg.Amount.IsPositive() {
 		return sdkerrors.Wrap(ErrBadMetadataFormat, "amount must be positive")
 	}
 
-	_, err = ValidateAmountString(msg.BridgeFee)
-	if err != nil {
-		return sdkerrors.Wrap(ErrBadMetadataFormat, "bridge fee")
+	if msg.BridgeFee != nil {
+		if msg.BridgeFee.IsNil() || msg.BridgeFee.IsNegative() {
+			return sdkerrors.Wrap(ErrBadMetadataFormat, "bridge fee must be positive or zero")
+		}
 	}
 
 	if err := ValidateEthAddress(msg.EthDest); err != nil {
@@ -36,17 +32,4 @@ func (msg IbcAutoSendEth) ValidateBasic() error {
 	}
 
 	return nil
-}
-
-func ValidateAmountString(amount string) (sdk.Int, error) {
-	amountInt, ok := sdk.NewIntFromString(amount)
-	if !ok {
-		return sdk.Int{}, sdkerrors.Wrapf(ErrBadMetadataFormat, "error parsing amount : %s", amount)
-	}
-	// amountToSendInt must be positive or zero
-	if amountInt.IsNegative() {
-		return sdk.Int{}, sdkerrors.Wrapf(ErrBadMetadataFormat, "amount must be positive")
-	}
-
-	return amountInt, nil
 }
