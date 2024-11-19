@@ -121,7 +121,7 @@ func TestOnRecvPacket(t *testing.T) {
 				// Send bsc from Oraichain to OraiBridge in SendPacket method, the denom is extracted by calling DenomPathFromHash()
 				transfer := transfertypes.NewFungibleTokenPacketData(myTokenDenom, "110", cosmosAddr, gravityAddr.String())
 				// set destination in memo
-				transfer.Memo = fmt.Sprintf(`{"send_to_eth":{"evm_chain_prefix":"%s","eth_dest":"%s","amount":"100","bridge_fee":"0"}}`, evmChain.EvmChainPrefix, ethDestAddr)
+				transfer.Memo = fmt.Sprintf(`{"send_to_eth":{"evm_chain_prefix":"%s","eth_dest":"%s","amount":"100"}}`, evmChain.EvmChainPrefix, ethDestAddr)
 
 				bz := transfertypes.ModuleCdc.MustMarshalJSON(&transfer)
 				return channeltypes.NewPacket(bz, 1, transfertypes.PortID, sourceChannel, transfertypes.PortID, gravityChannel, timeoutHeight, 0)
