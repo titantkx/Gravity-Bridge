@@ -1,13 +1,11 @@
-use cosmwasm_std::{DepsMut, MessageInfo, Response};
-
-use crate::{
-    error::ContractError,
-    state::{self, admin::check_admin},
-    types::msg::{AddTkxIbcDenomMsg, RemoveTkxIbcDenomMsg},
-};
-
 pub mod execute {
-    use super::*;
+    use cosmwasm_std::{DepsMut, MessageInfo, Response};
+
+    use crate::{
+        error::ContractError,
+        state::{self, admin::check_admin},
+        types::msg::{AddTkxIbcDenomMsg, RemoveTkxIbcDenomMsg},
+    };
 
     pub fn add_tkx_ibc_token_denom(
         deps: DepsMut,
@@ -41,5 +39,17 @@ pub mod execute {
             .add_attribute("denom", data.denom.to_string());
 
         Ok(resp)
+    }
+}
+
+pub mod query {
+    use cosmwasm_std::{Deps, StdResult};
+
+    use crate::{state, types::query::ListTxkIbcDenomResp};
+
+    pub fn list_tkx_ibc_token_denoms(deps: Deps) -> StdResult<ListTxkIbcDenomResp> {
+        let denoms = state::config::list_tkx_ibc_token_denoms(deps.storage);
+
+        Ok(ListTxkIbcDenomResp { denoms })
     }
 }

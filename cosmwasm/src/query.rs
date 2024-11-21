@@ -1,24 +1,12 @@
 use cosmwasm_std::{to_json_binary, Binary, Deps, Env, StdResult};
 
+use crate::msgs::*;
 use crate::types::query::QueryMsg;
 
-pub fn query(_deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     use QueryMsg::*;
 
     match msg {
-        Greet {} => to_json_binary(&query::greet()?),
-    }
-}
-
-mod query {
-    use super::*;
-    use crate::types::query::*;
-
-    pub fn greet() -> StdResult<GreetResp> {
-        let resp = GreetResp {
-            message: "Hello World".to_owned(),
-        };
-
-        Ok(resp)
+        ListTxkIbcDenom {} => to_json_binary(&config::query::list_tkx_ibc_token_denoms(deps)?),
     }
 }
