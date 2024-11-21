@@ -16,3 +16,5 @@ build-optimizer:
 check: build
 	cosmwasm-check $(ROOT_DIR)/target/wasm32-unknown-unknown/release/cosmwasm.wasm
 
+test:
+	cargo test --lib -- --nocapture
