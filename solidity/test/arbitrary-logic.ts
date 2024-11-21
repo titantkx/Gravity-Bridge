@@ -1,8 +1,7 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { ethers } from "hardhat";
-import { SimpleLogicBatchMiddleware } from "../typechain/SimpleLogicBatchMiddleware";
-import { TestLogicContract } from "../typechain/TestLogicContract";
+import { SimpleLogicBatchMiddleware, TestLogicContract } from "../typechain";
 
 import { deployContracts } from "../test-utils";
 import {
@@ -44,19 +43,19 @@ async function runTest(opts: {
 
   // First we deploy the logic batch middleware contract. This makes it easy to call a logic
   // contract a bunch of times in a batch.
-  const SimpleLogicBatchMiddleware = await ethers.getContractFactory(
+  const SimpleLogicBatchMiddlewareFactory = await ethers.getContractFactory(
     "SimpleLogicBatchMiddleware"
   );
   const logicBatch =
-    (await SimpleLogicBatchMiddleware.deploy()) as SimpleLogicBatchMiddleware;
+    (await SimpleLogicBatchMiddlewareFactory.deploy()) as SimpleLogicBatchMiddleware;
   // We set the ownership to gravity so that nobody else can call it.
   await logicBatch.transferOwnership(gravity.address);
 
   // Then we deploy the actual logic contract.
-  const TestLogicContract = await ethers.getContractFactory(
+  const TestLogicContractFactory = await ethers.getContractFactory(
     "TestLogicContract"
   );
-  const logicContract = (await TestLogicContract.deploy(
+  const logicContract = (await TestLogicContractFactory.deploy(
     testERC20.address
   )) as TestLogicContract;
   // We set its owner to the batch contract.

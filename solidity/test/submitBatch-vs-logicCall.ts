@@ -1,7 +1,6 @@
 import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { ethers } from "hardhat";
-import { TestTokenBatchMiddleware } from "../typechain/TestTokenBatchMiddleware";
 
 import { Signer } from "ethers";
 import { deployContracts } from "../test-utils";
@@ -11,9 +10,12 @@ import {
   signHash,
   ZeroAddress
 } from "../test-utils/pure";
-import { Gravity } from "../typechain/Gravity";
-import { ReentrantERC20 } from "../typechain/ReentrantERC20";
-import { TestERC20A } from "../typechain/TestERC20A";
+import {
+  Gravity,
+  ReentrantERC20,
+  TestERC20A,
+  TestTokenBatchMiddleware
+} from "../typechain";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -210,11 +212,11 @@ async function runLogicCallTest(opts: {
     reentrantERC20
   } = await prep();
 
-  const TestTokenBatchMiddleware = await ethers.getContractFactory(
+  const TestTokenBatchMiddlewareFactory = await ethers.getContractFactory(
     "TestTokenBatchMiddleware"
   );
   const tokenBatchMiddleware =
-    (await TestTokenBatchMiddleware.deploy()) as TestTokenBatchMiddleware;
+    (await TestTokenBatchMiddlewareFactory.deploy()) as TestTokenBatchMiddleware;
   await tokenBatchMiddleware.transferOwnership(gravity.address);
 
   // Lock tokens in gravity

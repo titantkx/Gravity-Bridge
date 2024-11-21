@@ -52,7 +52,7 @@ export type Sig = {
 export async function signHash(signers: Signer[], hash: string) {
   let sigs: Sig[] = [];
 
-  for (let i = 0; i < signers.length; i = i + 1) {
+  for (let i = 0; i < signers.length; i += 1) {
     const sig = await signers[i].signMessage(ethers.utils.arrayify(hash));
     const address = await signers[i].getAddress();
 
@@ -96,13 +96,13 @@ export async function parseEvent(
   ).args;
 
   // Get rid of weird quasi-array keys
-  const acc: any = {};
+  const accMap: any = {};
   args = Object.keys(args).reduce((acc, key) => {
     if (Number.isNaN(parseInt(key, 10)) && key !== "length") {
       acc[key] = args[key];
     }
     return acc;
-  }, acc);
+  }, accMap);
 
   return args;
 }

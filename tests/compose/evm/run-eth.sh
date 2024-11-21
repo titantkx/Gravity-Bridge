@@ -1,6 +1,8 @@
 #!/bin/bash
 # Starts the Ethereum testnet chain in the background
 
+set -ex
+
 # init the genesis block
 geth --identity "EthereumTestnet" \
   --nodiscover \
@@ -11,6 +13,7 @@ geth --identity "EthereumTestnet" \
 geth --identity "EthereumTestnet" --nodiscover \
   --networkid 15 \
   --mine \
+  --gcmode=archive \
   --http \
   --http.addr="0.0.0.0" \
   --http.vhosts="*" \
@@ -18,4 +21,4 @@ geth --identity "EthereumTestnet" --nodiscover \
   --miner.threads=1 \
   --nousb \
   --verbosity=5 \
-  --miner.etherbase=0xBf660843528035a5A4921534E156a27e64B231fE &>/geth.log
+  --miner.etherbase=0xBf660843528035a5A4921534E156a27e64B231fE

@@ -33,6 +33,7 @@ use crate::valset_rewards::valset_rewards_test;
 use crate::vesting::vesting_test;
 use clarity::PrivateKey as EthPrivateKey;
 use clarity::{Address as EthAddress, Uint256};
+use custom::custom_test;
 use deep_space::client::types::ChainVersionType;
 use deep_space::coin::Coin;
 use deep_space::Contact;
@@ -61,6 +62,7 @@ mod airdrop_proposal;
 mod auction;
 mod batch_timeout;
 mod bootstrapping;
+mod custom;
 mod deposit_overflow;
 mod eip_712;
 mod erc_721_happy_path;
@@ -375,10 +377,23 @@ pub async fn main() {
     // ICA_HOST_HAPPY_PATH tests that the interchain accounts host module is correctly configured on Gravity
     // RUN_ORCH_ONLY runs only the orchestrators, for local testing where you want the chain to just run.
     // INFLATION_KNOCKDOWN tests a governance proposal to reduce inflation
+    // CUSTOM to test custom testcase
     let test_type = env::var("TEST_TYPE");
     info!("Starting tests with {:?}", test_type);
     if let Ok(test_type) = test_type {
-        if test_type == "VALIDATOR_OUT" {
+        if test_type == "CUSTOM" {
+            info!("Starting custom test");
+            custom_test(
+                &web30,
+                &gravity_contact,
+                grpc_client,
+                keys,
+                gravity_address,
+                erc20_addresses[0],
+            )
+            .await;
+            return;
+        } else if test_type == "VALIDATOR_OUT" {
             info!("Starting Validator out test");
             happy_path_test(
                 &web30,

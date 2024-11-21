@@ -1,23 +1,28 @@
 import axios from "axios";
 import commandLineArgs from "command-line-args";
-import { ethers } from "ethers";
+// import { ethers } from "ethers";
 import fs from "fs";
+import hre, { ethers } from "hardhat";
 import { exit } from "process";
 
-import { Gravity } from "./typechain/Gravity";
-import { GravityERC721 } from "./typechain/GravityERC721";
-import { TestERC20A } from "./typechain/TestERC20A";
-import { TestERC20B } from "./typechain/TestERC20B";
-import { TestERC20C } from "./typechain/TestERC20C";
-import { TestERC721A } from "./typechain/TestERC721A";
+import {
+  Gravity,
+  GravityERC721,
+  TestERC20A,
+  TestERC20B,
+  TestERC20C,
+  TestERC721A
+} from "./typechain";
 
 const args = commandLineArgs([
-  // the ethernum node used to deploy the contract
-  { name: "eth-node", type: String },
+  // note: comment this because we use provider and signer from hardhat config
+  // // the ethernum node used to deploy the contract
+  // { name: "eth-node", type: String },
+  // // the Ethereum private key that will contain the gas required to pay for the contact deployment
+  // { name: "eth-privkey", type: String },
+
   // the cosmos node that will be used to grab the validator set via RPC (TODO),
   { name: "cosmos-node", type: String },
-  // the Ethereum private key that will contain the gas required to pay for the contact deployment
-  { name: "eth-privkey", type: String },
   // the gravity contract .json file
   { name: "contract", type: String },
   // the gravityERC721 contract .json file
@@ -99,15 +104,32 @@ const overrides = {
 
 async function deploy() {
   let startTime = new Date();
-  const provider = await new ethers.providers.JsonRpcProvider(args["eth-node"]);
-  let wallet = new ethers.Wallet(args["eth-privkey"], provider);
+
+  // note: comment this because we select provider/network in hardhat config so can not manually set provider here
+  // we config it through `hardhat.config.ts` and select it by env `HARDHAT_NETWORK` when run command
+  // e.g.
+  // HARDHAT_NETWORK="http://localhost:8545"  npx ts-node \
+  //                             --files contract-deployer.ts \
+  //                             --cosmos-node="http://localhost:26657" \
+  //                             --contract="artifacts/contracts/Gravity.sol/Gravity.json" \
+  //                             --contractERC721="artifacts/contracts/GravityERC721.sol/GravityERC721.json" \
+  //                             --evm-prefix=ethereum \
+  //                             --test-mode=true
+  // const provider = await new ethers.providers.JsonRpcProvider(args["eth-node"]);
+  // let wallet = new ethers.Wallet(args["eth-privkey"], provider);
+
+  const provider = ethers.provider;
+  const [wallet] = await ethers.getSigners();
+
+  console.log("Deploying contracts to network:", hre.network.name);
+  console.log("Deploying contracts with the account:", wallet.address);
 
   if (args["test-mode"] == "True" || args["test-mode"] == "true") {
     let success = false;
     while (!success) {
       let present = new Date();
       let timeDiff: number = present.getTime() - startTime.getTime();
-      timeDiff = timeDiff / 1000;
+      timeDiff /= 1000;
       provider
         .getBlockNumber()
         .then((_) => (success = true))
@@ -140,6 +162,24 @@ async function deploy() {
     const main_location_721_a =
       "/gravity/solidity/artifacts/contracts/TestERC721A.sol/TestERC721A.json";
 
+    const main_location_2_a =
+      "solidity/artifacts/contracts/TestERC20A.sol/TestERC20A.json";
+    const main_location_2_b =
+      "solidity/artifacts/contracts/TestERC20B.sol/TestERC20B.json";
+    const main_location_2_c =
+      "solidity/artifacts/contracts/TestERC20C.sol/TestERC20C.json";
+    const main_location_2_721_a =
+      "solidity/artifacts/contracts/TestERC721A.sol/TestERC721A.json";
+
+    const main_location_3_a =
+      "artifacts/contracts/TestERC20A.sol/TestERC20A.json";
+    const main_location_3_b =
+      "artifacts/contracts/TestERC20B.sol/TestERC20B.json";
+    const main_location_3_c =
+      "artifacts/contracts/TestERC20C.sol/TestERC20C.json";
+    const main_location_3_721_a =
+      "artifacts/contracts/TestERC721A.sol/TestERC721A.json";
+
     const alt_location_1_a = "/solidity/TestERC20A.json";
     const alt_location_1_b = "/solidity/TestERC20B.json";
     const alt_location_1_c = "/solidity/TestERC20C.json";
@@ -155,6 +195,16 @@ async function deploy() {
       erc20_b_path = main_location_b;
       erc20_c_path = main_location_c;
       erc721_a_path = main_location_721_a;
+    } else if (fs.existsSync(main_location_2_a)) {
+      erc20_a_path = main_location_2_a;
+      erc20_b_path = main_location_2_b;
+      erc20_c_path = main_location_2_c;
+      erc721_a_path = main_location_2_721_a;
+    } else if (fs.existsSync(main_location_3_a)) {
+      erc20_a_path = main_location_3_a;
+      erc20_b_path = main_location_3_b;
+      erc20_c_path = main_location_3_c;
+      erc721_a_path = main_location_3_721_a;
     } else if (fs.existsSync(alt_location_1_a)) {
       erc20_a_path = alt_location_1_a;
       erc20_b_path = alt_location_1_b;
@@ -243,17 +293,33 @@ async function deploy() {
     exit(1);
   }
 
-  const gravity = (await factory.deploy(
-    // todo generate this randomly at deployment time that way we can avoid
-    // anything but intentional conflicts
-    gravityId,
-    eth_addresses,
-    powers,
-    overrides
+  console.log("About to deploy Gravity contract");
+  const gravity = (await hre.upgrades.deployProxy(
+    factory,
+    [
+      // todo generate this randomly at deployment time that way we can avoid
+      // anything but intentional conflicts
+      gravityId,
+      eth_addresses,
+      powers
+    ],
+    {
+      kind: "uups",
+      unsafeAllow: [],
+      timeout: 1000 * 60 * 5
+    }
   )) as Gravity;
 
+  console.log("Gravity proxy about deploy to Address - ", gravity.address);
   await gravity.deployed();
   console.log("Gravity deployed at Address - ", gravity.address);
+  const gravityImplementationAddress =
+    await hre.upgrades.erc1967.getImplementationAddress(gravity.address);
+  console.log(
+    "Gravity Implementation Address - ",
+    gravityImplementationAddress
+  );
+
   await submitGravityAddress(gravity.address);
 
   console.log("Starting Gravity ERC721 contract deploy");
@@ -295,7 +361,7 @@ async function getLatestValset(): Promise<Valset> {
   let request_string = args["cosmos-node"] + "/abci_query";
   let params = {
     params: {
-      path: `\"/custom/gravity/currentValset/${args["evm-prefix"]}\"`,
+      path: `"/custom/gravity/currentValset/${args["evm-prefix"]}"`,
       height: block_height,
       prove: "false"
     }
@@ -311,7 +377,7 @@ async function getLatestValset(): Promise<Valset> {
     while (valsets.result.response.value == null) {
       let present = new Date();
       let timeDiff: number = present.getTime() - startTime.getTime();
-      timeDiff = timeDiff / 1000;
+      timeDiff /= 1000;
 
       response = await axios.get(request_string, params);
       valsets = await response.data;
@@ -363,7 +429,7 @@ async function getGravityId(): Promise<string> {
     while (gravityIDABCIResponse.result.response.value == null) {
       let present = new Date();
       let timeDiff: number = present.getTime() - startTime.getTime();
-      timeDiff = timeDiff / 1000;
+      timeDiff /= 1000;
 
       response = await axios.get(request_string, params);
       gravityIDABCIResponse = await response.data;

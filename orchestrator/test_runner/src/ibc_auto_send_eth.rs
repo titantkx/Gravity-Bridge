@@ -192,7 +192,8 @@ pub async fn ibc_auto_send_eth_test(
         sender,
         receiver,
         erc20_address,
-        one_eth(),
+        900000000000000000u128.into(),
+        100000000000000000u128.into(),
         ibc_transfer_qc.clone(),
         ibc_channel_id.clone(),
         Duration::from_secs(60 * 5),
@@ -343,6 +344,7 @@ pub async fn test_ibc_auto_send_eth_happy_path(
     dest: EthAddress,          // The bridged + auto-forwarded ERC20 receiver
     erc20_address: EthAddress, // Address of the ERC20 to send to dest on IBC_CHAIN_ID
     amount: Uint256,           // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
+    chain_fee: Uint256,
     ibc_transfer_qc: IbcTransferQueryClient<Channel>,
     channel_id: String,
     packet_timeout: Duration, // Used to create ibc-transfer timeout-timestamp
@@ -382,7 +384,7 @@ pub async fn test_ibc_auto_send_eth_happy_path(
     info!("Calculated 150 minutes from now: {:?}", timeout_timestamp);
     let coin = Coin {
         denom: format!("ibc/{}", denom_hash),
-        amount: amount.to_string(),
+        amount: (amount + chain_fee).to_string(),
     };
     let forwarder_keys = get_user_key(Some(&ADDRESS_PREFIX));
     info!("Forwarder {:?}", forwarder_keys.cosmos_address.to_string());

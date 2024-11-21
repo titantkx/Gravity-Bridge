@@ -110,6 +110,7 @@ func (k Keeper) HandleAddEvmChainProposal(ctx sdk.Context, p *types.AddEvmChainP
 		Erc20ToDenoms:          []types.ERC20ToDenom{},
 		UnbatchedTransfers:     []types.OutgoingTransferTx{},
 		PendingIbcAutoForwards: []types.PendingIbcAutoForward{},
+		FailedIbcAutoForwards:  []types.FailedIbcAutoForward{},
 	}
 	k.SetEvmChainData(ctx, evmChain.EvmChain)
 

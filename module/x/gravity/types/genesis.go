@@ -147,6 +147,7 @@ func DefaultEvmChains() []EvmChainData {
 			Erc20ToDenoms:          []ERC20ToDenom{},
 			UnbatchedTransfers:     []OutgoingTransferTx{},
 			PendingIbcAutoForwards: []PendingIbcAutoForward{},
+			FailedIbcAutoForwards:  []FailedIbcAutoForward{},
 		},
 	}
 }

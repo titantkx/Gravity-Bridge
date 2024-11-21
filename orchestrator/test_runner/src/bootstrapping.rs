@@ -17,7 +17,6 @@ use crate::IBC_CHAIN_ID;
 use crate::IBC_RELAYER_ADDRESS;
 use crate::IBC_STAKING_DECIMALS;
 use crate::IBC_STAKING_TOKEN;
-use crate::MINER_PRIVATE_KEY;
 use crate::OPERATION_TIMEOUT;
 use crate::RELAYER_MNEMONIC;
 use crate::TOTAL_TIMEOUT;
@@ -182,14 +181,15 @@ pub async fn deploy_contracts(contact: &Contact) {
     // and the gravity contract itself, feel free to expand this if it makes your
     // deployments more straightforward.
 
-    // both files are just in the PWD
-    const A: [&str; 3] = ["contract-deployer", "Gravity.json", "GravityERC721.json"];
-    // files are placed in a root /solidity/ folder
-    const B: [&str; 3] = [
-        "/solidity/contract-deployer",
-        "/solidity/Gravity.json",
-        "/solidity/GravityERC721.json",
-    ];
+    // note: comment out A and B options since use use deployment support from hardhat (allow we use openzeppelin hardhat-deploy plugin)
+    // // both files are just in the PWD
+    // const A: [&str; 3] = ["contract-deployer", "Gravity.json", "GravityERC721.json"];
+    // // files are placed in a root /solidity/ folder
+    // const B: [&str; 3] = [
+    //     "/solidity/contract-deployer",
+    //     "/solidity/Gravity.json",
+    //     "/solidity/GravityERC721.json",
+    // ];
     // the default unmoved locations for the Gravity repo
     const C: [&str; 4] = [
         "/gravity/solidity/contract-deployer.ts",
@@ -197,34 +197,36 @@ pub async fn deploy_contracts(contact: &Contact) {
         "/gravity/solidity/artifacts/contracts/GravityERC721.sol/GravityERC721.json",
         "/gravity/solidity/",
     ];
-    let output = if all_paths_exist(&A) || all_paths_exist(&B) {
-        let paths = return_existing(A, B);
-        Command::new(paths[0])
-            .args([
-                &format!("--cosmos-node={}", COSMOS_NODE_ABCI.as_str()),
-                &format!("--eth-node={}", ETH_NODE.as_str()),
-                &format!("--eth-privkey={:#x}", *MINER_PRIVATE_KEY),
-                &format!("--contract={}", paths[1]),
-                &format!("--contractERC721={}", paths[2]),
-                &format!("--evm-prefix={}", EVM_CHAIN_PREFIX.to_string()),
-                "--test-mode=true",
-            ])
-            .output()
-            .expect("Failed to deploy contracts!")
-    } else if all_paths_exist(&C) {
+    // let output = if all_paths_exist(&A) || all_paths_exist(&B) {
+    //     let paths = return_existing(A, B);
+    //     info!("Deploying contracts with paths {:?}", paths);
+    //     Command::new(paths[0])
+    //         .args([
+    //             &format!("--cosmos-node={}", COSMOS_NODE_ABCI.as_str()),
+    //             &format!("--contract={}", paths[1]),
+    //             &format!("--contractERC721={}", paths[2]),
+    //             &format!("--evm-prefix={}", EVM_CHAIN_PREFIX.to_string()),
+    //             "--test-mode=true",
+    //         ])
+    //         .env("HARDHAT_NETWORK", ETH_NODE.as_str())
+    //         .output()
+    //         .expect("Failed to deploy contracts!")
+    // } else
+    let output = if all_paths_exist(&C) {
+        info!("Deploying contracts with paths {:?}", C);
         Command::new("npx")
             .args([
                 "ts-node",
+                "--files",
                 C[0],
                 &format!("--cosmos-node={}", COSMOS_NODE_ABCI.as_str()),
-                &format!("--eth-node={}", ETH_NODE.as_str()),
-                &format!("--eth-privkey={:#x}", *MINER_PRIVATE_KEY),
                 &format!("--contract={}", C[1]),
                 &format!("--contractERC721={}", C[2]),
                 &format!("--evm-prefix={}", EVM_CHAIN_PREFIX.to_string()),
                 "--test-mode=true",
             ])
             .current_dir(C[3])
+            .env("HARDHAT_NETWORK", ETH_NODE.as_str())
             .output()
             .expect("Failed to deploy contracts!")
     } else {
@@ -306,15 +308,15 @@ fn all_paths_exist(input: &[&str]) -> bool {
     true
 }
 
-fn return_existing<'a>(a: [&'a str; 3], b: [&'a str; 3]) -> [&'a str; 3] {
-    if all_paths_exist(&a) {
-        a
-    } else if all_paths_exist(&b) {
-        b
-    } else {
-        panic!("No paths exist!")
-    }
-}
+// fn return_existing<'a>(a: [&'a str; 3], b: [&'a str; 3]) -> [&'a str; 3] {
+//     if all_paths_exist(&a) {
+//         a
+//     } else if all_paths_exist(&b) {
+//         b
+//     } else {
+//         panic!("No paths exist!")
+//     }
+// }
 
 // Creates a key in the relayer's test keyring, which the relayer should use
 // Hermes stores its keys in hermes_home/ gravity_phrase is for the main chain

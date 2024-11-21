@@ -2,7 +2,7 @@ import chai from "chai";
 import { solidity } from "ethereum-waffle";
 import { BigNumberish } from "ethers";
 import { ethers } from "hardhat";
-import { HashingTest } from "../typechain/HashingTest";
+import { HashingTest } from "../typechain";
 
 import { getSignerAddresses } from "../test-utils/pure";
 
@@ -22,9 +22,9 @@ describe("Hashing test", function () {
       powers.push(5000);
     }
 
-    const HashingTest = await ethers.getContractFactory("HashingTest");
+    const HashingTestFactory = await ethers.getContractFactory("HashingTest");
 
-    const hashingContract = (await HashingTest.deploy()) as HashingTest;
+    const hashingContract = (await HashingTestFactory.deploy()) as HashingTest;
 
     await hashingContract.deployed();
 

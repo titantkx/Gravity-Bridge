@@ -101,6 +101,7 @@ func createAttestations(t *testing.T, length int, k Keeper, ctx sdktypes.Context
 			CosmosReceiver: receiver,
 			Orchestrator:   orch,
 			EvmChainPrefix: evmChainPrefix,
+			Memo:           "",
 		}
 		msgs = append(msgs, msg)
 

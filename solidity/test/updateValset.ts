@@ -54,6 +54,7 @@ async function runTest(opts: {
     newValidators = [];
     newPowers = [];
   } else if (opts.notEnoughPowerNewSet) {
+    // eslint-disable-next-line guard-for-in
     for (let i in newPowers) {
       newPowers[i] = 5;
     }

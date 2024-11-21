@@ -172,9 +172,6 @@ $ %s gentx my-key-name 1000000stake 0x033030FEeBd93E3178487c35A9c8cA80874353C9 c
 			}
 
 			txFactory := tx.NewFactoryCLI(clientCtx, cmd.Flags())
-			if err != nil {
-				return errors.Wrap(err, "error creating tx builder")
-			}
 
 			clientCtx = clientCtx.WithInput(inBuf).WithFromAddress(key.GetAddress())
 
@@ -266,7 +263,7 @@ $ %s gentx my-key-name 1000000stake 0x033030FEeBd93E3178487c35A9c8cA80874353C9 c
 
 func makeOutputFilepath(rootDir, nodeID string) (string, error) {
 	writePath := filepath.Join(rootDir, "config", "gentx")
-	if err := tmos.EnsureDir(writePath, 0700); err != nil {
+	if err := tmos.EnsureDir(writePath, 0o700); err != nil {
 		return "", err
 	}
 
@@ -288,7 +285,7 @@ func readUnsignedGenTxFile(clientCtx client.Context, r io.Reader) (sdk.Tx, error
 }
 
 func writeSignedGenTx(clientCtx client.Context, outputDocument string, tx sdk.Tx) error {
-	outputFile, err := os.OpenFile(outputDocument, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+	outputFile, err := os.OpenFile(outputDocument, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {
 		return err
 	}
@@ -403,7 +400,6 @@ func newPrintInfo(moniker, chainID, nodeID, genTxsDir string, appMessage json.Ra
 func GenAppStateFromConfig(cdc codec.Codec, txEncodingConfig client.TxEncodingConfig,
 	config *cfg.Config, initCfg types.InitConfig, genDoc tmtypes.GenesisDoc, genBalIterator types.GenesisBalancesIterator,
 ) (appState json.RawMessage, err error) {
-
 	// process genesis transactions, else create default genesis.json
 	appGenTxs, persistentPeers, err := CollectTxs(
 		cdc, txEncodingConfig.TxJSONDecoder(), config.Moniker, initCfg.GenTxsDir, genDoc, genBalIterator,

@@ -8,7 +8,7 @@ import {
   signHash,
   ZeroAddress
 } from "../test-utils/pure";
-import { GravityERC721 } from "../typechain/GravityERC721";
+import { GravityERC721 } from "../typechain";
 
 chai.use(solidity);
 const { expect } = chai;
@@ -61,9 +61,7 @@ async function runTest(opts: {
   for (let i = 0; i < numTxs; i++) {
     await testERC721.functions.approve(gravityERC721.address, 1 + i);
     if (!opts.ERC721NotInContract) {
-      await gravityERC721.functions[
-        "sendERC721ToCosmos(address,string,uint256)"
-      ](
+      await gravityERC721.sendERC721ToCosmos(
         testERC721.address,
         ethers.utils.formatBytes32String("myCosmosAddress"),
         1 + i
@@ -225,19 +223,19 @@ describe("submitLogicCall tests", function () {
 
   it("throws on Wrong NFT owner", async function () {
     await expect(runTest({ wrongERC721Owner: true })).to.be.revertedWith(
-      "ERC721: transfer caller is not owner nor approved"
+      "ERC721: caller is not token owner or approved"
     );
   });
 
   it("throws on NFT not in contract", async function () {
     await expect(runTest({ ERC721NotInContract: true })).to.be.revertedWith(
-      "ERC721: transfer of token that is not own"
+      "ERC721: transfer from incorrect owner"
     );
   });
 
   it("throws on nonexistent token", async function () {
     await expect(runTest({ ERC721NotExist: true })).to.be.revertedWith(
-      "ERC721: operator query for nonexistent token"
+      "ERC721: invalid token ID"
     );
   });
 });

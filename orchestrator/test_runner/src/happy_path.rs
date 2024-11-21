@@ -73,7 +73,7 @@ pub async fn happy_path_test(
     // generate an address for coin sending tests, this ensures test imdepotency
     let user_keys = get_user_key(None);
 
-    info!("testing erc20 deposit");
+    info!("testing erc20 deposit {}", erc20_address);
     // the denom and amount of the token bridged from Ethereum -> Cosmos
     // so the denom is the gravity<hash> token name
     // Send a token 3 times

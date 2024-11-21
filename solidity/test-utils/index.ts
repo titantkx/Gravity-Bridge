@@ -1,8 +1,7 @@
 import { Signer } from "ethers";
-import { ethers } from "hardhat";
+import hre, { ethers, upgrades } from "hardhat";
 
-import { Gravity } from "../typechain/Gravity";
-import { TestERC20A } from "../typechain/TestERC20A";
+import { Gravity, TestERC20A } from "../typechain";
 import { getSignerAddresses, makeCheckpoint, ZeroAddress } from "./pure";
 
 type DeployContractsOptions = {
@@ -21,7 +20,7 @@ export async function deployContracts(
   const TestERC20 = await ethers.getContractFactory("TestERC20A");
   const testERC20 = (await TestERC20.deploy()) as TestERC20A;
 
-  const Gravity = await ethers.getContractFactory("Gravity");
+  const GravityFactory = await ethers.getContractFactory("Gravity");
 
   const valAddresses = await getSignerAddresses(validators);
 
@@ -34,13 +33,35 @@ export async function deployContracts(
     gravityId
   );
 
-  const gravity = (await Gravity.deploy(
-    gravityId,
-    await getSignerAddresses(validators),
-    powers
+  const gravity = (await hre.upgrades.deployProxy(
+    GravityFactory,
+    [gravityId, await getSignerAddresses(validators), powers],
+    {
+      kind: "uups",
+      unsafeAllow: []
+    }
   )) as Gravity;
 
   await gravity.deployed();
 
   return { gravity, testERC20, checkpoint };
+}
+
+export async function upgradeProxy(
+  proxyAddress: string,
+  contractName: string,
+  caller?: Signer
+): Promise<Gravity> {
+  let Contract = await ethers.getContractFactory(contractName);
+  if (caller) {
+    Contract = Contract.connect(caller);
+  }
+  // upgrades.silenceWarnings();
+  const contract = await upgrades.upgradeProxy(proxyAddress, Contract, {
+    kind: "uups",
+    unsafeAllow: []
+  });
+
+  await contract.deployed();
+  return contract as Gravity;
 }
