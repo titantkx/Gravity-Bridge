@@ -15,12 +15,12 @@ pub mod query {
 pub mod execute {
     use cosmwasm_std::{DepsMut, MessageInfo, Response};
 
-    use crate::{error::ContractError, state, types::msg::SetAdmin};
+    use crate::{error::ContractError, state, types::msg::SetAdminMsg};
 
     pub fn set_admin(
         deps: DepsMut,
         info: MessageInfo,
-        data: SetAdmin,
+        data: SetAdminMsg,
     ) -> Result<Response, ContractError> {
         state::admin::check_admin(deps.storage, &info.sender)?;
 
@@ -46,7 +46,7 @@ mod tests {
 
     use crate::{
         contract::instantiate,
-        types::msg::{InstantiateMsg, SetAdmin},
+        types::msg::{InstantiateMsg, SetAdminMsg},
     };
 
     use super::*;
@@ -80,7 +80,7 @@ mod tests {
     fn admin_can_set_admin() {
         let (mut deps, _) = init_test();
 
-        let msg = SetAdmin {
+        let msg = SetAdminMsg {
             admin: USER.to_string(),
         };
         let info = message_info(&ADMIN, &[]);
@@ -101,7 +101,7 @@ mod tests {
     fn non_admin_cannot_set_admin() {
         let (mut deps, _) = init_test();
 
-        let msg = SetAdmin {
+        let msg = SetAdminMsg {
             admin: USER.to_string(),
         };
         let info = message_info(&USER, &[]);
