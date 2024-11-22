@@ -9,5 +9,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         GetAdmin {} => to_json_binary(&admin::query::get_admin(deps)?),
         ListTxkIbcDenom {} => to_json_binary(&config::query::list_tkx_ibc_token_denoms(deps)?),
+        ListTkxChainWithDenom {} => {
+            to_json_binary(&config::query::list_tkx_chain_with_denoms(deps)?)
+        }
     }
 }

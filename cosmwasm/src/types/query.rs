@@ -8,6 +8,9 @@ pub enum QueryMsg {
 
     #[returns(ListTxkIbcDenomResp)]
     ListTxkIbcDenom {},
+
+    #[returns(ListTkxChainWithDenomResp)]
+    ListTkxChainWithDenom {},
 }
 
 #[cw_serde]
@@ -18,4 +21,15 @@ pub struct GetAdminResp {
 #[cw_serde]
 pub struct ListTxkIbcDenomResp {
     pub denoms: Vec<String>,
+}
+
+#[cw_serde]
+pub struct TkxChainWithDenom {
+    pub chain_prefix: String,
+    pub denom: String,
+}
+
+#[cw_serde]
+pub struct ListTkxChainWithDenomResp {
+    pub data: Vec<TkxChainWithDenom>,
 }

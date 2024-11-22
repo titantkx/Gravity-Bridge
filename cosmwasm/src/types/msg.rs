@@ -16,17 +16,17 @@ pub enum ExecuteMsg {
 
     /// Remove a tkx ibc token denomination.
     /// Only admin can remove a tkx ibc token denomination.
-    RemoveTkxIbcDenom(RemoveTkxIbcDenomMsg),
+    RemoveTkxIbcDenom(RemoveTkxChainMsg),
 }
 
 #[cw_serde]
 pub struct AddTkxIbcDenomMsg {
+    pub chain_prefix: String,
     /// Denom is the tkx ibc token denomination to be added.
     pub denom: String,
 }
 
 #[cw_serde]
-pub struct RemoveTkxIbcDenomMsg {
-    /// Denom is the tkx ibc token denomination to be removed.
-    pub denom: String,
+pub struct RemoveTkxChainMsg {
+    pub chain_prefix: String,
 }
