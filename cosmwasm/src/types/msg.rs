@@ -10,6 +10,10 @@ pub struct InstantiateMsg {
 
 #[cw_serde]
 pub enum ExecuteMsg {
+    /// Set the admin of the contract.
+    /// Only admin can set the admin of the contract.
+    SetAdmin(SetAdmin),
+
     /// Add a tkx ibc token denomination.
     /// Only admin can add a tkx ibc token denomination.
     AddTkxIbcDenom(AddTkxIbcDenomMsg),
@@ -29,4 +33,9 @@ pub struct AddTkxIbcDenomMsg {
 #[cw_serde]
 pub struct RemoveTkxChainMsg {
     pub chain_prefix: String,
+}
+
+#[cw_serde]
+pub struct SetAdmin {
+    pub admin: String,
 }

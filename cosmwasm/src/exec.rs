@@ -12,6 +12,7 @@ pub fn execute(
     use ExecuteMsg::*;
 
     match msg {
+        SetAdmin(data) => admin::execute::set_admin(deps, info, data),
         AddTkxIbcDenom(data) => config::execute::add_tkx_ibc_token_denom(deps, info, data),
         RemoveTkxIbcDenom(data) => config::execute::remove_tkx_ibc_token_denom(deps, info, data),
     }
