@@ -4,10 +4,10 @@ pub mod execute {
         Response, StdResult, Uint128,
     };
 
-    use crate::{error::ContractError, state, types::msg::DepositMsg};
+    use crate::{error::ContractError, state, types::msg::DepositMsg, TKX_NATIVE_DENOM};
 
     fn get_contract_tkx_balance(deps: Deps, env: Env) -> StdResult<Uint128> {
-        let denom = "atkx";
+        let denom = TKX_NATIVE_DENOM;
         let address = env.contract.address;
 
         let balance_query = BankQuery::Balance {
@@ -69,7 +69,7 @@ pub mod execute {
             messages.push(CosmosMsg::Bank(BankMsg::Send {
                 to_address: recipient.to_string(),
                 amount: vec![Coin {
-                    denom: "atkx".to_string(),
+                    denom: TKX_NATIVE_DENOM.to_string(),
                     amount: tkx_amount,
                 }],
             }));

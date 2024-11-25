@@ -13,6 +13,8 @@ mod query;
 mod state;
 mod types;
 
+static TKX_NATIVE_DENOM: &str = "tkx";
+
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
