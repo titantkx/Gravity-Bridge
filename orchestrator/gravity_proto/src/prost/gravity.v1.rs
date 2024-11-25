@@ -507,6 +507,24 @@ pub struct FailedIbcAutoForward {
     #[prost(string, tag = "4")]
     pub reason: ::prost::alloc::string::String,
 }
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IbcAutoSendEthMemo {
+    #[prost(message, optional, tag = "1")]
+    pub send_to_eth: ::core::option::Option<IbcAutoSendEth>,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct IbcAutoSendEth {
+    #[prost(string, tag = "1")]
+    pub eth_dest: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub amount: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub bridge_fee: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+}
 /// MsgSetOrchestratorAddress
 /// this message allows validators to delegate their voting responsibilities
 /// to a given key. This key is then used as an optional authentication method
@@ -737,7 +755,7 @@ pub struct MsgRetryIbcAutoForwards {
     /// auto forward for a specific chain
     #[prost(string, tag = "2")]
     pub evm_chain_prefix: ::prost::alloc::string::String,
-    #[prost(uint64, repeated, packed = "false", tag = "3")]
+    #[prost(uint64, repeated, tag = "3")]
     pub event_nonces: ::prost::alloc::vec::Vec<u64>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -1394,16 +1412,6 @@ pub mod msg_client {
 /// disagrees with the rest. Normally this would require a chain halt, manual genesis editing and restar to resolve
 /// with this feature a governance proposal can be used instead
 ///
-/// bridge_active
-///
-/// This boolean flag can be used by governance to temporarily halt the bridge due to a vulnerability or other issue
-/// In this context halting the bridge means prevent the execution of any oracle events from Ethereum and preventing
-/// the creation of new batches that may be relayed to Ethereum.
-/// This does not prevent the creation of validator sets
-/// or slashing for not submitting validator set signatures as either of these might allow key signers to leave the
-/// validator set and steal funds on Ethereum without consequence. The practical outcome of this flag being set to
-/// 'false' is that deposits from Ethereum will not show up and withdraws from Cosmos will not execute on Ethereum.
-///
 /// min_chain_fee_basis_points
 ///
 /// The minimum SendToEth `chain_fee` amount, in terms of basis points. e.g. 10% fee = 1000, and 0.02% fee = 2
@@ -1421,8 +1429,10 @@ pub struct Params {
     pub signed_batches_window: u64,
     #[prost(uint64, tag = "3")]
     pub signed_logic_calls_window: u64,
+    /// batch timeout in miliseconds
     #[prost(uint64, tag = "4")]
     pub target_batch_timeout: u64,
+    /// average block time in miliseconds of Gravity chain
     #[prost(uint64, tag = "5")]
     pub average_block_time: u64,
     #[prost(bytes = "vec", tag = "6")]
@@ -1443,10 +1453,14 @@ pub struct Params {
     pub chain_fee_auction_pool_fraction: ::prost::alloc::string::String,
     #[prost(message, repeated, tag = "14")]
     pub evm_chain_params: ::prost::alloc::vec::Vec<EvmChainParam>,
+    /// timeout in miliseconds for auto forwarding IBC transfers
+    #[prost(uint64, tag = "15")]
+    pub ibc_auto_forward_timeout: u64,
 }
-/// bridge_chain_id:
-/// the unique identifier of the Ethereum chain, this is a reference value
-/// only and is not actually used by any Gravity code
+/// These values are the average Ethereum block time repsectively
+/// and they are used to compute what the target batch timeout is. It is important that
+/// governance updates these in case of any major, prolonged change in the time it takes
+/// to produce a block
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EvmChainParam {
