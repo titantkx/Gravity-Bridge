@@ -21,6 +21,9 @@ pub enum ExecuteMsg {
     /// Remove a tkx ibc token denomination.
     /// Only admin can remove a tkx ibc token denomination.
     RemoveTkxIbcDenom(RemoveTkxChainMsg),
+
+    /// contract receive a tkx ibc token convert it to native TKX token and send it to recipient.
+    Deposit(DepositMsg),
 }
 
 #[cw_serde]
@@ -38,4 +41,14 @@ pub struct RemoveTkxChainMsg {
 #[cw_serde]
 pub struct SetAdminMsg {
     pub admin: String,
+}
+
+#[cw_serde]
+pub struct DepositMsg {
+    pub recipient: String,
+}
+
+#[cw_serde]
+pub struct ExchangeAndSendOutMsg {
+    // @todo
 }
