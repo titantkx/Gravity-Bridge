@@ -6,4 +6,8 @@
     "titantkx"
   ],
   "cosmywasmy.chainConfigName": "Titan docker",
+  "cSpell.words": [
+    "cosmwasm",
+    "uusd"
+  ],
 }

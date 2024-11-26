@@ -4,31 +4,37 @@ pub mod execute {
     use crate::{
         error::ContractError,
         state::{self, admin::check_admin},
-        types::msg::{AddTkxIbcDenomMsg, RemoveTkxChainMsg},
+        types::msg::{AddTKXIbcDenomMsg, RemoveTKXChainMsg},
     };
 
-    pub fn add_tkx_ibc_token_denom(
+    pub fn add_tkx_ibc_token_info(
         deps: DepsMut,
         info: MessageInfo,
-        data: AddTkxIbcDenomMsg,
+        data: AddTKXIbcDenomMsg,
     ) -> Result<Response, ContractError> {
         // check admin
         check_admin(deps.storage, &info.sender)?;
 
-        state::config::add_tkx_ibc_token_denom(deps.storage, &data.chain_prefix, &data.denom)?;
+        state::config::add_tkx_ibc_token_denom(
+            deps.storage,
+            &data.chain_prefix,
+            &data.denom,
+            &data.channel_id,
+        )?;
 
         let resp = Response::new()
-            .add_attribute("method", "add_tkx_ibc_token_denom")
+            .add_attribute("method", "add_tkx_ibc_token_info")
             .add_attribute("chain_prefix", data.chain_prefix.to_string())
-            .add_attribute("denom", data.denom.to_string());
+            .add_attribute("denom", data.denom.to_string())
+            .add_attribute("channel_id", data.channel_id.to_string());
 
         Ok(resp)
     }
 
-    pub fn remove_tkx_ibc_token_denom(
+    pub fn remove_tkx_ibc_token_info(
         deps: DepsMut,
         info: MessageInfo,
-        data: RemoveTkxChainMsg,
+        data: RemoveTKXChainMsg,
     ) -> Result<Response, ContractError> {
         // check admin
         check_admin(deps.storage, &info.sender)?;
@@ -36,7 +42,7 @@ pub mod execute {
         state::config::remove_tkx_chain(deps.storage, &data.chain_prefix);
 
         let resp = Response::new()
-            .add_attribute("method", "remove_tkx_ibc_token_denom")
+            .add_attribute("method", "remove_tkx_ibc_token_info")
             .add_attribute("chain_prefix", data.chain_prefix.to_string());
 
         Ok(resp)
@@ -48,7 +54,7 @@ pub mod query {
 
     use crate::{
         state,
-        types::query::{ListTkxChainWithDenomResp, ListTxkIbcDenomResp, TkxChainWithDenom},
+        types::query::{ListTKXChainInfoResp, ListTxkIbcDenomResp, TKXChainInfo},
     };
 
     pub fn list_tkx_ibc_token_denoms(deps: Deps) -> StdResult<ListTxkIbcDenomResp> {
@@ -57,16 +63,17 @@ pub mod query {
         Ok(ListTxkIbcDenomResp { denoms })
     }
 
-    pub fn list_tkx_chain_with_denoms(deps: Deps) -> StdResult<ListTkxChainWithDenomResp> {
+    pub fn list_tkx_chain_with_denoms(deps: Deps) -> StdResult<ListTKXChainInfoResp> {
         let data = state::config::list_tkx_chain_with_ibc_token_denoms(deps.storage)
             .into_iter()
-            .map(|(chain_prefix, denom)| TkxChainWithDenom {
+            .map(|(chain_prefix, info)| TKXChainInfo {
                 chain_prefix,
-                denom,
+                denom: info.denom,
+                channel_id: info.channel_id,
             })
             .collect();
 
-        Ok(ListTkxChainWithDenomResp { data })
+        Ok(ListTKXChainInfoResp { data })
     }
 }
 
@@ -108,23 +115,25 @@ mod tests {
     }
 
     #[test]
-    fn admin_can_set_tkx_ibc_token_denom() {
+    fn admin_can_set_tkx_ibc_token_info() {
         let (mut deps, _env) = init_test();
 
-        let msg = crate::types::msg::AddTkxIbcDenomMsg {
+        let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            channel_id: "channel-0".to_string(),
         };
 
         let info = message_info(&ADMIN, &[]);
-        let res = execute::add_tkx_ibc_token_denom(deps.as_mut(), info, msg).unwrap();
+        let res = execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
 
         assert_eq!(
             res.attributes,
             vec![
-                ("method", "add_tkx_ibc_token_denom"),
+                ("method", "add_tkx_ibc_token_info"),
                 ("chain_prefix", "eth"),
                 ("denom", "uusd"),
+                ("channel_id", "channel-0"),
             ]
         );
     }
@@ -133,12 +142,13 @@ mod tests {
     fn non_admin_cannot_set_tkx_ibc_token_denom() {
         let (mut deps, _env) = init_test();
 
-        let msg = crate::types::msg::AddTkxIbcDenomMsg {
+        let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            channel_id: "channel-0".to_string(),
         };
         let info = message_info(&USER, &[]);
-        let res = execute::add_tkx_ibc_token_denom(deps.as_mut(), info, msg);
+        let res = execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg);
 
         assert_eq!(
             res.err().unwrap(),
@@ -147,26 +157,27 @@ mod tests {
     }
 
     #[test]
-    fn admin_can_remove_tkx_ibc_token_denom() {
+    fn admin_can_remove_tkx_ibc_token_info() {
         let (mut deps, _env) = init_test();
 
-        let msg = crate::types::msg::AddTkxIbcDenomMsg {
+        let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
-        execute::add_tkx_ibc_token_denom(deps.as_mut(), info, msg).unwrap();
+        execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
 
-        let msg = crate::types::msg::RemoveTkxChainMsg {
+        let msg = crate::types::msg::RemoveTKXChainMsg {
             chain_prefix: "eth".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
-        let res = execute::remove_tkx_ibc_token_denom(deps.as_mut(), info, msg).unwrap();
+        let res = execute::remove_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
 
         assert_eq!(
             res.attributes,
             vec![
-                ("method", "remove_tkx_ibc_token_denom"),
+                ("method", "remove_tkx_ibc_token_info"),
                 ("chain_prefix", "eth"),
             ]
         );
@@ -176,18 +187,19 @@ mod tests {
     fn non_admin_cannot_remove_tkx_ibc_token_denom() {
         let (mut deps, _env) = init_test();
 
-        let msg = crate::types::msg::AddTkxIbcDenomMsg {
+        let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
-        execute::add_tkx_ibc_token_denom(deps.as_mut(), info, msg).unwrap();
+        execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
 
-        let msg = crate::types::msg::RemoveTkxChainMsg {
+        let msg = crate::types::msg::RemoveTKXChainMsg {
             chain_prefix: "eth".to_string(),
         };
         let info = message_info(&USER, &[]);
-        let res = execute::remove_tkx_ibc_token_denom(deps.as_mut(), info, msg);
+        let res = execute::remove_tkx_ibc_token_info(deps.as_mut(), info, msg);
 
         assert_eq!(
             res.err().unwrap(),
@@ -199,12 +211,13 @@ mod tests {
     fn can_list_tkx_ibc_token_denoms() {
         let (mut deps, _env) = init_test();
 
-        let msg = crate::types::msg::AddTkxIbcDenomMsg {
+        let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
-        execute::add_tkx_ibc_token_denom(deps.as_mut(), info, msg).unwrap();
+        execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
 
         let res = query::list_tkx_ibc_token_denoms(deps.as_ref()).unwrap();
 
@@ -215,20 +228,22 @@ mod tests {
     fn can_list_tkx_chain_with_denoms() {
         let (mut deps, _env) = init_test();
 
-        let msg = crate::types::msg::AddTkxIbcDenomMsg {
+        let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
-        execute::add_tkx_ibc_token_denom(deps.as_mut(), info, msg).unwrap();
+        execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
 
         let res = query::list_tkx_chain_with_denoms(deps.as_ref()).unwrap();
 
         assert_eq!(
             res.data,
-            vec![crate::types::query::TkxChainWithDenom {
+            vec![crate::types::query::TKXChainInfo {
                 chain_prefix: "eth".to_string(),
-                denom: "uusd".to_string()
+                denom: "uusd".to_string(),
+                channel_id: "channel-0".to_string(),
             }]
         );
     }

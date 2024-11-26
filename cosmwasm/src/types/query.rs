@@ -9,7 +9,7 @@ pub enum QueryMsg {
     #[returns(ListTxkIbcDenomResp)]
     ListTxkIbcDenom {},
 
-    #[returns(ListTKXChainWithDenomResp)]
+    #[returns(ListTKXChainInfoResp)]
     ListTKXChainWithDenom {},
 }
 
@@ -24,12 +24,13 @@ pub struct ListTxkIbcDenomResp {
 }
 
 #[cw_serde]
-pub struct TKXChainWithDenom {
+pub struct TKXChainInfo {
     pub chain_prefix: String,
     pub denom: String,
+    pub channel_id: String,
 }
 
 #[cw_serde]
-pub struct ListTKXChainWithDenomResp {
-    pub data: Vec<TKXChainWithDenom>,
+pub struct ListTKXChainInfoResp {
+    pub data: Vec<TKXChainInfo>,
 }

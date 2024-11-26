@@ -12,6 +12,9 @@ pub enum ContractError {
     #[error("Invalid token")]
     InvalidToken {},
 
+    #[error("Invalid amount")]
+    InvalidAmount {},
+
     #[error("Insufficient contract balance")]
     InsufficientContractBalance {},
 }

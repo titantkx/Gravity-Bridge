@@ -13,8 +13,9 @@ pub fn execute(
 
     match msg {
         SetAdmin(data) => admin::execute::set_admin(deps, info, data),
-        AddTkxIbcDenom(data) => config::execute::add_tkx_ibc_token_denom(deps, info, data),
-        RemoveTkxIbcDenom(data) => config::execute::remove_tkx_ibc_token_denom(deps, info, data),
+        AddTKXIbcDenom(data) => config::execute::add_tkx_ibc_token_info(deps, info, data),
+        RemoveTKXIbcDenom(data) => config::execute::remove_tkx_ibc_token_info(deps, info, data),
         Deposit(data) => deposit::execute::deposit(deps, env, info, data),
+        Withdraw(data) => withdraw::execute::withdraw(deps, env, info, data),
     }
 }

@@ -1,4 +1,5 @@
 use cosmwasm_schema::cw_serde;
+use cosmwasm_std::Uint128;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -16,25 +17,30 @@ pub enum ExecuteMsg {
 
     /// Add a tkx ibc token denomination.
     /// Only admin can add a tkx ibc token denomination.
-    AddTkxIbcDenom(AddTkxIbcDenomMsg),
+    AddTKXIbcDenom(AddTKXIbcDenomMsg),
 
     /// Remove a tkx ibc token denomination.
     /// Only admin can remove a tkx ibc token denomination.
-    RemoveTkxIbcDenom(RemoveTkxChainMsg),
+    RemoveTKXIbcDenom(RemoveTKXChainMsg),
 
     /// contract receive a tkx ibc token convert it to native TKX token and send it to recipient.
     Deposit(DepositMsg),
+
+    /// contract receive a native TKX token convert it to ibc token and send it to recipient on other chain through gravity chain.
+    Withdraw(WithdrawMsg),
 }
 
 #[cw_serde]
-pub struct AddTkxIbcDenomMsg {
+pub struct AddTKXIbcDenomMsg {
     pub chain_prefix: String,
     /// Denom is the tkx ibc token denomination to be added.
     pub denom: String,
+    /// IBC channel id of the tkx ibc token.
+    pub channel_id: String,
 }
 
 #[cw_serde]
-pub struct RemoveTkxChainMsg {
+pub struct RemoveTKXChainMsg {
     pub chain_prefix: String,
 }
 
@@ -49,6 +55,30 @@ pub struct DepositMsg {
 }
 
 #[cw_serde]
-pub struct ExchangeAndSendOutMsg {
-    // @todo
+pub struct WithdrawMsg {
+    /// address that be forwarder in gravity chain
+    pub forwarder: String,
+    /// chain prefix of the destination evm chain
+    pub chain_prefix: String,
+    /// recipient address on the other chain
+    pub recipient: String,
+    /// amount that recipient will receive
+    pub amount: Uint128,
+    /// fee that will be paid for eth relayer
+    pub bridge_fee: Uint128,
+}
+
+#[cw_serde]
+pub struct IbcAutoSendEth {
+    pub evm_chain_prefix: String,
+    pub eth_dest: String,
+    pub amount: Uint128,
+    pub bridge_fee: Uint128,
+}
+
+#[cw_serde]
+pub struct IbcAutoSendEthMemo {
+    pub send_to_eth: IbcAutoSendEth,
+    /// contract address to receive ibc callback
+    pub ibc_callback: String,
 }
