@@ -15,8 +15,7 @@ pub mod execute {
             address: address.to_string(),
         };
         let balance_response: BalanceResponse = deps.querier.query(&balance_query.into())?;
-        let balance_u128 = balance_response.amount.amount.u128();
-        Ok(Uint128::from(balance_u128))
+        Ok(balance_response.amount.amount)
     }
 
     fn check_contract_tkx_balance(
