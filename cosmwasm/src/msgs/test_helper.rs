@@ -4,11 +4,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use cosmos_sdk_proto_titan::ibc::applications::transfer::v1::MsgTransferResponse;
 use cosmwasm_std::{Addr, Api, Binary, BlockInfo, Empty, IbcMsg, IbcQuery, Querier, Storage};
 use cw_multi_test::error::{bail, AnyResult};
 use cw_multi_test::{AppResponse, CosmosRouter, Ibc, Module};
 use prost::Message;
-use titan_cosmos_sdk_proto::ibc::applications::transfer::v1::MsgTransferResponse;
 
 /// Implementation of IBC module
 pub type MockIbcModule = MockIbcKeeper<IbcMsg, IbcQuery, Empty>;

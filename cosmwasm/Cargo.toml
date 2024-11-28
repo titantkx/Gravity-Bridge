@@ -7,6 +7,7 @@ version = "0.1.0"
 crate-type = ["cdylib"]
 
 [dependencies]
+cosmos-sdk-proto-titan = {git = "https://github.com/titantkx/titan-rust-proto.git", tag = "v3.2.0", package = "cosmos-sdk-proto-titan"}
 cosmwasm-schema = "2.1.4"
 cosmwasm-std = {version = "2.1.4", features = ["cosmwasm_1_4", "stargate"]}
 cw-storage-plus = "2.0.0"
@@ -14,7 +15,6 @@ cw2 = "2.0.0"
 prost = "0.13"
 serde_json = "1.0.133"
 thiserror = "2.0.3"
-titan-cosmos-sdk-proto = {git = "https://github.com/titantkx/titan-rust-proto.git", tag = "v3.1.1", package = "cosmos-sdk-proto-titan"}
 
 [dev-dependencies]
 cw-multi-test = {version = "2.2.0", features = ["cosmwasm_1_4", "stargate"]}

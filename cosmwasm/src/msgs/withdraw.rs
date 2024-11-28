@@ -150,8 +150,8 @@ pub mod execute {
 }
 
 pub mod reply {
+    use cosmos_sdk_proto_titan::ibc::applications::transfer::v1::MsgTransferResponse;
     use cosmwasm_std::{DepsMut, Env, Reply, Response, StdError};
-    use titan_cosmos_sdk_proto::ibc::applications::transfer::v1::MsgTransferResponse;
 
     use crate::{constant::SUB_MSG_ID_WITHDRAW_IBC_1, error::ContractError, state};
 
