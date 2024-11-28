@@ -1035,7 +1035,7 @@ dependencies = [
 [[package]]
 name = "cosmos-sdk-proto-titan"
 version = "0.18.0"
-source = "git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.0.2#7ef2039f516ea66cf3fc580fdb2925589509ec77"
+source = "git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.2.0#a2422c586a0db2046c351dbebf190f23b94d4358"
 dependencies = [
  "prost 0.13.3",
  "prost-types 0.13.3",
@@ -1220,7 +1220,7 @@ checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
 [[package]]
 name = "deep_space"
 version = "2.23.3"
-source = "git+https://github.com/titantkx/deep_space.git?tag=v2.23.3-titan.3#adca39b6df005b1beef4ccb70313f8ecb3128530"
+source = "git+https://github.com/titantkx/deep_space.git?tag=v2.23.3-titan.4#655e7a4cceba1bfd4f27f1b501d7bf8b4dff6539"
 dependencies = [
  "base64 0.21.7",
  "bech32",

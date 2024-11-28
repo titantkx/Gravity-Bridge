@@ -227,12 +227,14 @@ pub struct BatchFees {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EventWithdrawalReceived {
     #[prost(string, tag = "1")]
-    pub bridge_contract: ::prost::alloc::string::String,
+    pub evm_chain_prefix: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub bridge_chain_id: ::prost::alloc::string::String,
+    pub bridge_contract: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
-    pub outgoing_tx_id: ::prost::alloc::string::String,
+    pub bridge_chain_id: ::prost::alloc::string::String,
     #[prost(string, tag = "4")]
+    pub outgoing_tx_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
     pub nonce: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
@@ -241,10 +243,12 @@ pub struct EventWithdrawCanceled {
     #[prost(string, tag = "1")]
     pub sender: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
-    pub tx_id: ::prost::alloc::string::String,
+    pub evm_chain_prefix: ::prost::alloc::string::String,
     #[prost(string, tag = "3")]
-    pub bridge_contract: ::prost::alloc::string::String,
+    pub tx_id: ::prost::alloc::string::String,
     #[prost(string, tag = "4")]
+    pub bridge_contract: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
     pub bridge_chain_id: ::prost::alloc::string::String,
 }
 /// OutgoingTxBatch represents a batch of transactions going from gravity to ETH
@@ -997,7 +1001,23 @@ pub struct EventOutgoingTxId {
     #[prost(string, tag = "1")]
     pub message: ::prost::alloc::string::String,
     #[prost(string, tag = "2")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
     pub tx_id: ::prost::alloc::string::String,
+}
+#[allow(clippy::derive_partial_eq_without_eq)]
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EventIbcAutoOutgoingTxId {
+    #[prost(string, tag = "1")]
+    pub message: ::prost::alloc::string::String,
+    #[prost(string, tag = "2")]
+    pub evm_chain_prefix: ::prost::alloc::string::String,
+    #[prost(string, tag = "3")]
+    pub tx_id: ::prost::alloc::string::String,
+    #[prost(string, tag = "4")]
+    pub source_channel: ::prost::alloc::string::String,
+    #[prost(string, tag = "5")]
+    pub sequence: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
