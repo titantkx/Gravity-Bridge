@@ -148,8 +148,9 @@ func (k msgServer) SendToEth(c context.Context, msg *types.MsgSendToEth) (*types
 
 	return &types.MsgSendToEthResponse{}, ctx.EventManager().EmitTypedEvent(
 		&types.EventOutgoingTxId{
-			Message: msg.Type(),
-			TxId:    fmt.Sprint(txID),
+			Message:        msg.Type(),
+			EvmChainPrefix: msg.EvmChainPrefix,
+			TxId:           fmt.Sprint(txID),
 		},
 	)
 }

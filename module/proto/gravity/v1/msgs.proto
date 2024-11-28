@@ -372,8 +372,17 @@ message EventSignatureSlashing {
 }
 
 message EventOutgoingTxId {
-  string message = 1;
-  string tx_id   = 2;
+  string message          = 1;
+  string evm_chain_prefix = 2;
+  string tx_id            = 3;
+}
+
+message EventIbcAutoOutgoingTxId {
+  string message          = 1;
+  string evm_chain_prefix = 2;
+  string tx_id            = 3;
+  string source_channel   = 4;
+  string sequence         = 5;
 }
 
 message EventSendToEthFeeCollected {

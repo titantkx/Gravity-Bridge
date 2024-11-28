@@ -172,9 +172,12 @@ func (k Keeper) OnRecvPacket(
 	}
 
 	err = ctx.EventManager().EmitTypedEvent(
-		&types.EventOutgoingTxId{
-			Message: "send_to_eth",
-			TxId:    fmt.Sprint(txID),
+		&types.EventIbcAutoOutgoingTxId{
+			Message:        "ibc_auto_send_eth",
+			EvmChainPrefix: evmChainPrefix,
+			TxId:           fmt.Sprint(txID),
+			SourceChannel:  packet.SourceChannel,
+			Sequence:       fmt.Sprint(packet.Sequence),
 		},
 	)
 	if err != nil {
