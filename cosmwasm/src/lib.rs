@@ -53,6 +53,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> StdResult<Response> {
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         constant::SUB_MSG_ID_WITHDRAW_IBC_1 => msgs::withdraw::reply::reply(deps, env, msg),
-        _ => Err(ContractError::Logic {}),
+        _ => Err(ContractError::Logic {
+            err: format!("Invalid sub msg id {:?}", msg.id),
+        }),
     }
 }

@@ -157,7 +157,9 @@ pub mod reply {
 
     pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
         if msg.id != SUB_MSG_ID_WITHDRAW_IBC_1 {
-            return Err(ContractError::Logic {});
+            return Err(ContractError::Logic {
+                err: format!("[withdraw] invalid sub msg id {:?}", msg.id),
+            });
         }
 
         let data = match msg.result {
