@@ -4,7 +4,7 @@ pub mod execute {
         Response, StdResult, Uint128,
     };
 
-    use crate::{error::ContractError, state, types::msg::DepositMsg, TKX_NATIVE_DENOM};
+    use crate::{constant::TKX_NATIVE_DENOM, error::ContractError, state, types::msg::DepositMsg};
 
     fn get_contract_tkx_balance(deps: Deps, env: Env) -> StdResult<Uint128> {
         let denom = TKX_NATIVE_DENOM;

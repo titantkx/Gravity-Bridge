@@ -7,6 +7,8 @@ use std::{
 use cosmwasm_std::{Addr, Api, Binary, BlockInfo, Empty, IbcMsg, IbcQuery, Querier, Storage};
 use cw_multi_test::error::{bail, AnyResult};
 use cw_multi_test::{AppResponse, CosmosRouter, Ibc, Module};
+use prost::Message;
+use titan_cosmos_sdk_proto::ibc::applications::transfer::v1::MsgTransferResponse;
 
 /// Implementation of IBC module
 pub type MockIbcModule = MockIbcKeeper<IbcMsg, IbcQuery, Empty>;
@@ -62,7 +64,12 @@ where
             .lock()
             .unwrap()
             .push((sender, msg.clone()));
-        Ok(AppResponse::default())
+
+        let mut response = AppResponse::default();
+        let msg_transfer_response = MsgTransferResponse { sequence: 1 };
+        response.data = Some(msg_transfer_response.encode_to_vec().into());
+
+        Ok(response)
     }
 
     /// Runs any [QueryT](Self::QueryT) message, always returns a default (empty) binary.

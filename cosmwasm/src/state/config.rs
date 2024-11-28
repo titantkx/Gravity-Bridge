@@ -26,6 +26,7 @@ pub fn remove_tkx_chain(store: &mut dyn Storage, chain_prefix: &str) {
     TKX_IBC_TOKEN_INFO.remove(store, chain_prefix.to_string())
 }
 
+#[allow(dead_code)]
 pub fn is_tkx_ibc_token_denom(store: &dyn Storage, denom: &str) -> bool {
     // get
     let all_denoms = list_tkx_ibc_token_denoms(store);

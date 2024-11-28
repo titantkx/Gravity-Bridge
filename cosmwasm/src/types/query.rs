@@ -1,5 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 
+use crate::types::state::WithdrawInfo;
+
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
@@ -11,6 +13,9 @@ pub enum QueryMsg {
 
     #[returns(ListTKXChainInfoResp)]
     ListTKXChainWithDenom {},
+
+    #[returns(WithdrawInfo)]
+    GetWithdrawInfo { channel_id: String, sequence: u64 },
 }
 
 #[cw_serde]

@@ -17,4 +17,7 @@ pub enum ContractError {
 
     #[error("Insufficient contract balance")]
     InsufficientContractBalance {},
+
+    #[error("Have issue in contract logic")]
+    Logic {},
 }

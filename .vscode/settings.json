@@ -8,6 +8,8 @@
   "cosmywasmy.chainConfigName": "Titan docker",
   "cSpell.words": [
     "cosmwasm",
+    "prost",
+    "submessage",
     "uusd"
   ],
 }

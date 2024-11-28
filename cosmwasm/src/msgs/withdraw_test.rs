@@ -10,10 +10,15 @@ use cw_multi_test::{
 use lazy_static::lazy_static;
 
 use crate::{
+    constant::TKX_NATIVE_DENOM,
     contract::instantiate,
-    execute, query,
-    types::msg::{AddTKXIbcDenomMsg, ExecuteMsg, InstantiateMsg, WithdrawMsg},
-    TKX_NATIVE_DENOM,
+    execute, query, reply, sudo,
+    types::{
+        msg::{AddTKXIbcDenomMsg, ExecuteMsg, InstantiateMsg, WithdrawMsg},
+        query::QueryMsg,
+        state::WithdrawInfo,
+        sudo::{IBCLifecycleComplete, SudoMsg},
+    },
 };
 use crate::{msgs::test_helper::MockIbcModule, types::msg::IbcAutoSendEthMemo};
 
@@ -90,7 +95,9 @@ fn init_test() -> (
                 api.with_prefix("titan");
             });
 
-    let code = ContractWrapper::new(execute, instantiate, query);
+    let code = ContractWrapper::new(execute, instantiate, query)
+        .with_reply(reply)
+        .with_sudo(sudo);
     let code_id = app.store_code(Box::new(code));
 
     let contract_addr = app
@@ -139,6 +146,12 @@ fn init_test() -> (
 #[test]
 fn success_request() {
     let (mut app, contract_addr) = init_test();
+
+    // pre balance of USER
+    let pre_withdraw_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
 
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
@@ -211,7 +224,7 @@ fn success_request() {
         assert!(timeout.timestamp() > Some(expected_timeout));
 
         assert!(memo.is_some());
-        println!("memo {:?}", memo);
+        // println!("memo {:?}", memo);
         let memo_data: IbcAutoSendEthMemo = serde_json::from_str(memo.as_ref().unwrap()).unwrap();
         assert_eq!(memo_data.send_to_eth.evm_chain_prefix, "eth");
         assert_eq!(memo_data.send_to_eth.eth_dest, "0x123456789");
@@ -221,6 +234,39 @@ fn success_request() {
     } else {
         panic!("Unexpected message type");
     }
+
+    // check save withdraw info
+    let withdraw_info: WithdrawInfo = app
+        .wrap()
+        .query_wasm_smart(
+            &contract_addr,
+            &QueryMsg::GetWithdrawInfo {
+                channel_id: "channel-0".to_string(),
+                sequence: 1,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(withdraw_info.ibc_channel_id, "channel-0");
+    assert_eq!(withdraw_info.sequence, 1);
+    assert_eq!(withdraw_info.chain_prefix, "eth");
+    assert_eq!(withdraw_info.sender.to_string(), USER.to_string());
+    assert_eq!(withdraw_info.recipient, "0x123456789");
+    assert_eq!(withdraw_info.forwarder, "forwarder");
+    assert_eq!(withdraw_info.total_amount, Uint128::new(110));
+    assert_eq!(withdraw_info.amount, Uint128::new(100));
+    assert_eq!(withdraw_info.bridge_fee, Uint128::new(10));
+
+    // post balance of USER
+    let post_withdraw_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
+    assert_eq!(
+        pre_withdraw_user_balance.amount - Uint128::new(110),
+        post_withdraw_user_balance.amount
+    );
 }
 
 #[test]
@@ -243,4 +289,120 @@ fn not_accept_other_token() {
     );
 
     assert!(res.is_err());
+}
+
+#[test]
+fn success_request_ibc_timeout() {
+    let (mut app, contract_addr) = init_test();
+
+    // pre balance of USER
+    let pre_withdraw_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
+    let msg = ExecuteMsg::Withdraw(WithdrawMsg {
+        chain_prefix: "eth".to_string(),
+        recipient: "0x123456789".to_string(),
+        forwarder: "forwarder".to_string(),
+        amount: Uint128::new(100),
+        bridge_fee: Uint128::new(10),
+    });
+
+    app.execute_contract(
+        USER.clone(),
+        contract_addr.clone(),
+        &msg,
+        &coins(110, TKX_NATIVE_DENOM),
+    )
+    .unwrap();
+
+    let post_withdraw_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
+    assert_eq!(
+        pre_withdraw_user_balance.amount - Uint128::new(110),
+        post_withdraw_user_balance.amount
+    );
+
+    // trigger timeout callback
+    app.wasm_sudo(
+        contract_addr.clone(),
+        &SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout {
+            channel: "channel-0".to_string(),
+            sequence: 1,
+        }),
+    )
+    .unwrap();
+
+    let post_callback_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
+    assert_eq!(
+        pre_withdraw_user_balance.amount,
+        post_callback_user_balance.amount
+    );
+}
+
+#[test]
+fn success_request_ibc_fail() {
+    let (mut app, contract_addr) = init_test();
+
+    // pre balance of USER
+    let pre_withdraw_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
+    let msg = ExecuteMsg::Withdraw(WithdrawMsg {
+        chain_prefix: "eth".to_string(),
+        recipient: "0x123456789".to_string(),
+        forwarder: "forwarder".to_string(),
+        amount: Uint128::new(100),
+        bridge_fee: Uint128::new(10),
+    });
+
+    app.execute_contract(
+        USER.clone(),
+        contract_addr.clone(),
+        &msg,
+        &coins(110, TKX_NATIVE_DENOM),
+    )
+    .unwrap();
+
+    let post_withdraw_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
+    assert_eq!(
+        pre_withdraw_user_balance.amount - Uint128::new(110),
+        post_withdraw_user_balance.amount
+    );
+
+    // trigger timeout callback
+    app.wasm_sudo(
+        contract_addr.clone(),
+        &SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
+            channel: "channel-0".to_string(),
+            sequence: 1,
+            success: false,
+            ack: "error".to_string(),
+        }),
+    )
+    .unwrap();
+
+    let post_callback_user_balance = app
+        .wrap()
+        .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
+    assert_eq!(
+        pre_withdraw_user_balance.amount,
+        post_callback_user_balance.amount
+    );
 }

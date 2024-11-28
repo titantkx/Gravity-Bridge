@@ -12,5 +12,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         ListTKXChainWithDenom {} => {
             to_json_binary(&config::query::list_tkx_chain_with_denoms(deps)?)
         }
+        GetWithdrawInfo {
+            channel_id,
+            sequence,
+        } => to_json_binary(&withdraw::query::get_withdraw_info(
+            deps, channel_id, sequence,
+        )?),
     }
 }
