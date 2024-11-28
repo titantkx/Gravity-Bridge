@@ -12,9 +12,11 @@ build-optimizer:
 	--mount type=volume,source="$(shell basename "$(ROOT_DIR)")_cache",target=/target \
 	--mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
 	cosmwasm/optimizer:0.16.0
+	ls -al $(ROOT_DIR)/artifacts
 
-check: build
-	cosmwasm-check $(ROOT_DIR)/target/wasm32-unknown-unknown/release/cosmwasm.wasm
+check: build-optimizer
+	cosmwasm-check $(ROOT_DIR)/artifacts/cosmwasm.wasm
+	# cosmwasm-check $(ROOT_DIR)/target/wasm32-unknown-unknown/release/cosmwasm.wasm
 
 test:
 	cargo test --lib -- --nocapture
