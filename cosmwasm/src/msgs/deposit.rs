@@ -85,6 +85,7 @@ pub mod execute {
         let resp = Response::new()
             .add_messages(messages)
             .add_attribute("method", "deposit")
+            .add_attribute("deposit_id", data.deposit_id)
             .add_attribute("amount", tkx_amount)
             .add_attribute("recipient", data.recipient);
 

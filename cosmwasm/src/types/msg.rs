@@ -51,6 +51,10 @@ pub struct SetAdminMsg {
 
 #[cw_serde]
 pub struct DepositMsg {
+    /// this id is string set by sender from source chain (e.g. ethereum chain)
+    /// it format should be "[chain_prefix]/[event_nonce]"
+    pub deposit_id: String,
+    /// bech32 string recipient address on the titan chain (chain that have this contract)
     pub recipient: String,
 }
 
