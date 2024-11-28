@@ -170,7 +170,10 @@ fn success_request() {
         )
         .unwrap();
 
-    let attributes = res.custom_attrs(1);
+    // get `wasm` event type in res.events {ty: string}
+    let reply_event = res.events.iter().find(|event| event.ty == "wasm").unwrap();
+
+    let attributes = reply_event.attributes.clone();
     assert!(attributes.contains(&Attribute {
         key: "method".to_string(),
         value: "withdraw".to_string()
@@ -178,6 +181,14 @@ fn success_request() {
     assert!(attributes.contains(&Attribute {
         key: "chain_prefix".to_string(),
         value: "eth".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "channel_id".to_string(),
+        value: "channel-0".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "sequence".to_string(),
+        value: "1".to_string()
     }));
     assert!(attributes.contains(&Attribute {
         key: "recipient".to_string(),
@@ -328,14 +339,41 @@ fn success_request_ibc_timeout() {
     );
 
     // trigger timeout callback
-    app.wasm_sudo(
-        contract_addr.clone(),
-        &SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout {
-            channel: "channel-0".to_string(),
-            sequence: 1,
-        }),
-    )
-    .unwrap();
+    let resp = app
+        .wasm_sudo(
+            contract_addr.clone(),
+            &SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCTimeout {
+                channel: "channel-0".to_string(),
+                sequence: 1,
+            }),
+        )
+        .unwrap();
+
+    let attributes = resp.custom_attrs(1);
+    assert!(attributes.contains(&Attribute {
+        key: "method".to_string(),
+        value: "refund_to_sender".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "sender".to_string(),
+        value: USER.to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "chain_prefix".to_string(),
+        value: "eth".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "channel_id".to_string(),
+        value: "channel-0".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "sequence".to_string(),
+        value: "1".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "total_amount".to_string(),
+        value: "110".to_string()
+    }));
 
     let post_callback_user_balance = app
         .wrap()
@@ -385,16 +423,43 @@ fn success_request_ibc_fail() {
     );
 
     // trigger timeout callback
-    app.wasm_sudo(
-        contract_addr.clone(),
-        &SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
-            channel: "channel-0".to_string(),
-            sequence: 1,
-            success: false,
-            ack: "error".to_string(),
-        }),
-    )
-    .unwrap();
+    let resp = app
+        .wasm_sudo(
+            contract_addr.clone(),
+            &SudoMsg::IBCLifecycleComplete(IBCLifecycleComplete::IBCAck {
+                channel: "channel-0".to_string(),
+                sequence: 1,
+                success: false,
+                ack: "error".to_string(),
+            }),
+        )
+        .unwrap();
+
+    let attributes = resp.custom_attrs(1);
+    assert!(attributes.contains(&Attribute {
+        key: "method".to_string(),
+        value: "refund_to_sender".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "sender".to_string(),
+        value: USER.to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "chain_prefix".to_string(),
+        value: "eth".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "channel_id".to_string(),
+        value: "channel-0".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "sequence".to_string(),
+        value: "1".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "total_amount".to_string(),
+        value: "110".to_string()
+    }));
 
     let post_callback_user_balance = app
         .wrap()

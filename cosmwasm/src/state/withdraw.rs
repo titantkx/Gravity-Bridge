@@ -13,7 +13,7 @@ pub fn set_sending_withdraw(store: &mut dyn Storage, data: &SendingWithdrawInfo)
     SENDING_WITHDRAW.save(store, data)
 }
 
-pub fn set_sended_withdraw(store: &mut dyn Storage, sequence: u64) -> StdResult<()> {
+pub fn set_sended_withdraw(store: &mut dyn Storage, sequence: u64) -> StdResult<WithdrawInfo> {
     let data = SENDING_WITHDRAW.load(store)?;
     let withdraw_info = WithdrawInfo {
         ibc_channel_id: data.ibc_channel_id.clone(),
@@ -29,7 +29,9 @@ pub fn set_sended_withdraw(store: &mut dyn Storage, sequence: u64) -> StdResult<
     let key = format!("{}/{}", data.ibc_channel_id, sequence.to_string());
     // move sending withdraw to withdraw map
     SENDING_WITHDRAW.remove(store);
-    WITHDRAW_BY_CHANNEL_SEQUENCE.save(store, key, &withdraw_info)
+    WITHDRAW_BY_CHANNEL_SEQUENCE.save(store, key, &withdraw_info)?;
+
+    Ok(withdraw_info)
 }
 
 pub fn remove_withdraw_info(

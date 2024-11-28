@@ -134,16 +134,7 @@ pub mod execute {
             },
         )?;
 
-        let resp = Response::new()
-            .add_submessage(ibc_transfer_sub_msg)
-            .add_attribute("method", "withdraw")
-            .add_attribute("sender", info.sender.to_string())
-            .add_attribute("chain_prefix", data.chain_prefix.clone())
-            .add_attribute("recipient", data.recipient.clone())
-            .add_attribute("forwarder", data.forwarder.clone())
-            .add_attribute("total_amount", tkx_token.amount.to_string())
-            .add_attribute("amount", data.amount.to_string())
-            .add_attribute("bridge_fee", data.bridge_fee.to_string());
+        let resp = Response::new().add_submessage(ibc_transfer_sub_msg);
 
         Ok(resp)
     }
@@ -178,10 +169,21 @@ pub mod reply {
         let msg_transfer_response: MsgTransferResponse =
             prost::Message::decode(data.as_slice()).unwrap();
 
-        state::withdraw::set_sended_withdraw(deps.storage, msg_transfer_response.sequence)?;
+        let withdraw_info =
+            state::withdraw::set_sended_withdraw(deps.storage, msg_transfer_response.sequence)?;
 
-        let resp = Response::new();
-        // @todo need return attributes or custom event here
+        let resp = Response::new()
+            .add_attribute("method", "withdraw")
+            .add_attribute("sender", withdraw_info.sender.to_string())
+            .add_attribute("chain_prefix", withdraw_info.chain_prefix)
+            .add_attribute("channel_id", withdraw_info.ibc_channel_id)
+            .add_attribute("sequence", withdraw_info.sequence.to_string())
+            .add_attribute("recipient", withdraw_info.recipient)
+            .add_attribute("forwarder", withdraw_info.forwarder)
+            .add_attribute("total_amount", withdraw_info.total_amount.to_string())
+            .add_attribute("amount", withdraw_info.amount.to_string())
+            .add_attribute("bridge_fee", withdraw_info.bridge_fee.to_string());
+
         Ok(resp)
     }
 }
@@ -191,7 +193,12 @@ pub mod sudo {
 
     use crate::{constant::TKX_NATIVE_DENOM, state, types::sudo::IBCLifecycleComplete};
 
-    fn refund_to_user(deps: DepsMut, channel: &str, sequence: u64) -> StdResult<Response> {
+    fn refund_to_sender(
+        deps: DepsMut,
+        channel: &str,
+        sequence: u64,
+        reason: &str,
+    ) -> StdResult<Response> {
         // get withdraw info
         let withdraw_info = state::withdraw::remove_withdraw_info(deps.storage, channel, sequence)?;
         let refund_tkx = Coin {
@@ -200,20 +207,37 @@ pub mod sudo {
         };
 
         let send_msg = CosmosMsg::Bank(BankMsg::Send {
-            to_address: withdraw_info.sender.into_string(),
+            to_address: withdraw_info.sender.clone().into_string(),
             amount: vec![refund_tkx],
         });
 
-        let resp = Response::new().add_message(send_msg);
-        // @todo need return attributes or custom event here
+        let resp = Response::new()
+            .add_message(send_msg)
+            .add_attribute("method", "refund_to_sender")
+            .add_attribute("reason", reason)
+            .add_attribute("sender", withdraw_info.sender.to_string())
+            .add_attribute("chain_prefix", withdraw_info.chain_prefix)
+            .add_attribute("channel_id", withdraw_info.ibc_channel_id)
+            .add_attribute("sequence", sequence.to_string())
+            .add_attribute("recipient", withdraw_info.recipient)
+            .add_attribute("total_amount", withdraw_info.total_amount.to_string());
 
         Ok(resp)
     }
 
     fn complete_withdraw(deps: DepsMut, channel: &str, sequence: u64) -> StdResult<Response> {
-        state::withdraw::remove_withdraw_info(deps.storage, channel, sequence)?;
-        let resp = Response::new();
-        //@todo need return attributes or custom event here
+        let withdraw_info = state::withdraw::remove_withdraw_info(deps.storage, channel, sequence)?;
+        let resp = Response::new()
+            .add_attribute("method", "complete_withdraw")
+            .add_attribute("sender", withdraw_info.sender.to_string())
+            .add_attribute("chain_prefix", withdraw_info.chain_prefix)
+            .add_attribute("channel_id", withdraw_info.ibc_channel_id)
+            .add_attribute("sequence", sequence.to_string())
+            .add_attribute("recipient", withdraw_info.recipient)
+            .add_attribute("total_amount", withdraw_info.total_amount.to_string())
+            .add_attribute("amount", withdraw_info.amount.to_string())
+            .add_attribute("bridge_fee", withdraw_info.bridge_fee.to_string());
+
         Ok(resp)
     }
 
@@ -236,12 +260,12 @@ pub mod sudo {
         _env: Env,
         channel: String,
         sequence: u64,
-        _ack: String,
+        ack: String,
         success: bool,
     ) -> StdResult<Response> {
         match success {
             true => complete_withdraw(deps, &channel, sequence),
-            false => refund_to_user(deps, &channel, sequence),
+            false => refund_to_sender(deps, &channel, sequence, &ack),
         }
     }
 
@@ -251,6 +275,6 @@ pub mod sudo {
         channel: String,
         sequence: u64,
     ) -> StdResult<Response> {
-        refund_to_user(deps, &channel, sequence)
+        refund_to_sender(deps, &channel, sequence, "ibc_timeout")
     }
 }
