@@ -39,4 +39,4 @@ sleep 5
 CONTRACT_ADDR=$($BIN $COMMON_QUERY_ARGS query wasm list-contract-by-code "$CODE_ID" | jq -r '.contracts[0]')
 
 echo "TKX exchange contract address: $CONTRACT_ADDR"
-echo "tkx-exchange: $CONTRACT_ADDR" 1>>$SHARED_FOLDER/tkx-exchange-contract-address
+echo "tkx-exchange - $CONTRACT_ADDR" 1>>$SHARED_FOLDER/ibc-contract

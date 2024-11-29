@@ -17,6 +17,7 @@ cp -rf shared/ibc-validator-phrases /ibc-validator-phrases
 cp -rf shared/orchestrator-phrases /orchestrator-phrases
 cp -rf shared/vesting-phrases /vesting-phrases
 cp -rf shared/validator-eth-keys /validator-eth-keys
+cp -rf shared/ibc-contract /ibc-contract
 
 # deploy the ethereum contracts
 pushd /gravity/orchestrator/test_runner
