@@ -29,6 +29,8 @@ services:
     build:
       context: ./titan
       dockerfile: Dockerfile
+      additional_contexts:
+        - cosmwasm=../../cosmwasm/
     networks:
       - net
     cap_add:

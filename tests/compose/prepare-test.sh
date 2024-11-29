@@ -9,8 +9,14 @@ set -eux
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$DIR/../.."
 
-# start up evm, gravity and titan
+# remove evm, gravity and titan
 docker compose -f $DIR/docker-compose.yml down
+
+# check wasm contract exists
+if [ ! -f $REPO_DIR/cosmwasm/artifacts/cosmwasm.wasm ]; then
+  echo "Missing $REPO_DIR/cosmwasm/artifacts/cosmwasm.wasm"
+  exit 1
+fi
 
 $DIR/build-orchestrator-test.sh
 
@@ -30,6 +36,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 fi
 
 docker compose -f $DIR/docker-compose.yml up --build -d --wait evm gravity titan
+
+# deploy tkx exchange wasm contract
+docker exec -it gravity-with-titan-titan-1 /deploy-contract.sh
 
 docker run -d --cpus 5 --name gravity-with-titan-orchestrator-test \
   $PLATFORM_CMD \

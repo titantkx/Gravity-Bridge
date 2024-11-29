@@ -10,7 +10,6 @@ else
   SED_INPLACE="sed -i"
 fi
 
-# your gaiad binary name
 BIN=/titan/bin/titand
 SHARED_FOLDER="/shared_tmp"
 
