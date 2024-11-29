@@ -1,89 +1,44 @@
 use clarity::Address as EthAddress;
-use deep_space::Contact;
-use ethereum_gravity::send_to_cosmos::send_to_cosmos;
+use deep_space::{Address as CosmosAddress, Contact};
 use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
 use tonic::transport::Channel;
+use wasmd_proto_titan::cosmwasm::wasm::v1::{
+    msg_client::MsgClient as IbcWasmMsgClient, query_client::QueryClient as IbcWasmQueryClient,
+};
 use web30::client::Web3;
 
 use crate::{
-    create_default_test_config, get_user_key, start_orchestrators, ValidatorKeys,
-    MINER_PRIVATE_KEY, OPERATION_TIMEOUT,
+    ibc_auto_forward_tkx::setup_tkx_exchange_contract, types::IBCPrivateKey, ValidatorKeys,
+    IBC_NODE_GRPC,
 };
 
 pub async fn custom_test(
     web30: &Web3,
     contact: &Contact,
-    grpc_client: GravityQueryClient<Channel>,
+    gravity_client: GravityQueryClient<Channel>,
+    ibc_contact: &Contact,
     keys: Vec<ValidatorKeys>,
-    gravity_address: EthAddress,
+    ibc_keys: Vec<IBCPrivateKey>,
     erc20_address: EthAddress,
+    gravity_address: EthAddress,
+    tkx_exchange_address: Option<CosmosAddress>,
 ) {
     let _ = contact;
-    let mut _grpc_client = grpc_client;
+    let mut _gravity_client = gravity_client;
 
-    let no_relay_market_config = create_default_test_config();
-    start_orchestrators(keys.clone(), gravity_address, false, no_relay_market_config).await;
-
-    // generate an address for coin sending tests, this ensures test imdepotency
-    let user_keys = get_user_key(None);
-
-    let dest = user_keys.cosmos_address;
-    let amount = 100u64.into();
-
-    // match test_erc20_deposit_result(
-    //     web30,
-    //     contact,
-    //     &mut grpc_client,
-    //     dest,
-    //     gravity_address,
-    //     erc20_address,
-    //     100u64.into(),
-    //     None,
-    //     None,
-    // )
-    // .await
-    // {
-    //     Ok(_) => {
-    //         info!("Successfully bridged ERC20!")
-    //     }
-    //     Err(_) => {
-    //         panic!("Failed to bridge ERC20!")
-    //     }
-    // }
-
-    // send_erc20_deposit(
-    //     web30,
-    //     &mut grpc_client,
-    //     dest,
-    //     gravity_address,
-    //     erc20_address,
-    //     amount,
-    //     "",
-    // )
-    // .await
-    // .expect("Failed to send erc20!");
-
-    let tx_id = send_to_cosmos(
-        erc20_address,
-        gravity_address,
-        amount,
-        dest,
-        "",
-        *MINER_PRIVATE_KEY,
-        None,
-        web30,
-        vec![],
-    )
-    .await
-    .expect("Failed to send tokens to Cosmos");
-
-    info!("Send to Cosmos txid: {:#066x}", tx_id);
-    error!("ahihi");
-
-    let _tx_res = web30
-        .wait_for_transaction(tx_id, OPERATION_TIMEOUT, None)
+    let wasm_qc = IbcWasmQueryClient::connect(IBC_NODE_GRPC.as_str())
         .await
-        .expect("Send to cosmos transaction failed to be included into ethereum side");
+        .expect("Could not connect wasm msg client");
+    let wasm_mc = IbcWasmMsgClient::connect(IBC_NODE_GRPC.as_str())
+        .await
+        .expect("Could not connect wasm msg client");
 
-    info!("Send to Cosmos tx included in block {:?}", _tx_res);
+    setup_tkx_exchange_contract(
+        ibc_contact,
+        wasm_qc.clone(),
+        wasm_mc.clone(),
+        ibc_keys,
+        tkx_exchange_address.unwrap(),
+    )
+    .await;
 }

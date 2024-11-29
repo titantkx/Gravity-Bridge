@@ -46,6 +46,7 @@ use happy_path::happy_path_test;
 use happy_path_v2::happy_path_test_v2;
 use happy_path_v2::happy_path_test_v2_native;
 use ibc_auto_forward_retry::ibc_auto_forward_retry_test;
+use ibc_auto_forward_tkx::ibc_auto_forward_tkx_test;
 use lazy_static::lazy_static;
 use num::FromPrimitive;
 use orch_keys::orch_keys;
@@ -73,7 +74,9 @@ mod happy_path;
 mod happy_path_v2;
 mod ibc_auto_forward;
 mod ibc_auto_forward_retry;
+mod ibc_auto_forward_tkx;
 mod ibc_auto_send_eth;
+mod ibc_auto_send_eth_tkx;
 mod ibc_metadata;
 mod types;
 // mod ica_host;
@@ -321,6 +324,8 @@ pub async fn main() {
     let erc20_addresses = contracts.erc20_addresses.clone();
     // addresses of deployed ERC721 token contracts to be used for testing
     let erc721_addresses = contracts.erc721_addresses.clone();
+    // address of tkx exchange in ibc chain
+    let tkx_exchange_address = contracts.tkx_exchange_address.clone();
     // before we start the orchestrators send them some funds so they can pay
     // for things
     send_eth_to_orchestrators(&keys, &web30).await;
@@ -387,9 +392,12 @@ pub async fn main() {
                 &web30,
                 &gravity_contact,
                 grpc_client,
+                &ibc_contact,
                 keys,
-                gravity_address,
+                ibc_keys,
                 erc20_addresses[0],
+                gravity_address,
+                tkx_exchange_address,
             )
             .await;
             return;
@@ -676,6 +684,21 @@ pub async fn main() {
                 ibc_keys,
                 gravity_address,
                 erc20_addresses[0],
+            )
+            .await;
+            return;
+        } else if test_type == "IBC_AUTO_FORWARD_TKX" {
+            info!("Starting IBC Auto-Forward TKX test");
+            ibc_auto_forward_tkx_test(
+                &web30,
+                grpc_client,
+                &gravity_contact,
+                &ibc_contact,
+                keys,
+                ibc_keys,
+                erc20_addresses[0],
+                gravity_address,
+                tkx_exchange_address.unwrap(),
             )
             .await;
             return;

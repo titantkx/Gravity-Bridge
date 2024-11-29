@@ -26,6 +26,7 @@ use clarity::Address as EthAddress;
 use clarity::PrivateKey as EthPrivateKey;
 use deep_space::private_key::DEFAULT_ETHEREUM_HD_PATH;
 use deep_space::private_key::{CosmosPrivateKey, PrivateKey, DEFAULT_COSMOS_HD_PATH};
+use deep_space::Address as CosmosAddress;
 use deep_space::Contact;
 use gravity_proto::cosmos_sdk_proto::ibc::core::channel::v1::query_client::QueryClient as IbcChannelQueryClient;
 use hdpath::StandardHDPath;
@@ -254,6 +255,7 @@ pub struct BootstrapContractAddresses {
     pub erc20_addresses: Vec<EthAddress>,
     pub erc721_addresses: Vec<EthAddress>,
     pub uniswap_liquidity_address: Option<EthAddress>,
+    pub tkx_exchange_address: Option<CosmosAddress>,
 }
 
 /// Parses the ERC20 and Gravity contract addresses from the file created
@@ -290,12 +292,34 @@ pub fn parse_contract_addresses() -> BootstrapContractAddresses {
     }
     let gravity_address: EthAddress = maybe_gravity_address.unwrap();
     let gravity_erc721_address: EthAddress = maybe_gravity_erc721_address.unwrap();
+
+    let tkx_exchange_address_file = File::open("/ibc-contract");
+    let mut maybe_tkx_exchange_address = None;
+    match tkx_exchange_address_file {
+        Ok(mut file) => {
+            // tkx-exchange:
+            let mut output = String::new();
+            file.read_to_string(&mut output).unwrap();
+            for line in output.lines() {
+                if line.contains("tkx-exchange -") {
+                    let address_string = line.split('-').last().unwrap();
+                    maybe_tkx_exchange_address = Some(address_string.trim().parse().unwrap());
+                    info!("found tkx exchange Address is {}", address_string);
+                }
+            }
+        }
+        Err(_) => {
+            info!("No tkx_exchange_address file found, skipping TKX exchange address");
+        }
+    }
+
     BootstrapContractAddresses {
         gravity_contract: gravity_address,
         gravity_erc721_contract: gravity_erc721_address,
         erc20_addresses,
         erc721_addresses,
         uniswap_liquidity_address: uniswap_liquidity,
+        tkx_exchange_address: maybe_tkx_exchange_address,
     }
 }
 

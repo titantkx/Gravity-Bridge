@@ -1043,6 +1043,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cosmos-sdk-proto-titan"
+version = "0.18.0"
+source = "git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.3.1#aa666ca4d5aaa9c707b699edb3c7992300b23cf8"
+dependencies = [
+ "prost 0.13.3",
+ "prost-types 0.13.3",
+]
+
+[[package]]
 name = "cosmos_gravity"
 version = "0.1.0"
 dependencies = [
@@ -1227,7 +1236,7 @@ dependencies = [
  "bytes",
  "clarity",
  "cosmos-sdk-proto-althea",
- "cosmos-sdk-proto-titan",
+ "cosmos-sdk-proto-titan 0.18.0 (git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.2.0)",
  "hmac",
  "log",
  "num-traits",
@@ -4471,7 +4480,9 @@ dependencies = [
  "sysinfo",
  "tokio",
  "tonic 0.10.2",
+ "tonic 0.12.3",
  "url",
+ "wasmd-proto-titan",
  "web30",
 ]
 
@@ -5115,6 +5126,17 @@ name = "wasm-bindgen-shared"
 version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
+
+[[package]]
+name = "wasmd-proto-titan"
+version = "0.1.0"
+source = "git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.3.1#aa666ca4d5aaa9c707b699edb3c7992300b23cf8"
+dependencies = [
+ "cosmos-sdk-proto-titan 0.18.0 (git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.3.1)",
+ "prost 0.13.3",
+ "prost-types 0.13.3",
+ "tonic 0.12.3",
+]
 
 [[package]]
 name = "web-sys"
