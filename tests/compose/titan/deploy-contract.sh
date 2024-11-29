@@ -1,11 +1,11 @@
 #!/bin/bash
 
-set -eux
+set -eu
 
 BIN=/titan/bin/titand
-SHARED_FOLDER="/shared_tmp"
+SHARED_TMP_FOLDER="/shared_tmp"
 
-mkdir -p $SHARED_FOLDER
+mkdir -p $SHARED_TMP_FOLDER
 
 VALIDATOR_HOME="/root/.titand"
 DENOM="atkx"
@@ -39,4 +39,7 @@ sleep 5
 CONTRACT_ADDR=$($BIN $COMMON_QUERY_ARGS query wasm list-contract-by-code "$CODE_ID" | jq -r '.contracts[0]')
 
 echo "TKX exchange contract address: $CONTRACT_ADDR"
-echo "tkx-exchange - $CONTRACT_ADDR" 1>>$SHARED_FOLDER/ibc-contract
+echo "tkx-exchange - $CONTRACT_ADDR" 1>>$SHARED_TMP_FOLDER/ibc-contract
+
+# copy from `/shared_tmp` to `/shared`
+cp -r $SHARED_TMP_FOLDER/* /shared
