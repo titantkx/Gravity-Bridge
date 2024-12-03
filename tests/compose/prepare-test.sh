@@ -13,8 +13,8 @@ REPO_DIR="$DIR/../.."
 docker compose -f $DIR/docker-compose.yml down
 
 # check wasm contract exists
-if [ ! -f $REPO_DIR/cosmwasm/artifacts/cosmwasm.wasm ]; then
-  echo "Missing $REPO_DIR/cosmwasm/artifacts/cosmwasm.wasm"
+if [ ! -f $REPO_DIR/cosmwasm/artifacts/tkx_exchange.wasm ]; then
+  echo "Missing $REPO_DIR/cosmwasm/artifacts/tkx_exchange.wasm"
   exit 1
 fi
 

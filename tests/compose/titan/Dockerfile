@@ -8,7 +8,7 @@ RUN tar -xvf /titan_3.0.0-rc.0_Linux_amd64.tar.gz -C /titan
 
 ADD setup.sh /setup.sh
 ADD start.sh /start.sh
-COPY --from=cosmwasm artifacts/cosmwasm.wasm /cosmwasm.wasm
+COPY --from=cosmwasm artifacts/tkx_exchange.wasm /tkx_exchange.wasm
 ADD deploy-contract.sh /deploy-contract.sh
 
 RUN /setup.sh

@@ -15,8 +15,8 @@ build-optimizer:
 	ls -al $(ROOT_DIR)/artifacts
 
 check: build-optimizer
-	cosmwasm-check $(ROOT_DIR)/artifacts/cosmwasm.wasm
-	# cosmwasm-check $(ROOT_DIR)/target/wasm32-unknown-unknown/release/cosmwasm.wasm
+	cosmwasm-check $(ROOT_DIR)/artifacts/tkx_exchange.wasm
+	# cosmwasm-check $(ROOT_DIR)/target/wasm32-unknown-unknown/release/tkx_exchange.wasm
 
 test:
 	cargo test --lib -- --nocapture

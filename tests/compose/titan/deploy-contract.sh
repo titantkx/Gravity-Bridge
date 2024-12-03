@@ -10,9 +10,9 @@ mkdir -p $SHARED_TMP_FOLDER
 VALIDATOR_HOME="/root/.titand"
 DENOM="atkx"
 
-# check /cosmwasm.wasm exists
-if [ ! -f /cosmwasm.wasm ]; then
-  echo "Missing /cosmwasm.wasm"
+# check /tkx_exchange.wasm exists
+if [ ! -f /tkx_exchange.wasm ]; then
+  echo "Missing /tkx_exchange.wasm"
   exit 1
 fi
 
@@ -21,7 +21,7 @@ COMMON_TX_ARGS="--home $VALIDATOR_HOME --from val-1 --keyring-backend test --gas
 
 # store the code on chain
 # shellcheck disable=SC2086
-RES=$($BIN tx wasm store /cosmwasm.wasm $COMMON_TX_ARGS)
+RES=$($BIN tx wasm store /tkx_exchange.wasm $COMMON_TX_ARGS)
 TX_HASH=$(echo "$RES" | jq -r '.txhash')
 sleep 5
 # shellcheck disable=SC2086
