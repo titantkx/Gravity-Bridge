@@ -4,7 +4,7 @@ name = "tkx-exchange"
 version = "0.1.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [features]
 contract = ["library", "types"]
