@@ -213,9 +213,9 @@ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 [[package]]
 name = "cosmos-sdk-proto-titan"
 version = "0.18.0"
-source = "git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.2.0#a2422c586a0db2046c351dbebf190f23b94d4358"
+source = "git+https://github.com/titantkx/titan-rust-proto.git?tag=v3.4.0#54c9676a0304802326abca894a2fb6bf4166e30d"
 dependencies = [
- "prost",
+ "prost 0.12.6",
  "prost-types",
 ]
 
@@ -402,7 +402,7 @@ dependencies = [
  "cw-storage-plus",
  "cw-utils",
  "itertools 0.13.0",
- "prost",
+ "prost 0.13.3",
  "schemars",
  "serde",
  "sha2",
@@ -787,12 +787,35 @@ dependencies = [
 
 [[package]]
 name = "prost"
+version = "0.12.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "deb1435c188b76130da55f17a466d252ff7b1418b2ad3e037d127b94e3411f29"
+dependencies = [
+ "bytes",
+ "prost-derive 0.12.6",
+]
+
+[[package]]
+name = "prost"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b0487d90e047de87f984913713b85c601c05609aad5b0df4b4573fbf69aa13f"
 dependencies = [
  "bytes",
- "prost-derive",
+ "prost-derive 0.13.3",
+]
+
+[[package]]
+name = "prost-derive"
+version = "0.12.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81bddcdb20abf9501610992b6759a4c888aef7d1a7247ef75e2404275ac24af1"
+dependencies = [
+ "anyhow",
+ "itertools 0.10.5",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
 ]
 
 [[package]]
@@ -810,11 +833,11 @@ dependencies = [
 
 [[package]]
 name = "prost-types"
-version = "0.13.3"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4759aa0d3a6232fb8dbdb97b61de2c20047c68aca932c7ed76da9d788508d670"
+checksum = "9091c90b0a32608e984ff2fa4091273cbdd755d54935c51d520887f4a1dbd5b0"
 dependencies = [
- "prost",
+ "prost 0.12.6",
 ]
 
 [[package]]
@@ -1101,7 +1124,7 @@ dependencies = [
  "cw-storage-plus",
  "cw2",
  "lazy_static",
- "prost",
+ "prost 0.12.6",
  "serde_json",
  "thiserror 2.0.3",
 ]
