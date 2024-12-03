@@ -20,6 +20,7 @@ RUN mkdir /ibc-relayer-logs && touch /ibc-relayer-logs/hermes-logs && touch /ibc
 
 FROM base AS planner
 COPY --from=repo orchestrator /gravity/orchestrator
+COPY --from=repo cosmwasm /gravity/cosmwasm
 RUN pushd /gravity/orchestrator && cargo chef prepare --recipe-path /recipe.json --bin test_runner
 
 #
@@ -30,6 +31,7 @@ FROM base AS builder
 
 RUN mkdir -p /gravity/orchestrator
 COPY --from=planner /recipe.json /gravity/orchestrator/recipe.json
+COPY --from=repo cosmwasm /gravity/cosmwasm
 RUN pushd /gravity/orchestrator && cargo chef cook --release --recipe-path recipe.json --bin test-runner
 
 COPY --from=repo solidity /gravity/solidity
