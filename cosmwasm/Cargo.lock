@@ -220,22 +220,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cosmwasm"
-version = "0.1.0"
-dependencies = [
- "cosmos-sdk-proto-titan",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-plus",
- "cw2",
- "lazy_static",
- "prost",
- "serde_json",
- "thiserror 2.0.3",
-]
-
-[[package]]
 name = "cosmwasm-core"
 version = "2.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1104,6 +1088,22 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.87",
+]
+
+[[package]]
+name = "tkx-exchange"
+version = "0.1.0"
+dependencies = [
+ "cosmos-sdk-proto-titan",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-plus",
+ "cw2",
+ "lazy_static",
+ "prost",
+ "serde_json",
+ "thiserror 2.0.3",
 ]
 
 [[package]]
