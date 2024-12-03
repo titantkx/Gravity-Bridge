@@ -5,15 +5,19 @@ use cosmwasm_std::Uint128;
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(GetAdminResp)]
+    #[serde(rename = "get_admin")]
     GetAdmin {},
 
     #[returns(ListTxkIbcDenomResp)]
-    ListTxkIbcDenom {},
+    #[serde(rename = "list_tkx_ibc_denom")]
+    ListTKXIbcDenom {},
 
     #[returns(ListTKXChainInfoResp)]
+    #[serde(rename = "list_tkx_chain_with_denom")]
     ListTKXChainWithDenom {},
 
     #[returns(WithdrawInfoResp)]
+    #[serde(rename = "get_withdraw_info")]
     GetWithdrawInfo { channel_id: String, sequence: u64 },
 }
 

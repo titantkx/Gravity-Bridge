@@ -13,20 +13,25 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Set the admin of the contract.
     /// Only admin can set the admin of the contract.
+    #[serde(rename = "set_admin")]
     SetAdmin(SetAdminMsg),
 
     /// Add a tkx ibc token denomination.
     /// Only admin can add a tkx ibc token denomination.
+    #[serde(rename = "add_tkx_ibc_denom")]
     AddTKXIbcDenom(AddTKXIbcDenomMsg),
 
     /// Remove a tkx ibc token denomination.
     /// Only admin can remove a tkx ibc token denomination.
+    #[serde(rename = "remove_tkx_ibc_denom")]
     RemoveTKXIbcDenom(RemoveTKXChainMsg),
 
     /// contract receive a tkx ibc token convert it to native TKX token and send it to recipient.
+    #[serde(rename = "deposit")]
     Deposit(DepositMsg),
 
     /// contract receive a native TKX token convert it to ibc token and send it to recipient on other chain through gravity chain.
+    #[serde(rename = "withdraw")]
     Withdraw(WithdrawMsg),
 }
 
