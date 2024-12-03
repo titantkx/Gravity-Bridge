@@ -15,7 +15,8 @@ ethereum_gravity = {path = "../ethereum_gravity"}
 gravity_proto = {workspace = true}
 gravity_utils = {path = "../gravity_utils"}
 orchestrator = {path = "../orchestrator/"}
-wasmd-proto-titan = {git = "https://github.com/titantkx/titan-rust-proto.git", tag = "v3.3.1", package = "wasmd-proto-titan"}
+tkx-exchange-contract = {path = "../../cosmwasm", default-features = false, features = ["types"], package = "tkx-exchange"}
+wasmd-proto-titan = {git = "https://github.com/titantkx/titan-rust-proto.git", tag = "v3.4.0", package = "wasmd-proto-titan"}
 
 actix = "0.13"
 actix-rt = "2.2"
@@ -42,6 +43,5 @@ serde_json = "1.0"
 sysinfo = "0.32.0"
 tokio = "1.4.0"
 tonic = {workspace = true}
-tonic_v012 = {package = "tonic", version = "0.12", features = ["default", "channel", "gzip"]}
 url = "2"
 web30 = {workspace = true}
