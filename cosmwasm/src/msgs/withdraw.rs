@@ -1,14 +1,27 @@
 pub mod query {
     use cosmwasm_std::{Deps, StdResult};
 
-    use crate::{state, types::state::WithdrawInfo};
+    use crate::{state, types::query::WithdrawInfoResp};
 
     pub fn get_withdraw_info(
         deps: Deps,
         channel_id: String,
         sequence: u64,
-    ) -> StdResult<WithdrawInfo> {
-        state::withdraw::get_withdraw_info(deps.storage, &channel_id, sequence)
+    ) -> StdResult<WithdrawInfoResp> {
+        let withdraw_info =
+            state::withdraw::get_withdraw_info(deps.storage, &channel_id, sequence)?;
+
+        Ok(WithdrawInfoResp {
+            ibc_channel_id: withdraw_info.ibc_channel_id,
+            sequence: withdraw_info.sequence,
+            chain_prefix: withdraw_info.chain_prefix,
+            sender: withdraw_info.sender.to_string(),
+            recipient: withdraw_info.recipient,
+            forwarder: withdraw_info.forwarder,
+            total_amount: withdraw_info.total_amount,
+            amount: withdraw_info.amount,
+            bridge_fee: withdraw_info.bridge_fee,
+        })
     }
 }
 
