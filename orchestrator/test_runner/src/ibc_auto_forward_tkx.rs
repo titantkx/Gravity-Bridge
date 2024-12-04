@@ -177,7 +177,7 @@ pub async fn set_contract_admin(
     }
 
     // wait for 3 blocks
-    wait_for_number_blocks(ibc_contact, 3).await.unwrap();
+    wait_for_number_blocks(ibc_contact, 3).await;
 
     // verify the admin was set
     let admin = get_tkx_contract_admin(ibc_wasm_qc, tkx_exchange_address).await;
@@ -238,7 +238,7 @@ pub async fn add_tkx_ibc_denom(
         panic!("Failed to set contract admin: {:?}", e);
     }
     // wait for 3 blocks
-    wait_for_number_blocks(ibc_contact, 3).await.unwrap();
+    wait_for_number_blocks(ibc_contact, 3).await;
 }
 
 pub async fn list_tkx_ibc_denoms(
