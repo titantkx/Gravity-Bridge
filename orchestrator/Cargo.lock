@@ -4642,6 +4642,7 @@ dependencies = [
  "actix-rt",
  "bytes",
  "clarity",
+ "cosmos-sdk-proto-titan",
  "cosmos_gravity",
  "deep_space",
  "docopt",

@@ -10,6 +10,7 @@ name = "test-runner"
 path = "src/main.rs"
 
 [dependencies]
+cosmos-sdk-proto-titan = {git = "https://github.com/titantkx/titan-rust-proto.git", tag = "v3.4.0", package = "cosmos-sdk-proto-titan", features = ['grpc']}
 cosmos_gravity = {path = "../cosmos_gravity"}
 ethereum_gravity = {path = "../ethereum_gravity"}
 gravity_proto = {workspace = true}

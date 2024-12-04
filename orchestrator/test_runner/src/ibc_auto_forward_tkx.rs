@@ -3,6 +3,7 @@ use std::{convert::TryInto, time::Duration};
 
 use clarity::Address as EthAddress;
 use cosmos_gravity::send::MSG_EXECUTE_IBC_AUTO_FORWARDS_TYPE_URL;
+use cosmos_sdk_proto_titan::cosmos::base::v1beta1::Coin as TitanCoin;
 use deep_space::{
     Address as CosmosAddress, Coin as DSCoin, Contact, CosmosPrivateKey, Msg, PrivateKey,
 };
@@ -19,6 +20,7 @@ use gravity_proto::{
 };
 use gravity_utils::error::GravityError;
 use ibc_relayer::chain;
+use num::FromPrimitive;
 use num256::Uint256;
 use sha2::{Digest, Sha256};
 use tkx_exchange_contract::types::{
@@ -35,7 +37,6 @@ use wasmd_proto_titan::cosmwasm::wasm::v1::{
 };
 use web30::client::Web3;
 
-use crate::IBC_STAKING_TOKEN;
 use crate::{
     create_default_test_config, get_gravity_chain_id, get_ibc_chain_id,
     happy_path::send_erc20_deposit,
@@ -48,6 +49,7 @@ use crate::{
     wait_for_number_blocks, ValidatorKeys, ADDRESS_PREFIX, COSMOS_NODE_GRPC, EVM_CHAIN_PREFIX,
     GRAVITY_DENOM_SEPARATOR, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT, STAKING_TOKEN,
 };
+use crate::{one_eth, one_hundred_eth, IBC_STAKING_TOKEN};
 
 pub async fn ibc_auto_forward_tkx_test(
     web30: &Web3,
@@ -129,12 +131,29 @@ pub async fn ibc_auto_forward_tkx_test(
     setup_tkx_exchange_contract(
         ibc_contact,
         wasm_qc.clone(),
-        ibc_keys,
+        ibc_keys.clone(),
         tkx_exchange_address,
         ibc_channel_id,
         tkx_ibc_denom.clone(),
     )
     .await;
+
+    test_tkx_ibc_auto_forward_happy_path(
+        web30,
+        contact,
+        ibc_contact,
+        gravity_client,
+        ibc_bank_qc,
+        ibc_transfer_qc,
+        keys[0].validator_key,
+        gravity_address,
+        erc20_address,
+        tkx_exchange_address,
+        ibc_keys[0].to_address(IBC_ADDRESS_PREFIX.as_str()).unwrap(),
+        one_eth(),
+    )
+    .await
+    .expect("Failed to test tkx ibc auto forward happy path");
 }
 
 pub async fn setup_tkx_exchange_contract(
@@ -158,6 +177,8 @@ pub async fn setup_tkx_exchange_contract(
     .await;
 
     list_tkx_ibc_denoms(ibc_wasm_qc.clone(), tkx_exchange_address.clone()).await;
+
+    supply_tkx_native(ibc_contact, ibc_keys.clone(), tkx_exchange_address.clone()).await;
 }
 
 pub async fn set_contract_admin(
@@ -273,6 +294,59 @@ pub async fn list_tkx_ibc_denoms(
     resp.denoms
 }
 
+pub async fn supply_tkx_native(
+    ibc_contact: &Contact,
+    ibc_keys: Vec<IBCPrivateKey>,
+    tkx_exchange_address: CosmosAddress,
+) {
+    let pre_forward_balance = ibc_contact
+        .get_balance(tkx_exchange_address.clone(), (*IBC_STAKING_TOKEN).clone())
+        .await
+        .unwrap();
+    info!(
+        "Found pre-forward-balance of tkx contract {:?}",
+        pre_forward_balance
+    );
+
+    let supply_tkx_msg = ExecuteMsg::SupplyTKXToken {};
+    let exec_msg = MsgExecuteContract {
+        sender: ibc_keys[0]
+            .to_address(IBC_ADDRESS_PREFIX.as_str())
+            .unwrap()
+            .to_string(),
+        contract: tkx_exchange_address.to_string(),
+        funds: vec![TitanCoin {
+            denom: (*IBC_STAKING_TOKEN).clone(),
+            amount: (one_eth() * Uint256::from_u16(10u16).unwrap()).to_string(),
+        }],
+        msg: serde_json::to_vec(&supply_tkx_msg).unwrap(),
+    };
+
+    let msg = Msg::new("/cosmwasm.wasm.v1.MsgExecuteContract", exec_msg);
+    let res = ibc_contact
+        .send_message(&[msg], None, &[], None, ibc_keys[0].clone())
+        .await;
+
+    if let Err(e) = res {
+        panic!("Failed to supply tkx: {:?}", e);
+    }
+
+    // wait for 3 blocks
+    wait_for_number_blocks(ibc_contact, 3).await;
+
+    let post_forward_balance = ibc_contact
+        .get_balance(tkx_exchange_address.clone(), (*IBC_STAKING_TOKEN).clone())
+        .await
+        .unwrap();
+
+    info!(
+        "Found post-forward-balance of tkx contract {:?}",
+        post_forward_balance
+    );
+
+    // @todo verify the balance increased
+}
+
 pub async fn test_tkx_ibc_auto_forward_happy_path(
     web30: &Web3,
     contact: &Contact,
@@ -287,6 +361,11 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
     dest: CosmosAddress, // The bridged + auto-forwarded ERC20 receiver
     amount: Uint256,     // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
 ) -> Result<(), GravityError> {
+    info!(
+        "Testing TKX IBC Auto-Forward and exchange of {} to {}",
+        amount, dest
+    );
+
     // Make the test idempotent by getting the user's balance now
     let bridged_erc20 = EVM_CHAIN_PREFIX.to_string()
         + &GRAVITY_DENOM_SEPARATOR.to_string()
@@ -296,7 +375,7 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
         .get_balance(dest.clone(), (*IBC_STAKING_TOKEN).clone())
         .await
         .unwrap();
-    info!("Found pre-forward-balance of {:?}", pre_forward_balance);
+    info!("Found pre-tkx-send-balance of {:?}", pre_forward_balance);
 
     // First Send to Cosmos
     let memo = format!(
@@ -356,7 +435,12 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
         .get_balance(dest.clone(), (*IBC_STAKING_TOKEN).clone())
         .await
         .unwrap();
-    info!("Found a post-forward-balance of {:?}", post_forward_balance);
+    info!(
+        "Found a post-tkx-send-balance of {:?}",
+        post_forward_balance
+    );
+
+    // @todo verify the balance increased
 
     Ok(())
 }
