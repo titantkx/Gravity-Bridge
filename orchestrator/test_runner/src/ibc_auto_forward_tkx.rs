@@ -378,11 +378,17 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
     info!("Found pre-tkx-send-balance of {:?}", pre_forward_balance);
 
     // First Send to Cosmos
-    let memo = format!(
+    let msg = format!(
         r#"{{"deposit":{{"deposit_id":"e/1","recipient":"{}"}}}}"#,
         dest
     );
-    println!("Memo: {}", memo);
+    let wasm_memo = format!(
+        r#"{{"contract":"{}","msg":{}}}"#,
+        tkx_exchange_address.to_string(),
+        msg
+    );
+    let memo = format!(r#"{{"wasm":{}}}"#, wasm_memo);
+    info!("Memo: {}", memo);
     send_erc20_deposit(
         web30,
         &mut gravity_client.clone(),
