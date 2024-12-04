@@ -17,5 +17,6 @@ pub fn execute(
         RemoveTKXIbcDenom(data) => config::execute::remove_tkx_ibc_token_info(deps, info, data),
         Deposit(data) => deposit::execute::deposit(deps, env, info, data),
         Withdraw(data) => withdraw::execute::withdraw(deps, env, info, data),
+        SupplyTKXToken {} => operation::execute::supply_tkx_token(deps, env, info),
     }
 }

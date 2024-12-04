@@ -33,6 +33,10 @@ pub enum ExecuteMsg {
     /// contract receive a native TKX token convert it to ibc token and send it to recipient on other chain through gravity chain.
     #[serde(rename = "withdraw")]
     Withdraw(WithdrawMsg),
+
+    /// anyone can supply native tkx token to the contract to be used for exchanged.
+    #[serde(rename = "supply_tkx_token")]
+    SupplyTKXToken {},
 }
 
 #[cw_serde]

@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod config;
 pub mod deposit;
+pub mod operation;
 pub mod withdraw;
 
 #[cfg(test)]
