@@ -6,6 +6,7 @@ ROOT_DIR:=$(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 build:
 	cargo build --target wasm32-unknown-unknown --release
+	ls -al $(ROOT_DIR)/target/wasm32-unknown-unknown/release
 
 build-optimizer:
 	docker run --rm -v "$(ROOT_DIR)":/code \
