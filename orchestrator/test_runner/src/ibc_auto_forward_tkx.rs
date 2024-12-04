@@ -379,9 +379,10 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
 
     // First Send to Cosmos
     let memo = format!(
-        r#"{{"deposit":{{"deposit_id":"e/1","recipient":"{}"}}"#,
+        r#"{{"deposit":{{"deposit_id":"e/1","recipient":"{}"}}}}"#,
         dest
     );
+    println!("Memo: {}", memo);
     send_erc20_deposit(
         web30,
         &mut gravity_client.clone(),
