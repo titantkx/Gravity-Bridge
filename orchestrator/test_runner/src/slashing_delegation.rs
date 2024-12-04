@@ -3,12 +3,12 @@
 //! and exists to prevent regressions and hopefully find any new bugs of the same nature
 
 use crate::happy_path::test_valset_update;
-use crate::signature_slashing::{change_slashing_window, wait_for_height};
+use crate::signature_slashing::change_slashing_window;
 use crate::utils::{
     create_default_test_config, get_operator_address, get_user_key, start_orchestrators,
     ValidatorKeys,
 };
-use crate::{get_fee, STAKING_TOKEN, TOTAL_TIMEOUT};
+use crate::{get_fee, wait_for_block, STAKING_TOKEN, TOTAL_TIMEOUT};
 use clarity::Address as EthAddress;
 use deep_space::{Coin, Contact};
 use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
@@ -104,7 +104,9 @@ pub async fn slashing_delegation_test(
     change_slashing_window(contact, &mut grpc_client, &keys, 10).await;
 
     // wait for slashing to occur
-    wait_for_height(20, contact).await;
+    wait_for_block(contact, 20)
+        .await
+        .expect("Failed to wait for block 20");
 
     // test delegating to the slashed validator
     for user in [user_c, user_d] {
@@ -122,7 +124,9 @@ pub async fn slashing_delegation_test(
     }
 
     info!("Waiting to withdraw delegation rewards");
-    wait_for_height(40, contact).await;
+    wait_for_block(contact, 40)
+        .await
+        .expect("Failed to wait for block 40");
 
     // test withdrawing rewards from all users
     for user in [user_a, user_c] {

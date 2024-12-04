@@ -765,6 +765,14 @@ pub async fn get_validator_to_delegate_to(contact: &Contact) -> (CosmosAddress, 
     (has_the_least.unwrap(), six_percent)
 }
 
+pub async fn get_latest_block(contact: &Contact) -> u64 {
+    let block = contact.get_chain_status().await.unwrap();
+    match block {
+        ChainStatus::Moving { block_height } => block_height,
+        ChainStatus::Syncing | ChainStatus::WaitingToStart => panic!("Cosmos chain not running!"),
+    }
+}
+
 /// Waits for a particular block to be created
 /// Returns an error if the chain fails to progress in a timely manner or the chain is not running
 /// Panics if the block has already been surpassed
@@ -801,24 +809,22 @@ pub async fn wait_for_block(contact: &Contact, height: u64) -> Result<(), Cosmos
     Ok(())
 }
 
-pub async fn wait_for_number_blocks(
-    contact: &Contact,
-    number_blocks: u64,
-) -> Result<(), CosmosGrpcError> {
-    let current_block: LatestBlock = contact.get_latest_block().await.unwrap();
-
-    let current_height = match current_block {
-        LatestBlock::Latest { block } => block.header.unwrap().height,
-        _ => {
-            return Err(CosmosGrpcError::BadResponse(
-                "Wait for number blocks: Latest block not available".to_string(),
-            ));
+pub async fn wait_for_number_blocks(contact: &Contact, number_blocks: u64) {
+    let current_block = get_latest_block(contact).await;
+    let mut last_update = Instant::now();
+    let mut last_seen_block = 0;
+    while get_latest_block(contact).await - current_block < number_blocks {
+        let latest = get_latest_block(contact).await;
+        if last_seen_block != latest {
+            last_seen_block = latest;
+            last_update = Instant::now()
         }
-    };
 
-    let target_height: u64 = current_height as u64 + number_blocks;
-
-    wait_for_block(contact, target_height).await
+        if Instant::now() - last_update > TOTAL_TIMEOUT {
+            panic!("Timeout while waiting for {} blocks", number_blocks);
+        }
+        sleep(Duration::from_secs(3)).await;
+    }
 }
 
 /// Delegates `delegate_amount` to `delegate_to` and queries for confirmation of that delegation

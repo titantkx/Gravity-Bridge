@@ -1,6 +1,5 @@
 use crate::airdrop_proposal::wait_for_proposals_to_execute;
 use crate::happy_path::send_erc20_deposit;
-use crate::signature_slashing::wait_for_height;
 use crate::types::IBCChainAddressType;
 use crate::types::IBCPrivateKey;
 use crate::utils::*;
@@ -246,7 +245,7 @@ pub async fn test_ibc_transfer(
 
     // Give the ibc-relayer a bit of time to work in the event of multiple runs
     // delay_for(Duration::from_secs(10)).await;
-    wait_for_height(5, contact).await;
+    wait_for_number_blocks(contact, 5).await;
 
     let start_bal = Some(match pre_bal.clone() {
         Some(coin) => Uint256::from_str(&coin.amount).unwrap(),

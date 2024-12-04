@@ -3,7 +3,6 @@ use crate::get_gravity_chain_id;
 use crate::ibc_auto_forward;
 use crate::ibc_auto_forward::get_channel_id;
 use crate::ibc_auto_forward::get_ibc_balance;
-use crate::signature_slashing::wait_for_height;
 use crate::types::IBCChainAddressType;
 use crate::types::IBCPrivateKey;
 use crate::utils::*;
@@ -267,7 +266,7 @@ pub async fn test_ibc_transfer(
 
     // Give the ibc-relayer a bit of time to work in the event of multiple runs
     // delay_for(Duration::from_secs(10)).await;
-    wait_for_height(5, contact).await;
+    wait_for_number_blocks(contact, 5).await;
 
     let start_bal = Some(match pre_bal.clone() {
         Some(coin) => Uint256::from_str(&coin.amount).unwrap(),
@@ -420,7 +419,7 @@ pub async fn test_ibc_auto_send_eth_happy_path(
 
     // Give the ibc-relayer a bit of time to work in the event of multiple runs
     // delay_for(Duration::from_secs(10)).await;
-    wait_for_height(5, contact).await;
+    wait_for_number_blocks(contact, 5).await;
     let start = Instant::now();
     while Instant::now() - start < TOTAL_TIMEOUT {
         let new_balance = get_erc20_balance_safe(erc20_address, web30, dest).await;

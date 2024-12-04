@@ -8,15 +8,12 @@ use crate::utils::{
     create_default_test_config, create_parameter_change_proposal, start_orchestrators,
     vote_yes_on_proposals, ValidatorKeys,
 };
-use crate::{get_fee, TOTAL_TIMEOUT};
+use crate::{get_fee, wait_for_block};
 use clarity::Address as EthAddress;
 use cosmos_gravity::query::get_gravity_params;
-use deep_space::client::types::ChainStatus;
 use deep_space::Contact;
 use gravity_proto::cosmos_sdk_proto::cosmos::params::v1beta1::ParamChange;
 use gravity_proto::gravity::query_client::QueryClient as GravityQueryClient;
-use std::time::{Duration, Instant};
-use tokio::time::sleep;
 use tonic::transport::Channel;
 use web30::client::Web3;
 
@@ -39,41 +36,14 @@ pub async fn signature_slashing_test(
     // check that the block height is greater than 20 if not wait until it is
     // there's some logic here to handle the chian progressing slowly over blocks
     // which probably isn't needed for block height 20
-    wait_for_height(20, contact).await;
+    wait_for_block(contact, 20)
+        .await
+        .expect("Failed to wait for block 20");
 
     // make sure everything is still moving!
     test_valset_update(web30, contact, &mut grpc_client, &keys, gravity_address).await;
 
     change_slashing_window(contact, &mut grpc_client, &keys, 10000).await;
-}
-
-pub async fn wait_for_height(target_height: u64, contact: &Contact) {
-    let current_block = get_latest_block(contact).await;
-    let mut last_update = Instant::now();
-    let mut last_seen_block = 0;
-    while get_latest_block(contact).await - current_block < 20 {
-        let latest = get_latest_block(contact).await;
-        if last_seen_block != latest {
-            last_seen_block = latest;
-            last_update = Instant::now()
-        }
-
-        if Instant::now() - last_update > TOTAL_TIMEOUT {
-            panic!(
-                "Chain has halted while waiting for height {}",
-                target_height
-            )
-        }
-        sleep(Duration::from_secs(10)).await;
-    }
-}
-
-pub async fn get_latest_block(contact: &Contact) -> u64 {
-    let block = contact.get_chain_status().await.unwrap();
-    match block {
-        ChainStatus::Moving { block_height } => block_height,
-        ChainStatus::Syncing | ChainStatus::WaitingToStart => panic!("Cosmos chain not running!"),
-    }
 }
 
 /// Reduces the slashing window for validator sets and batches
