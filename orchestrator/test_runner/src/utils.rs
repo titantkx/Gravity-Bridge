@@ -15,6 +15,7 @@ use clarity::{Address as EthAddress, Uint256};
 use cosmos_gravity::proposals::{submit_parameter_change_proposal, submit_upgrade_proposal};
 use cosmos_gravity::query::get_gravity_params;
 use deep_space::address::Address as CosmosAddress;
+use deep_space::client::types::LatestBlock;
 use deep_space::client::ChainStatus;
 use deep_space::coin::Coin;
 use deep_space::error::CosmosGrpcError;
@@ -798,6 +799,26 @@ pub async fn wait_for_block(contact: &Contact, height: u64) -> Result<(), Cosmos
         }
     }
     Ok(())
+}
+
+pub async fn wait_for_number_blocks(
+    contact: &Contact,
+    number_blocks: u64,
+) -> Result<(), CosmosGrpcError> {
+    let current_block: LatestBlock = contact.get_latest_block().await.unwrap();
+
+    let current_height = match current_block {
+        LatestBlock::Latest { block } => block.header.unwrap().height,
+        _ => {
+            return Err(CosmosGrpcError::BadResponse(
+                "Wait for number blocks: Latest block not available".to_string(),
+            ));
+        }
+    };
+
+    let target_height: u64 = current_height as u64 + number_blocks;
+
+    wait_for_block(contact, target_height).await
 }
 
 /// Delegates `delegate_amount` to `delegate_to` and queries for confirmation of that delegation

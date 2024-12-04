@@ -25,20 +25,4 @@ pub async fn custom_test(
 ) {
     let _ = contact;
     let mut _gravity_client = gravity_client;
-
-    let wasm_qc = IbcWasmQueryClient::connect(IBC_NODE_GRPC.as_str())
-        .await
-        .expect("Could not connect wasm msg client");
-    let wasm_mc = IbcWasmMsgClient::connect(IBC_NODE_GRPC.as_str())
-        .await
-        .expect("Could not connect wasm msg client");
-
-    setup_tkx_exchange_contract(
-        ibc_contact,
-        wasm_qc.clone(),
-        wasm_mc.clone(),
-        ibc_keys,
-        tkx_exchange_address.unwrap(),
-    )
-    .await;
 }
