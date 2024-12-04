@@ -1,7 +1,12 @@
+use std::str::FromStr;
 use std::{convert::TryInto, time::Duration};
 
 use clarity::Address as EthAddress;
-use deep_space::{Address as CosmosAddress, Contact, Msg, PrivateKey};
+use cosmos_gravity::send::MSG_EXECUTE_IBC_AUTO_FORWARDS_TYPE_URL;
+use deep_space::{
+    Address as CosmosAddress, Coin as DSCoin, Contact, CosmosPrivateKey, Msg, PrivateKey,
+};
+use gravity_proto::cosmos_sdk_proto::cosmos::base::v1beta1::Coin;
 use gravity_proto::{
     cosmos_sdk_proto::{
         cosmos::bank::v1beta1::query_client::QueryClient as BankQueryClient,
@@ -10,14 +15,17 @@ use gravity_proto::{
             core::channel::v1::query_client::QueryClient as IbcChannelQueryClient,
         },
     },
-    gravity::query_client::QueryClient as GravityQueryClient,
+    gravity::{query_client::QueryClient as GravityQueryClient, MsgExecuteIbcAutoForwards},
 };
+use gravity_utils::error::GravityError;
 use ibc_relayer::chain;
+use num256::Uint256;
 use sha2::{Digest, Sha256};
 use tkx_exchange_contract::types::{
     msg::{AddTKXIbcDenomMsg, ExecuteMsg, SetAdminMsg},
     query::{GetAdminResp, ListTxkIbcDenomResp},
 };
+use tokio::time::sleep;
 use tonic::transport::Channel;
 use wasmd_proto_titan::cosmwasm::wasm::v1::{
     msg_client::MsgClient as IbcWasmMsgClient, QuerySmartContractStateRequest,
@@ -27,13 +35,18 @@ use wasmd_proto_titan::cosmwasm::wasm::v1::{
 };
 use web30::client::Web3;
 
+use crate::IBC_STAKING_TOKEN;
 use crate::{
     create_default_test_config, get_gravity_chain_id, get_ibc_chain_id,
-    ibc_auto_forward::{get_channel_id, setup_gravity_auto_forwards},
+    happy_path::send_erc20_deposit,
+    ibc_auto_forward::{
+        get_channel_id, get_ibc_balance, setup_gravity_auto_forwards,
+        wait_for_pending_ibc_auto_forwards,
+    },
     prepare_ibc_relayer, start_ibc_relayer, start_orchestrators,
     types::IBCPrivateKey,
-    wait_for_number_blocks, ValidatorKeys, COSMOS_NODE_GRPC, EVM_CHAIN_PREFIX,
-    GRAVITY_DENOM_SEPARATOR, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC,
+    wait_for_number_blocks, ValidatorKeys, ADDRESS_PREFIX, COSMOS_NODE_GRPC, EVM_CHAIN_PREFIX,
+    GRAVITY_DENOM_SEPARATOR, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT, STAKING_TOKEN,
 };
 
 pub async fn ibc_auto_forward_tkx_test(
@@ -258,4 +271,92 @@ pub async fn list_tkx_ibc_denoms(
     println!("Got resp: {:?}", resp);
 
     resp.denoms
+}
+
+pub async fn test_tkx_ibc_auto_forward_happy_path(
+    web30: &Web3,
+    contact: &Contact,
+    ibc_contact: &Contact,
+    gravity_client: GravityQueryClient<Channel>, // Src chain's Gravity GRPC client
+    ibc_bank_qc: BankQueryClient<Channel>,       // Dst chain's Bank GRPC client
+    ibc_transfer_qc: IbcTransferQueryClient<Channel>, // Dst chain's ibc-transfer GRPC client
+    forwarder: CosmosPrivateKey, // user who submits MsgExecutePendingIbcAutoForwards
+    gravity_address: EthAddress, // Address of the gravity contract
+    erc20_address: EthAddress,   // Address of the ERC20 to send to dest on IBC_CHAIN_ID
+    tkx_exchange_address: CosmosAddress,
+    dest: CosmosAddress, // The bridged + auto-forwarded ERC20 receiver
+    amount: Uint256,     // The amount of erc20_address token to send to dest on IBC_CHAIN_ID
+) -> Result<(), GravityError> {
+    // Make the test idempotent by getting the user's balance now
+    let bridged_erc20 = EVM_CHAIN_PREFIX.to_string()
+        + &GRAVITY_DENOM_SEPARATOR.to_string()
+        + &erc20_address.clone().to_string();
+
+    let pre_forward_balance = ibc_contact
+        .get_balance(dest.clone(), (*IBC_STAKING_TOKEN).clone())
+        .await
+        .unwrap();
+    info!("Found pre-forward-balance of {:?}", pre_forward_balance);
+
+    // First Send to Cosmos
+    let memo = format!(
+        r#"{{"deposit":{{"deposit_id":"e/1","recipient":"{}"}}"#,
+        dest
+    );
+    send_erc20_deposit(
+        web30,
+        &mut gravity_client.clone(),
+        tkx_exchange_address.clone(),
+        gravity_address,
+        erc20_address,
+        amount,
+        memo.as_str(),
+    )
+    .await?;
+
+    // Check for a Pending IBC Auto-Forward (which may have already been cleared by the running relayer)
+    let pending =
+        wait_for_pending_ibc_auto_forwards(gravity_client.clone(), None, Some(OPERATION_TIMEOUT))
+            .await;
+
+    // Attempt to clear the Pending forward
+    if !(pending.is_err() || pending.unwrap().is_empty()) {
+        info!("Discovered pending IBC Auto Forward(s) that the relayer hasn't picked up, clearing it!");
+        let msg_execute_forwards = Msg::new(
+            MSG_EXECUTE_IBC_AUTO_FORWARDS_TYPE_URL,
+            MsgExecuteIbcAutoForwards {
+                evm_chain_prefix: EVM_CHAIN_PREFIX.to_string(),
+                forwards_to_clear: 1,
+                executor: forwarder.to_address(&ADDRESS_PREFIX).unwrap().to_string(),
+            },
+        );
+        let _res = contact
+            .send_message(
+                &[msg_execute_forwards],
+                None,
+                &[DSCoin {
+                    denom: (*STAKING_TOKEN).clone(),
+                    amount: 0u8.into(),
+                }],
+                Some(OPERATION_TIMEOUT),
+                forwarder,
+            )
+            .await?;
+        info!("Sleeping to give the ibc-relayer time to work");
+        sleep(OPERATION_TIMEOUT).await;
+    }
+
+    let start_bal = match pre_forward_balance.clone() {
+        Some(coin) => Some(coin.amount),
+        None => None,
+    };
+
+    // Check the Foreign Receiver's balance has increased by the appropriate amount
+    let post_forward_balance = ibc_contact
+        .get_balance(dest.clone(), (*IBC_STAKING_TOKEN).clone())
+        .await
+        .unwrap();
+    info!("Found a post-forward-balance of {:?}", post_forward_balance);
+
+    Ok(())
 }
