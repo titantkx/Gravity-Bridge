@@ -37,6 +37,7 @@ use wasmd_proto_titan::cosmwasm::wasm::v1::{
 };
 use web30::client::Web3;
 
+use crate::ibc_auto_forward_retry::validate_balance_change;
 use crate::{
     create_default_test_config, get_gravity_chain_id, get_ibc_chain_id,
     happy_path::send_erc20_deposit,
@@ -308,6 +309,7 @@ pub async fn supply_tkx_native(
         pre_forward_balance
     );
 
+    let amount_to_supply = one_eth() * Uint256::from_u16(10u16).unwrap();
     let supply_tkx_msg = ExecuteMsg::SupplyTKXToken {};
     let exec_msg = MsgExecuteContract {
         sender: ibc_keys[0]
@@ -317,7 +319,7 @@ pub async fn supply_tkx_native(
         contract: tkx_exchange_address.to_string(),
         funds: vec![TitanCoin {
             denom: (*IBC_STAKING_TOKEN).clone(),
-            amount: (one_eth() * Uint256::from_u16(10u16).unwrap()).to_string(),
+            amount: amount_to_supply.to_string(),
         }],
         msg: serde_json::to_vec(&supply_tkx_msg).unwrap(),
     };
@@ -344,7 +346,13 @@ pub async fn supply_tkx_native(
         post_forward_balance
     );
 
-    // @todo verify the balance increased
+    validate_balance_change(
+        tkx_exchange_address,
+        pre_forward_balance,
+        post_forward_balance,
+        amount_to_supply,
+    )
+    .expect("Failed to validate balance change");
 }
 
 pub async fn test_tkx_ibc_auto_forward_happy_path(
@@ -432,11 +440,6 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
         sleep(OPERATION_TIMEOUT).await;
     }
 
-    let start_bal = match pre_forward_balance.clone() {
-        Some(coin) => Some(coin.amount),
-        None => None,
-    };
-
     // Check the Foreign Receiver's balance has increased by the appropriate amount
     let post_forward_balance = ibc_contact
         .get_balance(dest.clone(), (*IBC_STAKING_TOKEN).clone())
@@ -447,7 +450,7 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
         post_forward_balance
     );
 
-    // @todo verify the balance increased
+    validate_balance_change(dest, pre_forward_balance, post_forward_balance, amount)?;
 
     Ok(())
 }
