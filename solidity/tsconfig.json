@@ -2,7 +2,10 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "lib": ["es5", "es6"],
+    "lib": [
+      "es5",
+      "es6"
+    ],
     "module": "commonjs",
     "moduleResolution": "node",
     "noImplicitAny": true,
@@ -12,7 +15,12 @@
     "strict": true,
     "target": "es5"
   },
-  "exclude": ["node_modules"],
+  "exclude": [
+    "node_modules",
+    "contracts",
+    "cache",
+    "artifacts"
+  ],
   "include": [
     "artifacts/**/*",
     "artifacts/**/*.json",
