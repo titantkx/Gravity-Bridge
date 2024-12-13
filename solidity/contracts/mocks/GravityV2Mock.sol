@@ -40,6 +40,12 @@ contract GravityV2Mock is
 	// This is set once at initialization
 	bytes32 public state_gravityId;
 
+	// contract address of tkx ERC20 token
+	address public state_tkxContractAddress;
+
+	// mapping of bech32 prefix to tkx exchange contract address at destination chain
+	mapping(string => string) public state_prefixeToTkxExchangeContractAddress;
+
 	// TransactionBatchExecutedEvent and SendToCosmosEvent both include the field _eventNonce.
 	// This is incremented every time one of these events is emitted. It is checked by the
 	// Cosmos module to ensure that all events are received in order, and that none are lost.

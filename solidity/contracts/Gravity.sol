@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "./CosmosToken.sol";
+import { Bech32 } from "./Bech32.sol";
 
 error InvalidSignature();
 error InvalidValsetNonce(uint256 newNonce, uint256 currentNonce);
@@ -88,6 +89,12 @@ contract Gravity is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reentran
 	// This is set once at initialization
 	bytes32 public state_gravityId;
 
+	// contract address of tkx ERC20 token
+	address public state_tkxContractAddress;
+
+	// mapping of bech32 prefix to tkx exchange contract address at destination chain
+	mapping(string => string) public state_prefixeToTkxExchangeContractAddress;
+
 	// TransactionBatchExecutedEvent and SendToCosmosEvent both include the field _eventNonce.
 	// This is incremented every time one of these events is emitted. It is checked by the
 	// Cosmos module to ensure that all events are received in order, and that none are lost.
@@ -147,6 +154,26 @@ contract Gravity is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reentran
 	}
 
 	// END TEST FIXTURES
+
+	function setTkxContractAddress(address _tkxContractAddress) external onlyOwner {
+		// can not be zero address
+		require(_tkxContractAddress != address(0), "invalid tkx contract address");
+		state_tkxContractAddress = _tkxContractAddress;
+	}
+
+	///
+	/// @param _prefix : hrp string of bech32 address
+	/// @param _tkxExchangeContractAddress : string bech32 address of tkx exchange contract at destination chain
+	function setPrefixToTkxExchangeContractAddress(
+		string calldata _prefix,
+		string calldata _tkxExchangeContractAddress
+	) external onlyOwner {
+		(bytes memory hrp, bytes memory data, bytes memory checksum) = Bech32.splitBech32(
+			bytes(_tkxExchangeContractAddress)
+		);
+		require(Bech32.isValid(hrp, data, checksum), "invalid bech32 address");
+		state_prefixeToTkxExchangeContractAddress[_prefix] = _tkxExchangeContractAddress;
+	}
 
 	function lastBatchNonce(address _erc20Address) external view returns (uint256) {
 		return state_lastBatchNonces[_erc20Address];
