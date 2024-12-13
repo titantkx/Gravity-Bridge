@@ -81,7 +81,9 @@ async function firstCall(
       190,
       2
     );
-  expect((await testERC721.ownerOf(190))[0]).to.equal(gravityERC721.address);
+  const res = await testERC721.ownerOf(190);
+  console.log(res);
+  expect(await testERC721.ownerOf(190)).to.equal(gravityERC721.address);
   expect((await gravity.functions.state_lastEventNonce())[0]).to.equal(1);
   expect(
     (await gravityERC721.functions.state_lastERC721EventNonce())[0]
@@ -110,7 +112,7 @@ async function secondCall(
       secondERC721,
       3
     );
-  expect((await testERC721.ownerOf(secondERC721))[0]).to.equal(
+  expect(await testERC721.ownerOf(secondERC721)).to.equal(
     gravityERC721.address
   );
   expect((await gravity.functions.state_lastEventNonce())[0]).to.equal(1);
