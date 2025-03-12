@@ -93,7 +93,7 @@ contract Gravity is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reentran
 	address public state_tkxContractAddress;
 
 	// mapping of bech32 prefix to tkx exchange contract address at destination chain
-	mapping(string => string) public state_prefixeToTkxExchangeContractAddress;
+	mapping(string => string) public state_prefixToTkxExchangeContractAddress;
 
 	// TransactionBatchExecutedEvent and SendToCosmosEvent both include the field _eventNonce.
 	// This is incremented every time one of these events is emitted. It is checked by the
@@ -172,7 +172,7 @@ contract Gravity is Initializable, UUPSUpgradeable, OwnableUpgradeable, Reentran
 			bytes(_tkxExchangeContractAddress)
 		);
 		require(Bech32.isValid(hrp, data, checksum), "invalid bech32 address");
-		state_prefixeToTkxExchangeContractAddress[_prefix] = _tkxExchangeContractAddress;
+		state_prefixToTkxExchangeContractAddress[_prefix] = _tkxExchangeContractAddress;
 	}
 
 	function lastBatchNonce(address _erc20Address) external view returns (uint256) {
