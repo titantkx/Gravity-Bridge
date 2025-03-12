@@ -44,6 +44,8 @@ pub struct AddTKXIbcDenomMsg {
     pub chain_prefix: String,
     /// Denom is the tkx ibc token denomination to be added.
     pub denom: String,
+    /// Decimals is the number of decimal places for the tkx ibc token.
+    pub decimals: u8,
     /// IBC channel id of the tkx ibc token.
     pub channel_id: String,
 }

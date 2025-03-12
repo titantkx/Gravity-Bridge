@@ -19,6 +19,7 @@ pub mod execute {
             deps.storage,
             &data.chain_prefix,
             &data.denom,
+            data.decimals,
             &data.channel_id,
         )?;
 
@@ -26,6 +27,7 @@ pub mod execute {
             .add_attribute("method", "add_tkx_ibc_token_info")
             .add_attribute("chain_prefix", data.chain_prefix.to_string())
             .add_attribute("denom", data.denom.to_string())
+            .add_attribute("decimals", data.decimals.to_string())
             .add_attribute("channel_id", data.channel_id.to_string());
 
         Ok(resp)
@@ -69,6 +71,7 @@ pub mod query {
             .map(|(chain_prefix, info)| TKXChainInfo {
                 chain_prefix,
                 denom: info.denom,
+                decimals: info.decimals,
                 channel_id: info.channel_id,
             })
             .collect();
@@ -121,6 +124,7 @@ mod tests {
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            decimals: 6,
             channel_id: "channel-0".to_string(),
         };
 
@@ -133,6 +137,7 @@ mod tests {
                 ("method", "add_tkx_ibc_token_info"),
                 ("chain_prefix", "eth"),
                 ("denom", "uusd"),
+                ("decimals", "6"),
                 ("channel_id", "channel-0"),
             ]
         );
@@ -145,6 +150,7 @@ mod tests {
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            decimals: 6,
             channel_id: "channel-0".to_string(),
         };
         let info = message_info(&USER, &[]);
@@ -163,6 +169,7 @@ mod tests {
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            decimals: 6,
             channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
@@ -190,6 +197,7 @@ mod tests {
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            decimals: 6,
             channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
@@ -214,6 +222,7 @@ mod tests {
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            decimals: 6,
             channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
@@ -231,6 +240,7 @@ mod tests {
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
             denom: "uusd".to_string(),
+            decimals: 6,
             channel_id: "channel-0".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
@@ -243,6 +253,7 @@ mod tests {
             vec![crate::types::query::TKXChainInfo {
                 chain_prefix: "eth".to_string(),
                 denom: "uusd".to_string(),
+                decimals: 6,
                 channel_id: "channel-0".to_string(),
             }]
         );

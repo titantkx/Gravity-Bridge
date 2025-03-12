@@ -4,7 +4,12 @@ pub mod execute {
         Response, StdResult, Uint128,
     };
 
-    use crate::{constant::TKX_NATIVE_DENOM, error::ContractError, state, types::msg::DepositMsg};
+    use crate::{
+        constant::{TKX_NATIVE_DENOM, TKX_NATIVE_DENOM_DECIMALS},
+        error::ContractError,
+        state,
+        types::msg::DepositMsg,
+    };
 
     fn get_contract_tkx_balance(deps: Deps, env: Env) -> StdResult<Uint128> {
         let denom = TKX_NATIVE_DENOM;
@@ -47,7 +52,21 @@ pub mod execute {
         for token in info.funds {
             if all_denoms.contains(&token.denom) {
                 should_reject = false;
-                tkx_amount += token.amount;
+                // get tkx ibc token
+                let tkx_ibc_info =
+                    state::config::get_tkx_ibc_token_by_denom(deps.storage, &token.denom).unwrap();
+
+                // calculate to convert ibc decimal to Titan TKX decimals (18)
+                let decimals = tkx_ibc_info.decimals;
+                let tkx_decimal = 10u128.pow((TKX_NATIVE_DENOM_DECIMALS - decimals).into());
+                // convert to native tkx token
+                let amount = token
+                    .amount
+                    .checked_mul(Uint128::from(tkx_decimal))
+                    .unwrap();
+
+                // accumulate tkx amount
+                tkx_amount += amount;
             } else {
                 not_tkx_tokens.push(token);
             }

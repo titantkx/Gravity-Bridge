@@ -66,11 +66,15 @@ fn init_test() -> (
                         vec![
                             Coin {
                                 denom: TKX_NATIVE_DENOM.to_string(),
-                                amount: 1_000_000u128.into(),
+                                amount: (1_000_000u128 * (1e18 as u128)).into(),
                             },
                             Coin {
                                 denom: OTHER_DENOM.to_string(),
-                                amount: 1_000_000u128.into(),
+                                amount: (1_000_000u128).into(),
+                            },
+                            Coin {
+                                denom: "ibc/123".to_string(),
+                                amount: (1_000_000u128).into(),
                             },
                         ],
                     )
@@ -83,11 +87,11 @@ fn init_test() -> (
                         vec![
                             Coin {
                                 denom: TKX_NATIVE_DENOM.to_string(),
-                                amount: 1_000_000u128.into(),
+                                amount: (1_000_000u128 * (1e18 as u128)).into(),
                             },
                             Coin {
                                 denom: OTHER_DENOM.to_string(),
-                                amount: 1_000_000u128.into(),
+                                amount: (1_000_000u128).into(),
                             },
                         ],
                     )
@@ -111,10 +115,30 @@ fn init_test() -> (
         )
         .unwrap();
 
+    // add ibc token for contract
+    let contract_ibc_coin = Coin {
+        denom: "ibc/123".to_string(),
+        amount: (1_000_000u128).into(),
+    };
+
+    app.send_tokens(ADMIN.clone(), contract_addr.clone(), &[contract_ibc_coin])
+        .unwrap();
+
+    // * NOTE: This is a workaround to set the initial balance of the contract. avoid rust error about conflict borrowing
+    // let mut storage = MemoryStorage::new();
+    // std::mem::swap(&mut storage, &mut app.storage_mut());
+    // // let storage = app.storage_mut();
+    // app.router()
+    //     .bank
+    //     .init_balance(&mut storage, &contract_addr, vec![contract_ibc_coin])
+    //     .unwrap();
+    // std::mem::swap(&mut storage, &mut app.storage_mut());
+
     // config tkx ibc token info
     let msg: ExecuteMsg = ExecuteMsg::AddTKXIbcDenom(AddTKXIbcDenomMsg {
         chain_prefix: "eth".to_string(),
         denom: "ibc/123".to_string(),
+        decimals: 8,
         channel_id: "channel-0".to_string(),
     });
 
@@ -140,6 +164,34 @@ fn init_test() -> (
         value: "channel-0".to_string()
     }));
 
+    // supply tkx token into contract
+    let msg = ExecuteMsg::SupplyTKXToken {};
+    let res = app
+        .execute_contract(
+            ADMIN.clone(),
+            contract_addr.clone(),
+            &msg,
+            &coins(1_000u128 * (1e18 as u128), TKX_NATIVE_DENOM),
+        )
+        .unwrap();
+    let attributes = res.custom_attrs(1);
+    assert!(attributes.contains(&Attribute {
+        key: "method".to_string(),
+        value: "supply_tkx_token".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "sender".to_string(),
+        value: ADMIN.to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "amount".to_string(),
+        value: (1_000u128 * (1e18 as u128)).to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "denom".to_string(),
+        value: TKX_NATIVE_DENOM.to_string()
+    }));
+
     (app, contract_addr)
 }
 
@@ -153,12 +205,18 @@ fn success_request() {
         .query_balance(USER.to_string(), TKX_NATIVE_DENOM)
         .unwrap();
 
+    // pre tkx balance of contract
+    let pre_withdraw_contract_balance = app
+        .wrap()
+        .query_balance(contract_addr.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
         recipient: "0x123456789".to_string(),
         forwarder: "forwarder".to_string(),
-        amount: Uint128::new(100),
-        bridge_fee: Uint128::new(10),
+        amount: Uint128::new(100 * (1e10 as u128)),
+        bridge_fee: Uint128::new(10 * (1e10 as u128)),
     });
 
     let res = app
@@ -166,7 +224,7 @@ fn success_request() {
             USER.clone(),
             contract_addr.clone(),
             &msg,
-            &coins(110, TKX_NATIVE_DENOM),
+            &coins(110 * (1e10 as u128), TKX_NATIVE_DENOM),
         )
         .unwrap();
 
@@ -200,15 +258,15 @@ fn success_request() {
     }));
     assert!(attributes.contains(&Attribute {
         key: "total_amount".to_string(),
-        value: "110".to_string()
+        value: "1100000000000".to_string()
     }));
     assert!(attributes.contains(&Attribute {
         key: "amount".to_string(),
-        value: "100".to_string()
+        value: "1000000000000".to_string()
     }));
     assert!(attributes.contains(&Attribute {
         key: "bridge_fee".to_string(),
-        value: "10".to_string()
+        value: "100000000000".to_string()
     }));
 
     let captured_calls = app.router().ibc.get_captured_calls();
@@ -264,9 +322,12 @@ fn success_request() {
     assert_eq!(withdraw_info.sender.to_string(), USER.to_string());
     assert_eq!(withdraw_info.recipient, "0x123456789");
     assert_eq!(withdraw_info.forwarder, "forwarder");
-    assert_eq!(withdraw_info.total_amount, Uint128::new(110));
-    assert_eq!(withdraw_info.amount, Uint128::new(100));
-    assert_eq!(withdraw_info.bridge_fee, Uint128::new(10));
+    assert_eq!(
+        withdraw_info.total_amount,
+        Uint128::new(110 * (1e10 as u128))
+    );
+    assert_eq!(withdraw_info.amount, Uint128::new(100 * (1e10 as u128)));
+    assert_eq!(withdraw_info.bridge_fee, Uint128::new(10 * (1e10 as u128)));
 
     // post balance of USER
     let post_withdraw_user_balance = app
@@ -275,8 +336,18 @@ fn success_request() {
         .unwrap();
 
     assert_eq!(
-        pre_withdraw_user_balance.amount - Uint128::new(110),
+        pre_withdraw_user_balance.amount - Uint128::new(110 * (1e10 as u128)),
         post_withdraw_user_balance.amount
+    );
+
+    // post tkx balance of contract
+    let post_withdraw_contract_balance = app
+        .wrap()
+        .query_balance(contract_addr.to_string(), TKX_NATIVE_DENOM)
+        .unwrap();
+    assert_eq!(
+        pre_withdraw_contract_balance.amount + Uint128::new(110 * (1e10 as u128)),
+        post_withdraw_contract_balance.amount
     );
 }
 
@@ -316,15 +387,15 @@ fn success_request_ibc_timeout() {
         chain_prefix: "eth".to_string(),
         recipient: "0x123456789".to_string(),
         forwarder: "forwarder".to_string(),
-        amount: Uint128::new(100),
-        bridge_fee: Uint128::new(10),
+        amount: Uint128::new(100 * (1e10 as u128)),
+        bridge_fee: Uint128::new(10 * (1e10 as u128)),
     });
 
     app.execute_contract(
         USER.clone(),
         contract_addr.clone(),
         &msg,
-        &coins(110, TKX_NATIVE_DENOM),
+        &coins(110 * (1e10 as u128), TKX_NATIVE_DENOM),
     )
     .unwrap();
 
@@ -334,7 +405,7 @@ fn success_request_ibc_timeout() {
         .unwrap();
 
     assert_eq!(
-        pre_withdraw_user_balance.amount - Uint128::new(110),
+        pre_withdraw_user_balance.amount - Uint128::new(110 * (1e10 as u128)),
         post_withdraw_user_balance.amount
     );
 
@@ -372,7 +443,7 @@ fn success_request_ibc_timeout() {
     }));
     assert!(attributes.contains(&Attribute {
         key: "total_amount".to_string(),
-        value: "110".to_string()
+        value: "1100000000000".to_string()
     }));
 
     let post_callback_user_balance = app
@@ -400,15 +471,15 @@ fn success_request_ibc_fail() {
         chain_prefix: "eth".to_string(),
         recipient: "0x123456789".to_string(),
         forwarder: "forwarder".to_string(),
-        amount: Uint128::new(100),
-        bridge_fee: Uint128::new(10),
+        amount: Uint128::new(100 * (1e10 as u128)),
+        bridge_fee: Uint128::new(10 * (1e10 as u128)),
     });
 
     app.execute_contract(
         USER.clone(),
         contract_addr.clone(),
         &msg,
-        &coins(110, TKX_NATIVE_DENOM),
+        &coins(110 * (1e10 as u128), TKX_NATIVE_DENOM),
     )
     .unwrap();
 
@@ -418,7 +489,7 @@ fn success_request_ibc_fail() {
         .unwrap();
 
     assert_eq!(
-        pre_withdraw_user_balance.amount - Uint128::new(110),
+        pre_withdraw_user_balance.amount - Uint128::new(110 * (1e10 as u128)),
         post_withdraw_user_balance.amount
     );
 
@@ -458,7 +529,7 @@ fn success_request_ibc_fail() {
     }));
     assert!(attributes.contains(&Attribute {
         key: "total_amount".to_string(),
-        value: "110".to_string()
+        value: "1100000000000".to_string()
     }));
 
     let post_callback_user_balance = app

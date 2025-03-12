@@ -33,7 +33,7 @@ pub mod execute {
     };
 
     use crate::{
-        constant::{SUB_MSG_ID_WITHDRAW_IBC_1, TKX_NATIVE_DENOM},
+        constant::{SUB_MSG_ID_WITHDRAW_IBC_1, TKX_NATIVE_DENOM, TKX_NATIVE_DENOM_DECIMALS},
         error::ContractError,
         state,
         types::{
@@ -97,13 +97,39 @@ pub mod execute {
         let tkx_ibc_info =
             state::config::get_tkx_ibc_token_by_chain_prefix(deps.storage, &data.chain_prefix)?;
 
+        // calculate to convert Titan TKX decimals (18) to ibc decimal
+        let decimals = tkx_ibc_info.decimals;
+        let tkx_decimal = 10u128.pow((TKX_NATIVE_DENOM_DECIMALS - decimals).into());
+        // convert to tkx ibc token
+        let ibc_amount = tkx_token
+            .amount
+            .checked_div(Uint128::from(tkx_decimal))
+            .unwrap();
+
+        // after convert to ibc token, amount should be greater than 0
+        if ibc_amount.is_zero() {
+            return Err(ContractError::InvalidAmount {});
+        }
+
         let tkx_ibc_token = Coin {
-            denom: tkx_ibc_info.denom,
-            amount: tkx_token.amount,
+            denom: tkx_ibc_info.denom.clone(),
+            amount: ibc_amount,
         };
 
+        // convert data.amount and data.bridge_fee to ibc token value
+        let ibc_data_amount = data.amount.checked_div(Uint128::from(tkx_decimal)).unwrap();
+        let ibc_data_bridge_fee = data
+            .bridge_fee
+            .checked_div(Uint128::from(tkx_decimal))
+            .unwrap();
+
         // check contract balance
-        check_contract_balance(deps.as_ref(), &env, &tkx_token.denom, tkx_token.amount)?;
+        check_contract_balance(
+            deps.as_ref(),
+            &env,
+            tkx_ibc_info.denom.clone().as_str(),
+            tkx_ibc_token.amount,
+        )?;
 
         // build ibc transfer message
         // build memo
@@ -111,8 +137,8 @@ pub mod execute {
             send_to_eth: IbcAutoSendEth {
                 evm_chain_prefix: data.chain_prefix.clone(),
                 eth_dest: data.recipient.clone(),
-                amount: data.amount,
-                bridge_fee: data.bridge_fee,
+                amount: ibc_data_amount,
+                bridge_fee: ibc_data_bridge_fee,
             },
             ibc_callback: env.contract.address.to_string(),
         };

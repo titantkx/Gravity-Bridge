@@ -35,6 +35,7 @@ pub struct ListTxkIbcDenomResp {
 pub struct TKXChainInfo {
     pub chain_prefix: String,
     pub denom: String,
+    pub decimals: u8,
     pub channel_id: String,
 }
 
