@@ -47,11 +47,13 @@ use happy_path_v2::happy_path_test_v2;
 use happy_path_v2::happy_path_test_v2_native;
 use ibc_auto_forward_retry::ibc_auto_forward_retry_test;
 use ibc_auto_forward_tkx::ibc_auto_forward_tkx_test;
+use ibc_auto_send_eth_tkx::ibc_auto_send_eth_tkx_test;
 use lazy_static::lazy_static;
 use num::FromPrimitive;
 use orch_keys::orch_keys;
 use orch_only::orch_only_test;
 use relay_market::relay_market_test;
+use std::ops::Mul;
 use std::{env, time::Duration};
 use tokio::time::sleep;
 use transaction_stress_test::transaction_stress_test;
@@ -256,6 +258,14 @@ pub fn one_hundred_eth() -> Uint256 {
     (1000000000000000000u128 * 100).into()
 }
 
+pub fn one_erc20_tkx() -> Uint256 {
+    (1u128 * (1e8 as u128)).into()
+}
+
+pub fn ten_erc20_tkx() -> Uint256 {
+    (10u128 * (1e8 as u128)).into()
+}
+
 pub fn should_deploy_contracts() -> bool {
     match env::var("DEPLOY_CONTRACTS") {
         Ok(s) => s == "1" || s.to_lowercase() == "yes" || s.to_lowercase() == "true",
@@ -374,7 +384,9 @@ pub async fn main() {
     // UPGRADE_ONLY performs an upgrade without making any testing assertions
     // IBC_AUTO_FORWARD tests ibc auto forwarding functionality.
     // IBC_AUTO_FORWARD_RETRY tests ibc auto forwarding retry functionality.
+    // IBC_AUTO_FORWARD_TKX tests ibc auto forwarding to tkx functionality.
     // IBC_AUTO_SEND_ETH tests ibc auto forwarding to eth functionality.
+    // IBC_AUTO_SEND_ETH_TKX tests ibc auto forwarding to eth tkx functionality.
     // ETHERMINT_KEYS runs a gamut of transactions using a Ethermint key to test no loss of functionality
     // BATCH_TIMEOUT is a stress test for batch timeouts, setting an extremely agressive timeout value
     // VESTING checks that the vesting module delivers partially and fully vested accounts
@@ -714,6 +726,21 @@ pub async fn main() {
                 ibc_keys,
                 gravity_address,
                 erc20_addresses[0],
+            )
+            .await;
+            return;
+        } else if test_type == "IBC_AUTO_SEND_ETH_TKX" {
+            info!("Starting IBC Auto-Send-Eth TKX test");
+            ibc_auto_send_eth_tkx_test(
+                &web30,
+                &gravity_contact,
+                grpc_client,
+                &ibc_contact,
+                keys,
+                ibc_keys,
+                erc20_addresses[0],
+                gravity_address,
+                tkx_exchange_address.unwrap(),
             )
             .await;
             return;

@@ -23,6 +23,7 @@ use ibc_relayer::chain;
 use num::FromPrimitive;
 use num256::Uint256;
 use sha2::{Digest, Sha256};
+use std::ops::Mul;
 use tkx_exchange_contract::types::{
     msg::{AddTKXIbcDenomMsg, ExecuteMsg, SetAdminMsg},
     query::{GetAdminResp, ListTxkIbcDenomResp},
@@ -50,7 +51,7 @@ use crate::{
     wait_for_number_blocks, ValidatorKeys, ADDRESS_PREFIX, COSMOS_NODE_GRPC, EVM_CHAIN_PREFIX,
     GRAVITY_DENOM_SEPARATOR, IBC_ADDRESS_PREFIX, IBC_NODE_GRPC, OPERATION_TIMEOUT, STAKING_TOKEN,
 };
-use crate::{one_eth, one_hundred_eth, IBC_STAKING_TOKEN};
+use crate::{one_erc20_tkx, one_eth, one_hundred_eth, IBC_STAKING_TOKEN};
 
 pub async fn ibc_auto_forward_tkx_test(
     web30: &Web3,
@@ -151,7 +152,7 @@ pub async fn ibc_auto_forward_tkx_test(
         erc20_address,
         tkx_exchange_address,
         ibc_keys[0].to_address(IBC_ADDRESS_PREFIX.as_str()).unwrap(),
-        one_eth(),
+        one_erc20_tkx(),
     )
     .await
     .expect("Failed to test tkx ibc auto forward happy path");
@@ -253,8 +254,11 @@ pub async fn add_tkx_ibc_denom(
 
     let add_tkx_msg = ExecuteMsg::AddTKXIbcDenom(AddTKXIbcDenomMsg {
         chain_prefix: EVM_CHAIN_PREFIX.to_string(),
-        channel_id: ibc_channel_id,
+        address_regex: "0x[a-fA-F0-9]{40}".to_string(),
+        decimals: 8,
         denom: tkx_ibc_denom,
+        channel_id: ibc_channel_id,
+        forwarder_prefix: "gravity".to_string(),
     });
     let exec_msg = MsgExecuteContract {
         sender: ibc_keys[0]
@@ -295,6 +299,7 @@ pub async fn list_tkx_ibc_denoms(
     resp.denoms
 }
 
+/// Supply the tkx contract with 10tkx native tokens
 pub async fn supply_tkx_native(
     ibc_contact: &Contact,
     ibc_keys: Vec<IBCPrivateKey>,
@@ -355,9 +360,13 @@ pub async fn supply_tkx_native(
     .expect("Failed to validate balance change");
 }
 
+pub fn convert_erc20_tkx_to_native_tkx(erc20_amount: Uint256) -> Uint256 {
+    erc20_amount.mul((1e10 as u128).into())
+}
+
 pub async fn test_tkx_ibc_auto_forward_happy_path(
     web30: &Web3,
-    contact: &Contact,
+    gravity_contact: &Contact,
     ibc_contact: &Contact,
     gravity_client: GravityQueryClient<Channel>, // Src chain's Gravity GRPC client
     ibc_bank_qc: BankQueryClient<Channel>,       // Dst chain's Bank GRPC client
@@ -424,7 +433,7 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
                 executor: forwarder.to_address(&ADDRESS_PREFIX).unwrap().to_string(),
             },
         );
-        let _res = contact
+        let _res = gravity_contact
             .send_message(
                 &[msg_execute_forwards],
                 None,
@@ -450,7 +459,12 @@ pub async fn test_tkx_ibc_auto_forward_happy_path(
         post_forward_balance
     );
 
-    validate_balance_change(dest, pre_forward_balance, post_forward_balance, amount)?;
+    validate_balance_change(
+        dest,
+        pre_forward_balance,
+        post_forward_balance,
+        convert_erc20_tkx_to_native_tkx(amount),
+    )?;
 
     Ok(())
 }
