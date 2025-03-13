@@ -1123,6 +1123,7 @@ dependencies = [
 name = "tkx-exchange"
 version = "0.1.0"
 dependencies = [
+ "bech32",
  "cosmos-sdk-proto-titan",
  "cosmwasm-schema",
  "cosmwasm-std",

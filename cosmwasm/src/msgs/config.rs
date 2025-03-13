@@ -29,6 +29,7 @@ pub mod execute {
             &data.denom,
             data.decimals,
             &data.channel_id,
+            &data.forwarder_prefix,
         )?;
 
         let resp = Response::new()
@@ -37,7 +38,8 @@ pub mod execute {
             .add_attribute("address_regex", data.address_regex.to_string())
             .add_attribute("denom", data.denom.to_string())
             .add_attribute("decimals", data.decimals.to_string())
-            .add_attribute("channel_id", data.channel_id.to_string());
+            .add_attribute("channel_id", data.channel_id.to_string())
+            .add_attribute("forwarder_prefix", data.forwarder_prefix.to_string());
 
         Ok(resp)
     }
@@ -83,6 +85,7 @@ pub mod query {
                 denom: info.denom,
                 decimals: info.decimals,
                 channel_id: info.channel_id,
+                forwarder_prefix: info.forwarder_prefix,
             })
             .collect();
 
@@ -137,6 +140,7 @@ mod tests {
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
+            forwarder_prefix: "gravity".to_string(),
         };
 
         let info = message_info(&ADMIN, &[]);
@@ -151,6 +155,7 @@ mod tests {
                 ("denom", "uusd"),
                 ("decimals", "6"),
                 ("channel_id", "channel-0"),
+                ("forwarder_prefix", "gravity"),
             ]
         );
     }
@@ -165,6 +170,7 @@ mod tests {
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
+            forwarder_prefix: "gravity".to_string(),
         };
         let info = message_info(&USER, &[]);
         let res = execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg);
@@ -185,6 +191,7 @@ mod tests {
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
+            forwarder_prefix: "gravity".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
         execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
@@ -214,6 +221,7 @@ mod tests {
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
+            forwarder_prefix: "gravity".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
         execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
@@ -240,6 +248,7 @@ mod tests {
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
+            forwarder_prefix: "gravity".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
         execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
@@ -259,6 +268,7 @@ mod tests {
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
+            forwarder_prefix: "gravity".to_string(),
         };
         let info = message_info(&ADMIN, &[]);
         execute::add_tkx_ibc_token_info(deps.as_mut(), info, msg).unwrap();
@@ -273,6 +283,7 @@ mod tests {
                 denom: "uusd".to_string(),
                 decimals: 6,
                 channel_id: "channel-0".to_string(),
+                forwarder_prefix: "gravity".to_string(),
             }]
         );
     }

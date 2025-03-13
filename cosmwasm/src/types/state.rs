@@ -7,6 +7,7 @@ pub struct TKXIbcInfo {
     pub denom: String,
     pub decimals: u8,
     pub channel_id: String,
+    pub forwarder_prefix: String,
 }
 
 #[cw_serde]

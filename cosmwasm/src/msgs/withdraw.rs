@@ -106,6 +106,14 @@ pub mod execute {
             return Err(ContractError::InvalidRecipient {});
         }
 
+        // `data.forwarder` must satisfy the cosmos address with forwarder_prefix
+        let (hrp, _) =
+            bech32::decode(&data.forwarder).map_err(|_| ContractError::InvalidForwarder {})?;
+
+        if hrp.to_lowercase() != tkx_ibc_info.forwarder_prefix {
+            return Err(ContractError::InvalidForwarder {});
+        }
+
         // calculate to convert Titan TKX decimals (18) to ibc decimal
         let decimals = tkx_ibc_info.decimals;
         let tkx_decimal = 10u128.pow((TKX_NATIVE_DENOM_DECIMALS - decimals).into());

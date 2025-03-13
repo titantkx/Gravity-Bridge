@@ -50,6 +50,8 @@ pub struct AddTKXIbcDenomMsg {
     pub decimals: u8,
     /// IBC channel id of the tkx ibc token.
     pub channel_id: String,
+    /// Forwarder prefix is the prefix of the forwarder address.
+    pub forwarder_prefix: String,
 }
 
 #[cw_serde]

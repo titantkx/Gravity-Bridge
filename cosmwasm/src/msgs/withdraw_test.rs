@@ -142,6 +142,7 @@ fn init_test() -> (
         denom: "ibc/123".to_string(),
         decimals: 8,
         channel_id: "channel-0".to_string(),
+        forwarder_prefix: "gravity".to_string(),
     });
 
     let res = app
@@ -229,13 +230,64 @@ fn wrong_recipient_request() {
 }
 
 #[test]
+fn wrong_forwarder_request() {
+    let (mut app, contract_addr) = init_test();
+
+    // wrong format
+    let msg = ExecuteMsg::Withdraw(WithdrawMsg {
+        chain_prefix: "eth".to_string(),
+        recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
+        forwarder: "abcahihi".to_string(),
+        amount: Uint128::new(100 * (1e10 as u128)),
+        bridge_fee: Uint128::new(10 * (1e10 as u128)),
+    });
+
+    let res = app.execute_contract(
+        USER.clone(),
+        contract_addr.clone(),
+        &msg,
+        &coins(110 * (1e10 as u128), TKX_NATIVE_DENOM),
+    );
+
+    assert!(res.is_err());
+    let err = res.unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::InvalidForwarder {}.to_string()
+    );
+
+    // correct format but wrong prefix
+    let msg = ExecuteMsg::Withdraw(WithdrawMsg {
+        chain_prefix: "eth".to_string(),
+        recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
+        forwarder: "noble1t33elcp8sv3fv0rydew25f9hc9f9l8snadtyq5".to_string(),
+        amount: Uint128::new(100 * (1e10 as u128)),
+        bridge_fee: Uint128::new(10 * (1e10 as u128)),
+    });
+
+    let res = app.execute_contract(
+        USER.clone(),
+        contract_addr.clone(),
+        &msg,
+        &coins(110 * (1e10 as u128), TKX_NATIVE_DENOM),
+    );
+
+    assert!(res.is_err());
+    let err = res.unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::InvalidForwarder {}.to_string()
+    );
+}
+
+#[test]
 fn can_not_withdraw_more_than_contract_ibc_balance() {
     let (mut app, contract_addr) = init_test();
 
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
         recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
-        forwarder: "forwarder".to_string(),
+        forwarder: "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj".to_string(),
         amount: Uint128::new(10 * (1e18 as u128)),
         bridge_fee: Uint128::new(1 * (1e18 as u128)),
     });
@@ -274,7 +326,7 @@ fn success_request() {
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
         recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
-        forwarder: "forwarder".to_string(),
+        forwarder: "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj".to_string(),
         amount: Uint128::new(100 * (1e10 as u128)),
         bridge_fee: Uint128::new(10 * (1e10 as u128)),
     });
@@ -314,7 +366,7 @@ fn success_request() {
     }));
     assert!(attributes.contains(&Attribute {
         key: "forwarder".to_string(),
-        value: "forwarder".to_string()
+        value: "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj".to_string()
     }));
     assert!(attributes.contains(&Attribute {
         key: "total_amount".to_string(),
@@ -344,7 +396,7 @@ fn success_request() {
     } = msg
     {
         assert_eq!(channel_id, "channel-0");
-        assert_eq!(to_address, "forwarder");
+        assert_eq!(to_address, "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj");
         assert_eq!(amount.denom, "ibc/123");
         assert_eq!(amount.amount, Uint128::new(110));
         // timeout more than 29 days from now
@@ -387,7 +439,10 @@ fn success_request() {
         withdraw_info.recipient,
         "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2"
     );
-    assert_eq!(withdraw_info.forwarder, "forwarder");
+    assert_eq!(
+        withdraw_info.forwarder,
+        "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj"
+    );
     assert_eq!(
         withdraw_info.total_amount,
         Uint128::new(110 * (1e10 as u128))

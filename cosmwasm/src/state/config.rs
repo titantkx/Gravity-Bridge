@@ -15,6 +15,7 @@ pub fn add_tkx_ibc_token_denom(
     denom: &str,
     decimals: u8,
     channel_id: &str,
+    forwarder_prefix: &str,
 ) -> StdResult<()> {
     TKX_IBC_TOKEN_INFO.save(
         store,
@@ -24,6 +25,7 @@ pub fn add_tkx_ibc_token_denom(
             denom: denom.to_string(),
             decimals,
             channel_id: channel_id.to_string(),
+            forwarder_prefix: forwarder_prefix.to_string(),
         },
     )?;
 
@@ -99,6 +101,7 @@ mod tests {
         let denom = "tkx_denom";
         let decimals = 8;
         let channel_id = "channel-0";
+        let forwarder_prefix = "gravity";
         add_tkx_ibc_token_denom(
             &mut deps.storage,
             chain_prefix,
@@ -106,6 +109,7 @@ mod tests {
             denom,
             decimals,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
 
@@ -122,6 +126,7 @@ mod tests {
         let denom = "tkx_denom";
         let decimals = 8;
         let channel_id = "channel-0";
+        let forwarder_prefix = "gravity";
         add_tkx_ibc_token_denom(
             &mut deps.storage,
             chain_prefix,
@@ -129,6 +134,7 @@ mod tests {
             denom,
             decimals,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
 
@@ -147,6 +153,7 @@ mod tests {
         let denom1 = "tkx_denom1";
         let decimals1 = 8;
         let channel_id = "channel-0";
+        let forwarder_prefix = "gravity";
         let chain_prefix2 = "bsc";
         let address_regex2 = "0x[a-fA-F0-9]{40}";
         let decimals2 = 6;
@@ -158,6 +165,7 @@ mod tests {
             denom1,
             decimals1,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
         add_tkx_ibc_token_denom(
@@ -167,6 +175,7 @@ mod tests {
             denom2,
             decimals2,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
 
@@ -185,6 +194,7 @@ mod tests {
         let denom1 = "tkx_denom1";
         let decimals1 = 8;
         let channel_id = "channel-0";
+        let forwarder_prefix = "gravity";
         let chain_prefix2 = "bsc";
         let address_regex2 = "0x[a-fA-F0-9]{40}";
         let denom2 = "tkx_denom2";
@@ -196,6 +206,7 @@ mod tests {
             denom1,
             decimals1,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
         add_tkx_ibc_token_denom(
@@ -205,6 +216,7 @@ mod tests {
             denom2,
             decimals2,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
 
@@ -217,6 +229,7 @@ mod tests {
                 denom: denom1.to_string(),
                 decimals: decimals1,
                 channel_id: channel_id.to_string(),
+                forwarder_prefix: forwarder_prefix.to_string(),
             }
         )));
         assert!(denoms.contains(&(
@@ -226,6 +239,7 @@ mod tests {
                 denom: denom2.to_string(),
                 decimals: decimals2,
                 channel_id: channel_id.to_string(),
+                forwarder_prefix: forwarder_prefix.to_string(),
             }
         )));
     }
@@ -239,6 +253,7 @@ mod tests {
         let denom = "tkx_denom";
         let decimals = 8;
         let channel_id = "channel-0";
+        let forwarder_prefix = "gravity";
         add_tkx_ibc_token_denom(
             &mut deps.storage,
             chain_prefix,
@@ -246,6 +261,7 @@ mod tests {
             denom,
             decimals,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
 
@@ -257,6 +273,7 @@ mod tests {
                 denom: denom.to_string(),
                 decimals,
                 channel_id: channel_id.to_string(),
+                forwarder_prefix: forwarder_prefix.to_string(),
             }
         );
 
@@ -273,6 +290,7 @@ mod tests {
         let denom = "tkx_denom";
         let decimals = 8;
         let channel_id = "channel-0";
+        let forwarder_prefix = "gravity";
         add_tkx_ibc_token_denom(
             &mut deps.storage,
             chain_prefix,
@@ -280,6 +298,7 @@ mod tests {
             denom,
             decimals,
             channel_id,
+            forwarder_prefix,
         )
         .unwrap();
 
@@ -291,6 +310,7 @@ mod tests {
                 denom: denom.to_string(),
                 decimals,
                 channel_id: channel_id.to_string(),
+                forwarder_prefix: forwarder_prefix.to_string(),
             }
         );
 

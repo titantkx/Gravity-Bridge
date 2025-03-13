@@ -26,4 +26,7 @@ pub enum ContractError {
 
     #[error("Invalid recipient")]
     InvalidRecipient {},
+
+    #[error("Invalid forwarder")]
+    InvalidForwarder {},
 }

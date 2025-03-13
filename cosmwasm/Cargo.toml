@@ -15,6 +15,7 @@ library = ["types", "cw-storage-plus", "cosmos-sdk-proto-titan"]
 types = []
 
 [dependencies]
+bech32 = "0.11.0"
 cosmos-sdk-proto-titan = {git = "https://github.com/titantkx/titan-rust-proto.git", tag = "v3.4.0", package = "cosmos-sdk-proto-titan", optional = true}
 cosmwasm-schema = "2.1.4"
 cosmwasm-std = {version = "2.1.4", features = ["cosmwasm_1_4", "stargate"]}
