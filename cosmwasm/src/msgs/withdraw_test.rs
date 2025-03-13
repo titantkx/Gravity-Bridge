@@ -12,6 +12,7 @@ use lazy_static::lazy_static;
 use crate::{
     constant::TKX_NATIVE_DENOM,
     contract::instantiate,
+    error::ContractError,
     execute, query, reply, sudo,
     types::{
         msg::{AddTKXIbcDenomMsg, ExecuteMsg, InstantiateMsg, WithdrawMsg},
@@ -137,6 +138,7 @@ fn init_test() -> (
     // config tkx ibc token info
     let msg: ExecuteMsg = ExecuteMsg::AddTKXIbcDenom(AddTKXIbcDenomMsg {
         chain_prefix: "eth".to_string(),
+        address_regex: "0x[a-fA-F0-9]{40}".to_string(),
         denom: "ibc/123".to_string(),
         decimals: 8,
         channel_id: "channel-0".to_string(),
@@ -154,6 +156,10 @@ fn init_test() -> (
     assert!(attributes.contains(&Attribute {
         key: "chain_prefix".to_string(),
         value: "eth".to_string()
+    }));
+    assert!(attributes.contains(&Attribute {
+        key: "address_regex".to_string(),
+        value: "0x[a-fA-F0-9]{40}".to_string()
     }));
     assert!(attributes.contains(&Attribute {
         key: "denom".to_string(),
@@ -196,6 +202,60 @@ fn init_test() -> (
 }
 
 #[test]
+fn wrong_recipient_request() {
+    let (mut app, contract_addr) = init_test();
+
+    let msg = ExecuteMsg::Withdraw(WithdrawMsg {
+        chain_prefix: "eth".to_string(),
+        recipient: "abcahihi".to_string(),
+        forwarder: "forwarder".to_string(),
+        amount: Uint128::new(100 * (1e10 as u128)),
+        bridge_fee: Uint128::new(10 * (1e10 as u128)),
+    });
+
+    let res = app.execute_contract(
+        USER.clone(),
+        contract_addr.clone(),
+        &msg,
+        &coins(110 * (1e10 as u128), TKX_NATIVE_DENOM),
+    );
+
+    assert!(res.is_err());
+    let err = res.unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::InvalidRecipient {}.to_string()
+    );
+}
+
+#[test]
+fn can_not_withdraw_more_than_contract_ibc_balance() {
+    let (mut app, contract_addr) = init_test();
+
+    let msg = ExecuteMsg::Withdraw(WithdrawMsg {
+        chain_prefix: "eth".to_string(),
+        recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
+        forwarder: "forwarder".to_string(),
+        amount: Uint128::new(10 * (1e18 as u128)),
+        bridge_fee: Uint128::new(1 * (1e18 as u128)),
+    });
+
+    let res = app.execute_contract(
+        USER.clone(),
+        contract_addr.clone(),
+        &msg,
+        &coins(11 * (1e18 as u128), TKX_NATIVE_DENOM),
+    );
+
+    assert!(res.is_err());
+    let err = res.unwrap_err();
+    assert_eq!(
+        err.root_cause().to_string(),
+        ContractError::InsufficientContractBalance {}.to_string()
+    );
+}
+
+#[test]
 fn success_request() {
     let (mut app, contract_addr) = init_test();
 
@@ -213,7 +273,7 @@ fn success_request() {
 
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
-        recipient: "0x123456789".to_string(),
+        recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
         forwarder: "forwarder".to_string(),
         amount: Uint128::new(100 * (1e10 as u128)),
         bridge_fee: Uint128::new(10 * (1e10 as u128)),
@@ -250,7 +310,7 @@ fn success_request() {
     }));
     assert!(attributes.contains(&Attribute {
         key: "recipient".to_string(),
-        value: "0x123456789".to_string()
+        value: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string()
     }));
     assert!(attributes.contains(&Attribute {
         key: "forwarder".to_string(),
@@ -296,7 +356,10 @@ fn success_request() {
         // println!("memo {:?}", memo);
         let memo_data: IbcAutoSendEthMemo = serde_json::from_str(memo.as_ref().unwrap()).unwrap();
         assert_eq!(memo_data.send_to_eth.evm_chain_prefix, "eth");
-        assert_eq!(memo_data.send_to_eth.eth_dest, "0x123456789");
+        assert_eq!(
+            memo_data.send_to_eth.eth_dest,
+            "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2"
+        );
         assert_eq!(memo_data.send_to_eth.amount, Uint128::new(100));
         assert_eq!(memo_data.send_to_eth.bridge_fee, Uint128::new(10));
         assert_eq!(memo_data.ibc_callback, contract_addr.to_string());
@@ -320,7 +383,10 @@ fn success_request() {
     assert_eq!(withdraw_info.sequence, 1);
     assert_eq!(withdraw_info.chain_prefix, "eth");
     assert_eq!(withdraw_info.sender.to_string(), USER.to_string());
-    assert_eq!(withdraw_info.recipient, "0x123456789");
+    assert_eq!(
+        withdraw_info.recipient,
+        "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2"
+    );
     assert_eq!(withdraw_info.forwarder, "forwarder");
     assert_eq!(
         withdraw_info.total_amount,
@@ -357,7 +423,7 @@ fn not_accept_other_token() {
 
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
-        recipient: "0x123456789".to_string(),
+        recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
         forwarder: "forwarder".to_string(),
         amount: Uint128::new(100),
         bridge_fee: Uint128::new(10),
@@ -385,7 +451,7 @@ fn success_request_ibc_timeout() {
 
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
-        recipient: "0x123456789".to_string(),
+        recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
         forwarder: "forwarder".to_string(),
         amount: Uint128::new(100 * (1e10 as u128)),
         bridge_fee: Uint128::new(10 * (1e10 as u128)),
@@ -469,7 +535,7 @@ fn success_request_ibc_fail() {
 
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
-        recipient: "0x123456789".to_string(),
+        recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
         forwarder: "forwarder".to_string(),
         amount: Uint128::new(100 * (1e10 as u128)),
         bridge_fee: Uint128::new(10 * (1e10 as u128)),

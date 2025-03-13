@@ -20,4 +20,10 @@ pub enum ContractError {
 
     #[error("Have issue in contract logic: {err:?}")]
     Logic { err: String },
+
+    #[error("Invalid regex: {re}")]
+    InvalidRegex { re: String },
+
+    #[error("Invalid recipient")]
+    InvalidRecipient {},
 }

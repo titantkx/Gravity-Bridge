@@ -31,6 +31,7 @@ pub mod execute {
         BalanceResponse, BankQuery, Coin, CosmosMsg, Deps, DepsMut, Env, IbcMsg, IbcTimeout,
         MessageInfo, Response, StdResult, SubMsg, Uint128,
     };
+    use regex_lite::Regex;
 
     use crate::{
         constant::{SUB_MSG_ID_WITHDRAW_IBC_1, TKX_NATIVE_DENOM, TKX_NATIVE_DENOM_DECIMALS},
@@ -96,6 +97,14 @@ pub mod execute {
         // check `data.chain_prefix` is valid
         let tkx_ibc_info =
             state::config::get_tkx_ibc_token_by_chain_prefix(deps.storage, &data.chain_prefix)?;
+
+        //  `data.recipient` must satisfy the address regex
+        if !Regex::new(&tkx_ibc_info.address_regex)
+            .unwrap()
+            .is_match(data.recipient.as_str())
+        {
+            return Err(ContractError::InvalidRecipient {});
+        }
 
         // calculate to convert Titan TKX decimals (18) to ibc decimal
         let decimals = tkx_ibc_info.decimals;

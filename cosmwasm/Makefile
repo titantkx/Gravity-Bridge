@@ -20,4 +20,4 @@ check: build-optimizer
 	# cosmwasm-check $(ROOT_DIR)/target/wasm32-unknown-unknown/release/tkx_exchange.wasm
 
 test:
-	cargo test --lib -- --nocapture
+	RUSTC_BOOTSTRAP=1 cargo test --lib -- --nocapture

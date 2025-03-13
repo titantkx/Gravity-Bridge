@@ -42,6 +42,8 @@ pub enum ExecuteMsg {
 #[cw_serde]
 pub struct AddTKXIbcDenomMsg {
     pub chain_prefix: String,
+    /// Address regex is the regex pattern to match the recipient address.
+    pub address_regex: String,
     /// Denom is the tkx ibc token denomination to be added.
     pub denom: String,
     /// Decimals is the number of decimal places for the tkx ibc token.

@@ -1,5 +1,6 @@
 pub mod execute {
     use cosmwasm_std::{DepsMut, MessageInfo, Response};
+    use regex_lite::Regex;
 
     use crate::{
         error::ContractError,
@@ -15,9 +16,16 @@ pub mod execute {
         // check admin
         check_admin(deps.storage, &info.sender)?;
 
+        if Regex::new(data.address_regex.as_str()).is_err() {
+            return Err(ContractError::InvalidRegex {
+                re: data.address_regex.to_string(),
+            });
+        }
+
         state::config::add_tkx_ibc_token_denom(
             deps.storage,
             &data.chain_prefix,
+            &data.address_regex,
             &data.denom,
             data.decimals,
             &data.channel_id,
@@ -26,6 +34,7 @@ pub mod execute {
         let resp = Response::new()
             .add_attribute("method", "add_tkx_ibc_token_info")
             .add_attribute("chain_prefix", data.chain_prefix.to_string())
+            .add_attribute("address_regex", data.address_regex.to_string())
             .add_attribute("denom", data.denom.to_string())
             .add_attribute("decimals", data.decimals.to_string())
             .add_attribute("channel_id", data.channel_id.to_string());
@@ -70,6 +79,7 @@ pub mod query {
             .into_iter()
             .map(|(chain_prefix, info)| TKXChainInfo {
                 chain_prefix,
+                address_regex: info.address_regex,
                 denom: info.denom,
                 decimals: info.decimals,
                 channel_id: info.channel_id,
@@ -123,6 +133,7 @@ mod tests {
 
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
+            address_regex: "0x[a-fA-F0-9]{40}".to_string(),
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
@@ -136,6 +147,7 @@ mod tests {
             vec![
                 ("method", "add_tkx_ibc_token_info"),
                 ("chain_prefix", "eth"),
+                ("address_regex", "0x[a-fA-F0-9]{40}"),
                 ("denom", "uusd"),
                 ("decimals", "6"),
                 ("channel_id", "channel-0"),
@@ -149,6 +161,7 @@ mod tests {
 
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
+            address_regex: "0x[a-fA-F0-9]{40}".to_string(),
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
@@ -168,6 +181,7 @@ mod tests {
 
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
+            address_regex: "0x[a-fA-F0-9]{40}".to_string(),
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
@@ -196,6 +210,7 @@ mod tests {
 
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
+            address_regex: "0x[a-fA-F0-9]{40}".to_string(),
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
@@ -221,6 +236,7 @@ mod tests {
 
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
+            address_regex: "0x[a-fA-F0-9]{40}".to_string(),
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
@@ -239,6 +255,7 @@ mod tests {
 
         let msg = crate::types::msg::AddTKXIbcDenomMsg {
             chain_prefix: "eth".to_string(),
+            address_regex: "0x[a-fA-F0-9]{40}".to_string(),
             denom: "uusd".to_string(),
             decimals: 6,
             channel_id: "channel-0".to_string(),
@@ -252,6 +269,7 @@ mod tests {
             res.data,
             vec![crate::types::query::TKXChainInfo {
                 chain_prefix: "eth".to_string(),
+                address_regex: "0x[a-fA-F0-9]{40}".to_string(),
                 denom: "uusd".to_string(),
                 decimals: 6,
                 channel_id: "channel-0".to_string(),

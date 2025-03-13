@@ -3,6 +3,7 @@ use cosmwasm_std::{Addr, Uint128};
 
 #[cw_serde]
 pub struct TKXIbcInfo {
+    pub address_regex: String,
     pub denom: String,
     pub decimals: u8,
     pub channel_id: String,
