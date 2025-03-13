@@ -16,6 +16,8 @@ docker compose -f $DIR/docker-compose.yml down
 if [ ! -f $REPO_DIR/cosmwasm/artifacts/tkx_exchange.wasm ]; then
   echo "Missing $REPO_DIR/cosmwasm/artifacts/tkx_exchange.wasm"
   exit 1
+else
+  pushd -f $REPO_DIR/cosmwasm && make build-optimizer
 fi
 
 $DIR/build-orchestrator-test.sh
