@@ -15,7 +15,10 @@ build-optimizer:
 	cosmwasm/optimizer:0.16.0
 	ls -al $(ROOT_DIR)/artifacts
 
-check: build-optimizer
+cosmwasm-check:
+	cargo install cosmwasm-check
+
+check: build-optimizer cosmwasm-check
 	cosmwasm-check $(ROOT_DIR)/artifacts/tkx_exchange.wasm
 	# cosmwasm-check $(ROOT_DIR)/target/wasm32-unknown-unknown/release/tkx_exchange.wasm
 
