@@ -209,7 +209,7 @@ fn wrong_recipient_request() {
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
         recipient: "abcahihi".to_string(),
-        forwarder: "forwarder".to_string(),
+        forwarder: "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj".to_string(),
         amount: Uint128::new(100 * (1e10 as u128)),
         bridge_fee: Uint128::new(10 * (1e10 as u128)),
     });
@@ -507,7 +507,7 @@ fn success_request_ibc_timeout() {
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
         recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
-        forwarder: "forwarder".to_string(),
+        forwarder: "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj".to_string(),
         amount: Uint128::new(100 * (1e10 as u128)),
         bridge_fee: Uint128::new(10 * (1e10 as u128)),
     });
@@ -591,7 +591,7 @@ fn success_request_ibc_fail() {
     let msg = ExecuteMsg::Withdraw(WithdrawMsg {
         chain_prefix: "eth".to_string(),
         recipient: "0x24f1d3119CdF338eE56AC55Dd724Fe4ddb6365C2".to_string(),
-        forwarder: "forwarder".to_string(),
+        forwarder: "gravity1t33elcp8sv3fv0rydew25f9hc9f9l8sn37v5aj".to_string(),
         amount: Uint128::new(100 * (1e10 as u128)),
         bridge_fee: Uint128::new(10 * (1e10 as u128)),
     });
